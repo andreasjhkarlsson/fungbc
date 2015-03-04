@@ -1,0 +1,9 @@
+#content  table { font-size: 0.7em; margin: 0 auto 3em; padding: 0; border-collapse:collapse; }
+#content  caption { font-size:1.25em; font-style:italic; }
+#content  td { vertical-align: middle; margin: 0px; padding: 3px; border: 1px solid #444; width:2em; text-align: center; }
+#content  th { margin: 1px; padding: 3px; border: 1px solid black; background:#ccc; }
+#content  td span { text-decoration: none; border-bottom: 1px dotted #aaa; }
+#content  td.bit { vertical-align: middle; text-align: right; background: #ccc; border: 1px solid black; }
+#content  td.arm9 { background: #aaf; }
+#content  td.edsp { background: #afa; }
+#content  td.und { background: #faa; }

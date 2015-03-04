@@ -1,0 +1,119 @@
+#content h3,
+#content h2 {
+  margin: 1em 0em;
+  font-size: 1em;
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+#content h2 {
+    font-size: 1.2em;
+}
+
+#content blockquote {
+  margin: 0 1em 1em;
+  border-left: 3px solid #666;
+  padding-left: 0.5em;
+}
+
+#content table {
+  margin-left: 1em;
+}
+
+#content table th,
+#content table td {
+  border: 1px solid #666;
+  padding: 0.25em;
+  font-family: Courier New, monospace;
+}
+
+#content thead th {
+  font-weight: bold;
+}
+
+#content ul,
+#content ol {
+  margin-left: 1em;
+}
+
+#content ul {
+  list-style: square inside;
+}
+
+#content code {
+  font-family: Courier New, monospace;
+}
+
+#content .cent {
+  text-align: center;
+}
+
+#content .sample {
+  margin: 1em auto;
+  border: 1px solid black;
+  overflow: auto;
+  width: 100%;
+  font-size: 1em;
+}
+
+#content dt,
+#content h4 {
+  font-weight: bold;
+  font-size: 0.8em;
+}
+
+#content dd {
+  margin-bottom: 1em;
+}
+
+#content dl.articles dt {
+  font-size: 1.15em;
+  margin-bottom: 0.3em;
+}
+
+#content dl.articles dd {
+  margin-bottom: 2em;
+}
+
+#content .sample h4 {
+  font-weight: bold;
+  margin: 0;
+  padding: 0.25em;
+  font-style: italic;
+}
+
+#content .sample .inner {
+  margin: 0.5em;
+  white-space: pre;
+  font-family: Courier New, monospace;
+}
+
+#content .sample .red { color: #c00; }
+#content .sample .grn { color: #272; }
+#content .sample .blu { color: #03d; }
+#content .sample .gry { color: #666; }
+  
+#content .todo {
+  background: yellow;
+  margin: 1em;
+  padding: 0.5em;
+  border: 1px solid black;
+}
+
+#content .img {
+  text-align: center;
+  margin: 1em;
+}
+
+#content .img img {
+  display: block;
+  margin: 0.5em auto;
+}
+
+#content .img table {
+  margin: 0 auto;
+}
+
+#content .img table th,
+#content .img table td {
+}

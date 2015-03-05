@@ -4,6 +4,7 @@ open Mmu
 open Register
 open Instruction
 
+
 type CPU () =
 
     let mmu = MMU()
@@ -12,66 +13,76 @@ type CPU () =
 
     let mutable debugEnabled = false
 
-    let rec execute pc = 
-        
-        // Update PC register
-        registers.PC.value <- pc
+    let rec execute () = 
 
-        let instruction = decodeOpcode mmu pc
+        let A = registers.A
+        let B = registers.B
+        let C = registers.C
+        let D = registers.D
+        let E = registers.E
+        let F = registers.F
+        let H = registers.H
+        let L = registers.L
+        let AF = registers.AF
+        let BC = registers.BC
+        let DE = registers.DE
+        let HL = registers.HL
+        let SP = registers.SP
+        let PC = registers.PC
 
-        printfn "Executing instruction: %s @ 0x%04X" (readable instruction) pc
+        let instruction = decodeOpcode mmu PC.value
+
+        printfn "Executing instruction: %s @ 0x%04X" (readable instruction) PC.value
 
         // Shorted versions of name -> register lookup functions
         let r8 = registers.from8Name
         let r8r8 r1 r2 = (r8 r1,r8 r2)
         let r16 = registers.from16Name
 
-        // For convinience, precalculate common next PC values
-        let oneAhead = pc + 1us
-        let twoAhead = pc + 2us
-        let threeAhead = pc + 3us
-
-        let next = match instruction with
-                    | NOP ->
-                        oneAhead
-                    | STOP ->
-                        pc
-                    | LD_R8_R8 (r1,r2) ->
-                        let r1, r2 = r8r8 r1 r2
-                        r1.value <- r2.value
-                        oneAhead
-                    | LD_R8_D8 (r,d) ->
-                        (r8 r).value <- d
-                        twoAhead
-                    | LD_A16_R8 (a,r) ->
-                        mmu.write8 a ((r8 r).value)
-                        threeAhead
-                    | LD_R8_A16 (r,a) ->
-                        (r8 r).value <- mmu.read8 a
-                        threeAhead
-                    | INC_R8 (r) ->
-                        let r = r8 r
-                        r.value <- r.value + 1uy
-                        oneAhead
-                    | DEC_R8 (r) ->
-                        let r = r8 r
-                        r.value <- r.value - 1uy
-                        oneAhead
-                    | SWAP_R8 (r) ->
-                        let r = r8 r
-                        r.value <- ((r.value &&& 0xFuy) <<< 4) ||| ((r.value &&& 0xF0uy) >>> 4)
-                        twoAhead
-                    | SCF ->
-                        registers.F.C <- SET
-                        oneAhead
-                    | CCF ->
-                        registers.F.C <- CLEAR
-                        oneAhead
-                    | _ -> raise (System.Exception(sprintf "opcode <%O> not implemented" instruction))
+        // Quick PC manipulation
+        let inline incPC offset = PC.value <- PC.value + (uint16 offset)
+        let inline setPC address = PC.value <- address 
         
-        // TODO: Maybe a program sometimes jump to the same address for some reason (waiting for interrupt)? Investigate!
-        if next <> pc then
-            execute next
+        match instruction with
+        | NOP ->
+            incPC 1
+        | STOP ->
+            incPC 0
+        | LD_R8_R8 (r1,r2) ->
+            let r1, r2 = r8r8 r1 r2
+            r1.value <- r2.value
+            incPC 1
+        | LD_R8_D8 (r,d) ->
+            (r8 r).value <- d
+            incPC 2
+        | LD_A16_R8 (a,r) ->
+            mmu.write8 a ((r8 r).value)
+            incPC 3
+        | LD_R8_A16 (r,a) ->
+            (r8 r).value <- mmu.read8 a
+            incPC 3
+        | INC_R8 (r) ->
+            let r = r8 r
+            r.value <- r.value + 1uy
+            incPC 1
+        | DEC_R8 (r) ->
+            let r = r8 r
+            r.value <- r.value - 1uy
+            incPC 1
+        | SWAP_R8 (r) ->
+            let r = r8 r
+            r.value <- ((r.value &&& 0xFuy) <<< 4) ||| ((r.value &&& 0xF0uy) >>> 4)
+            incPC 2
+        | SCF ->
+            registers.F.C <- SET
+            incPC 1
+        | CCF ->
+            registers.F.C <- CLEAR
+            incPC 1
+        | _ -> raise (System.Exception(sprintf "opcode <%O> not implemented" instruction))
+        
+        if instruction <> STOP then
+            execute ()
 
     member this.enableDebug () = debugEnabled <- true
 
@@ -116,6 +127,6 @@ type CPU () =
 
     member this.start () =
         this.reset()
-        execute 0us
+        execute ()
 
 

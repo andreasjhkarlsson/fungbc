@@ -1,12 +1,9 @@
 ﻿module Register
 
+open BitLogic
+
 type Register8Name =  |A |B |C |D |E |F |H |L
 type Register16Name = |AF |BC |DE |HL |SP |PC
-
-type BitState = |SET |CLEAR
-
-let bitStateToValue state = match state with | SET -> 1uy | CLEAR -> 0uy
-let bitStateOf value bit = if (value &&& (1uy <<< bit)) = 1uy then SET else CLEAR
 
 [<AbstractClass>]
 type Register<'a>() =
@@ -23,18 +20,6 @@ type DataRegister<'a>(init: 'a) =
 
 type DataRegister8(init: uint8) =
     inherit DataRegister<uint8>(init)
-    
-    member this.getBit num =
-        if ((this.value >>> num) &&& 1uy) = 1uy then
-            SET
-        else
-            CLEAR
-    member this.setBit num state =
-        match state with 
-        | SET ->
-            this.value <- this.value ||| (1uy <<< num)
-        | CLEAR ->
-            this.value <- this.value &&& (~~~(1uy <<< num))
 
 type FlagRegister(z,n,h,c) =
     inherit Register<uint8>()
@@ -52,10 +37,10 @@ type FlagRegister(z,n,h,c) =
             let cv = bitStateToValue this.C
             (zv <<< 7) ||| (nv <<< 6) ||| (hv <<< 5) ||| (cv <<< 4)
         and set (value) =
-            this.Z <- bitStateOf value 7
-            this.N <- bitStateOf value 6
-            this.H <- bitStateOf value 5
-            this.C <- bitStateOf value 4
+            this.Z <- bitStateOf 7 value
+            this.N <- bitStateOf 6 value
+            this.H <- bitStateOf 5 value
+            this.C <- bitStateOf 4 value
     
 
 type DataRegister16 = DataRegister<uint16>

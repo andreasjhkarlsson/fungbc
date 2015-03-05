@@ -29,6 +29,8 @@ type MMU () =
         | RAM (ram,address) ->
             Array.set ram address value
 
+    member this.update8 address fn = this.read8 address |> fn |> this.write8 address
+
     member this.read16 address =
         (this.read8 address |> uint16) |||
         ((this.read8 (address + 1us) |> uint16) <<< 8)

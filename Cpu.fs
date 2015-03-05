@@ -3,7 +3,7 @@
 open Mmu
 open Register
 open Instruction
-
+open BitLogic
 
 type CPU () =
 
@@ -74,11 +74,38 @@ type CPU () =
             r.value <- ((r.value &&& 0xFuy) <<< 4) ||| ((r.value &&& 0xF0uy) >>> 4)
             incPC 2
         | SCF ->
-            registers.F.C <- SET
+            F.C <- SET
             incPC 1
         | CCF ->
-            registers.F.C <- CLEAR
+            F.C <- CLEAR
             incPC 1
+        | SET_R8 (n,r) ->
+            let r = r8 r
+            r.value <- setBit n r.value 
+            incPC 2
+        | SET_AR16 (n,r) ->
+            let a = (r16 r).value
+            mmu.update8 a (setBit n)
+            incPC 2
+        | RES_R8 (n,r) ->
+            let r = r8 r
+            r.value <- clearBit n r.value 
+            incPC 2
+        | RES_AR16 (n,r) ->
+            let a = (r16 r).value
+            mmu.update8 a (clearBit n)
+            incPC 2
+        | BIT_R8 (n,r) ->
+            F.Z <- bitStateOf n (r8 r).value |> bitStateInvert
+            F.N <- CLEAR
+            F.H <- SET
+            incPC 2
+        | BIT_AR16 (n,r) ->
+            let a = (r16 r).value
+            F.Z <- bitStateOf n (mmu.read8 a) |> bitStateInvert
+            F.N <- CLEAR
+            F.H <- SET
+            incPC 2
         | _ -> raise (System.Exception(sprintf "opcode <%O> not implemented" instruction))
         
         if instruction <> STOP then

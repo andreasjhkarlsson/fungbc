@@ -33,7 +33,7 @@ type CPU () =
 
         let next = match instruction with
                     | NOP ->
-                        pc + 1us
+                        oneAhead
                     | STOP ->
                         pc
                     | LD_R8_R8 (r1,r2) ->
@@ -61,6 +61,12 @@ type CPU () =
                         let r = r8 r
                         r.value <- ((r.value &&& 0xFuy) <<< 4) ||| ((r.value &&& 0xF0uy) >>> 4)
                         twoAhead
+                    | SCF ->
+                        registers.F.C <- SET
+                        oneAhead
+                    | CCF ->
+                        registers.F.C <- CLEAR
+                        oneAhead
                     | _ -> raise (System.Exception(sprintf "opcode <%O> not implemented" instruction))
         
         // TODO: Maybe a program sometimes jump to the same address for some reason (waiting for interrupt)? Investigate!
@@ -81,7 +87,7 @@ type CPU () =
             C  = 0x%02X
             D  = 0x%02X
             E  = 0x%02X
-            F  = 0x%02X
+            F  = 0x%02X (Z = %d, N = %d, H = %d, C = %d)
             H  = 0x%02X
             L  = 0x%02X
             AF = 0x%04X
@@ -91,7 +97,8 @@ type CPU () =
             PC = 0x%04X
             SP = 0x%04X
         " r.A.value r.B.value r.C.value r.D.value r.E.value 
-            r.F.value r.H.value r.L.value r.AF.value r.BC.value
+            r.F.value (bitStateToValue r.F.Z) (bitStateToValue r.F.N) (bitStateToValue r.F.H) (bitStateToValue r.F.C)
+            r.H.value r.L.value r.AF.value r.BC.value
             r.DE.value r.HL.value r.PC.value r.SP.value
 
     member this.printMemory = mmu.printDump

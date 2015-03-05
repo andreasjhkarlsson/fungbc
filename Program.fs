@@ -11,7 +11,8 @@ let main argv =
     let program = [
                     0x3E; 0xDA;         // LD A, 0xDA
                     0xEA; 0xFA; 0x0;    // LD (0xFA), A
-                    0xFA; 0xFA; 0x0     // LD A, (0xFA)
+                    0xFA; 0xFA; 0x0;    // LD A, (0xFA)
+                    0x37;
                     0x10;               // STOP
                   ]|> List.map uint8 |> List.toArray
 

@@ -49,6 +49,8 @@ type Instruction =
     | DEC_R8         of Register8Name                           // Dec value in 8 bit register
     | DEC_R16        of Register16Name                          // Dec value in 16 bit register
     | DEC_AR16       of Register16Name                          // Dec value address in 16 bit register
+    | SCF                                                       // Set carry flag
+    | CCF                                                       // Clear carry flag
 
 
 let decodeOpcode (mmu: MMU) address =
@@ -99,11 +101,13 @@ let decodeOpcode (mmu: MMU) address =
     | 0x34 -> INC_AR16      (HL)
     | 0x35 -> DEC_AR16      (HL)
     | 0x36 -> LD_AR16_D8    (HL,int8Operand ())
+    | 0x37 -> SCF
     | 0x3A -> LDD_R8_AR16   (A,HL)
     | 0x3B -> DEC_R16       (SP)
     | 0x3C -> INC_R8        (A)
     | 0x3D -> DEC_R8        (A)
     | 0x3E -> LD_R8_D8      (A,int8Operand ())
+    | 0x3F -> CCF
     | 0x40 -> LD_R8_R8      (B,B)
     | 0x41 -> LD_R8_R8      (B,C)
     | 0x42 -> LD_R8_R8      (B,D)

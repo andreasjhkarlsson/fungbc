@@ -1,4 +1,4 @@
-# fungbc
+# FunGBC
 GBC emulator implemented in F#
 
-This project is primarily for me to have an excuse for coding F# and learning how to write emulators.
+This project is primarily an excuse for me to be coding F# and learning how to write emulators.

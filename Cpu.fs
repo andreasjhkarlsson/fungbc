@@ -119,6 +119,8 @@ type CPU () =
             r.value <- (r.value <<< 1) ||| (bitStateToValue b7)
             F.ZNHC <- (ZBit r.value, CLEAR, CLEAR, b7)
             PC.advance 2
+        | JP_A16 (address) ->
+            PC.value <- address // Easiest instruction ever!
         | _ -> raise (System.Exception(sprintf "opcode <%O> not implemented" instruction))
         
         if instruction <> STOP then

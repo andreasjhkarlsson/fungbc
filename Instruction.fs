@@ -59,7 +59,7 @@ type Instruction =
     | SET_AR16       of int*Register16Name                      // Set bit n in address in 16 bit register 
     | CPL                                                       // Bitwise NOT on register A
     | RLC_R8         of Register8Name                           // Rotate 8 bit register left with carry. Second int denotate instruction size (this exact operation exists in 1 and 2 byte opcodes)                                                     
-
+    | JP_A16         of MemoryAddress                           // Absolute jump to address
 
 let decodeOpcode (mmu: MMU) address =
     
@@ -184,6 +184,7 @@ let decodeOpcode (mmu: MMU) address =
     | 0x7D -> LD_R8_R8      (A,L)
     | 0x7E -> LD_R8_AR16    (A,HL)
     | 0x7F -> LD_R8_R8      (A,A)
+    | 0xC3 -> JP_A16        (int16Operand())
     | 0xCB ->
         match int <| int8Operand() with
         | 0x00 -> RLC_R8         (B)

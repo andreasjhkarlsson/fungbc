@@ -113,6 +113,12 @@ type CPU () =
             A.update (~~~)
             F.NH <- (SET,SET)
             PC.advance 1
+        | RLC_R8 (r) ->
+            let r = r8 r
+            let b7 = bitStateOf 7 r.value
+            r.value <- (r.value <<< 1) ||| (bitStateToValue b7)
+            F.ZNHC <- (ZBit r.value, CLEAR, CLEAR, b7)
+            PC.advance 2
         | _ -> raise (System.Exception(sprintf "opcode <%O> not implemented" instruction))
         
         if instruction <> STOP then

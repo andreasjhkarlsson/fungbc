@@ -84,10 +84,10 @@ type CPU () =
             F.NHC <- (CLEAR, CLEAR, CLEAR)
             PC.advance 2
         | SCF ->
-            F.C <- SET
+            F.NHC <- (CLEAR, CLEAR, SET)
             PC.advance 1
         | CCF ->
-            F.C <- CLEAR
+            F.NHC <- (CLEAR, CLEAR, bitStateInvert F.C)
             PC.advance 1
         | SET_R8 (n,r) ->
             (r8 r).update (setBit n)

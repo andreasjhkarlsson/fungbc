@@ -11,6 +11,8 @@ type CPU () =
     
     let registers = RegisterSet()
 
+    let decodeOpcode = decodeOpcode mmu
+
     let mutable debugEnabled = false
 
     let rec execute () = 
@@ -30,7 +32,7 @@ type CPU () =
         let SP = registers.SP
         let PC = registers.PC
 
-        let instruction = decodeOpcode mmu PC.value
+        let instruction = decodeOpcode PC.value
 
         printfn "Executing instruction: %s @ 0x%04X" (readable instruction) PC.value
 
@@ -38,6 +40,8 @@ type CPU () =
         let r8 = registers.from8Name
         let r8r8 r1 r2 = (r8 r1,r8 r2)
         let r16 = registers.from16Name
+
+        let ZBit = function |0uy -> SET |_ -> CLEAR
 
         // Quick PC manipulation
         let inline incPC offset = PC.value <- PC.value + (uint16 offset)
@@ -71,7 +75,19 @@ type CPU () =
             incPC 1
         | SWAP_R8 (r) ->
             let r = r8 r
-            r.value <- ((r.value &&& 0xFuy) <<< 4) ||| ((r.value &&& 0xF0uy) >>> 4)
+            r.value <- swapNibbles r.value
+            F.Z <- r.value |> ZBit
+            F.N <- CLEAR
+            F.H <- CLEAR
+            F.C <- CLEAR
+            incPC 2
+        | SWAP_AR16 (r) ->
+            let a = (r16 r).value
+            mmu.update8 a swapNibbles
+            F.Z <- mmu.read8 a |> ZBit
+            F.N <- CLEAR
+            F.H <- CLEAR
+            F.C <- CLEAR
             incPC 2
         | SCF ->
             F.C <- SET
@@ -145,7 +161,7 @@ type CPU () =
         registers.A.value <- 0x00uy
         registers.B.value <- 0x00uy
         registers.C.value <- 0x13uy
-        registers.F.value <- 0xB0uy
+        //registers.F.value <- 0xB0uy
         registers.DE.value <- 0x00D8us
         registers.HL.value <- 0x014Dus
         registers.SP.value <- 0xFFFEus

@@ -11,3 +11,5 @@ let bitStateInvert = function |SET -> CLEAR |CLEAR -> SET
 let setBit bit value = value ||| (1uy <<< bit)
 
 let clearBit bit value = value &&& (~~~(1uy <<< bit))
+
+let swapNibbles value = ((value >>> 4) &&& 0xFuy) ||| (value <<< 4)

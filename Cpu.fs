@@ -77,17 +77,13 @@ type CPU () =
             let r = r8 r
             r.value <- swapNibbles r.value
             F.Z <- r.value |> ZBit
-            F.N <- CLEAR
-            F.H <- CLEAR
-            F.C <- CLEAR
+            F.NHC <- (CLEAR, CLEAR, CLEAR)
             incPC 2
         | SWAP_AR16 (r) ->
             let a = (r16 r).value
             mmu.update8 a swapNibbles
             F.Z <- mmu.read8 a |> ZBit
-            F.N <- CLEAR
-            F.H <- CLEAR
-            F.C <- CLEAR
+            F.NHC <- (CLEAR, CLEAR, CLEAR)
             incPC 2
         | SCF ->
             F.C <- SET
@@ -113,14 +109,12 @@ type CPU () =
             incPC 2
         | BIT_R8 (n,r) ->
             F.Z <- bitStateOf n (r8 r).value |> bitStateInvert
-            F.N <- CLEAR
-            F.H <- SET
+            F.NH <- (CLEAR, SET)
             incPC 2
         | BIT_AR16 (n,r) ->
             let a = (r16 r).value
             F.Z <- bitStateOf n (mmu.read8 a) |> bitStateInvert
-            F.N <- CLEAR
-            F.H <- SET
+            F.NH <- (CLEAR, SET)
             incPC 2
         | _ -> raise (System.Exception(sprintf "opcode <%O> not implemented" instruction))
         

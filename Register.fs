@@ -23,12 +23,34 @@ type DataRegister8(init: uint8) =
 
 type FlagRegister(z,n,h,c) =
     inherit Register<uint8>()
-
+    
+    // Flags
     member val Z = z with get, set
     member val N = n with get, set
     member val H = h with get, set
     member val C = c with get, set
 
+    member private this._ZNHC
+        with set (z, n, h, c) =
+            this.Z <- match z with |Some state -> state |None -> this.Z
+            this.N <- match n with |Some state -> state |None -> this.N
+            this.H <- match h with |Some state -> state |None -> this.H
+            this.C <- match c with |Some state -> state |None -> this.Z
+    
+    // Poor man's swizzling (cookie for anyone who finds a nice generic syntax)
+    member this.ZN   with set (z,n)     = this._ZNHC <- (Some z, Some n, None,   None  )
+    member this.ZH   with set (z,h)     = this._ZNHC <- (Some z, None,   Some h, None  )
+    member this.ZC   with set (z,c)     = this._ZNHC <- (Some z, None,   None,   Some c)
+    member this.ZNH  with set (z,n,h)   = this._ZNHC <- (Some z, Some n, Some h, None  )
+    member this.ZNC  with set (z,n,c)   = this._ZNHC <- (Some z, Some n, None,   Some c)
+    member this.ZHC  with set (z,h,c)   = this._ZNHC <- (Some z, None,   Some h, Some c)
+    member this.ZNHC with set (z,n,h,c) = this._ZNHC <- (Some z, Some n, Some h, Some c)
+    member this.NH   with set (n,h)     = this._ZNHC <- (None,   Some n, Some h, None  )
+    member this.NC   with set (n,c)     = this._ZNHC <- (None,   Some n, None,   Some c)
+    member this.NHC  with set (n,h,c)   = this._ZNHC <- (None,   Some n, Some h, Some c)
+    member this.HC   with set (h,c)     = this._ZNHC <- (None,   None,   Some h, Some c)
+   
+    // Calculate and decompose flag bits as a value.
     override this.value
         with get () =
             let zv = bitStateToValue this.Z

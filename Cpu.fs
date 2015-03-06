@@ -121,6 +121,18 @@ type CPU () =
             PC.advance 2
         | JP_A16 (address) ->
             PC.value <- address // Easiest instruction ever!
+        | JP_AR16 (r) ->
+            PC.value <- mmu.read16 (r16 r).value
+        | JP_F_A16 (f,address) ->
+            if (F.flagFromName f) = SET then
+                PC.value <- address
+            else
+                PC.advance 1
+        | JP_NF_A16 (f,address) ->
+            if (F.flagFromName f) = CLEAR then
+                PC.value <- address
+            else
+                PC.advance 1
         | _ -> raise (System.Exception(sprintf "opcode <%O> not implemented" instruction))
         
         if instruction <> STOP then

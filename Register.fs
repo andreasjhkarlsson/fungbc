@@ -2,8 +2,12 @@
 
 open BitLogic
 
+type FlagName = |Z |N |H |C
+
 type Register8Name =  |A |B |C |D |E |F |H |L
 type Register16Name = |AF |BC |DE |HL |SP |PC
+
+
 
 [<AbstractClass>]
 type Register<'a>() =
@@ -65,6 +69,8 @@ type FlagRegister(z,n,h,c) =
             this.N <- bitStateOf 6 value
             this.H <- bitStateOf 5 value
             this.C <- bitStateOf 4 value
+
+    member this.flagFromName = function |FlagName.Z -> this.Z |FlagName.N -> this.N |FlagName.H -> this.H |FlagName.C -> this.C 
     
 
 type DataRegister16 = DataRegister<uint16>

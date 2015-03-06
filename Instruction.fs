@@ -60,6 +60,9 @@ type Instruction =
     | CPL                                                       // Bitwise NOT on register A
     | RLC_R8         of Register8Name                           // Rotate 8 bit register left with carry. Second int denotate instruction size (this exact operation exists in 1 and 2 byte opcodes)                                                     
     | JP_A16         of MemoryAddress                           // Absolute jump to address
+    | JP_AR16        of Register16Name                          // Jump to address in address in 16 bit register (erhh)
+    | JP_F_A16       of FlagName*MemoryAddress                  // Jump to address if flag is set
+    | JP_NF_A16      of FlagName*MemoryAddress                  // Jump to address if flag is not set
 
 let decodeOpcode (mmu: MMU) address =
     
@@ -184,7 +187,9 @@ let decodeOpcode (mmu: MMU) address =
     | 0x7D -> LD_R8_R8      (A,L)
     | 0x7E -> LD_R8_AR16    (A,HL)
     | 0x7F -> LD_R8_R8      (A,A)
+    | 0xC2 -> JP_NF_A16     (Z,int16Operand ())
     | 0xC3 -> JP_A16        (int16Operand())
+    | 0xCA -> JP_F_A16      (Z, int16Operand ())
     | 0xCB ->
         match int <| int8Operand() with
         | 0x00 -> RLC_R8         (B)
@@ -395,8 +400,11 @@ let decodeOpcode (mmu: MMU) address =
         | 0xFE -> SET_AR16       (7,HL)
         | 0xFF -> SET_R8         (7,A)
         | _ as extended -> raise (System.Exception(sprintf "decoder for extended opcode <%d %d> not implemented" opcode extended)) 
+    | 0xD2 -> JP_NF_A16     (FlagName.C, int16Operand ())
+    | 0xDA -> JP_F_A16      (FlagName.C, int16Operand ())
     | 0xE0 -> LDH_A8_R8     (int8Operand (), A)
     | 0xE2 -> LDH_AR8_R8    (C, A)
+    | 0xE9 -> JP_AR16       (HL)
     | 0xEA -> LD_A16_R8     (uint16 <| int16Operand(), A)
     | 0xF0 -> LDH_R8_A8     (A,int8Operand ())
     | 0xF8 -> LDHL_R16_D8   (SP,int8Operand ())

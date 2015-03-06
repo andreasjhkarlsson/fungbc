@@ -49,8 +49,7 @@ type CPU () =
         | STOP ->
             PC.advance 0
         | LD_R8_R8 (r1,r2) ->
-            let r1, r2 = r8r8 r1 r2
-            r1.value <- r2.value
+            (r8 r1).value <- (r8 r2).value
             PC.advance 1
         | LD_R8_D8 (r,d) ->
             (r8 r).value <- d
@@ -68,17 +67,14 @@ type CPU () =
             (r16 r).update ((-) 1us)
             PC.advance 1
         | INC_R8 (r) ->
-            let r = r8 r
-            r.value <- r.value + 1uy
+            (r8 r).update ((+) 1uy)
             PC.advance 1
         | DEC_R8 (r) ->
-            let r = r8 r
-            r.value <- r.value - 1uy
+            (r8 r).update ((-) 1uy)
             PC.advance 1
         | SWAP_R8 (r) ->
-            let r = r8 r
-            r.value <- swapNibbles r.value
-            F.Z <- r.value |> ZBit
+            (r8 r).update swapNibbles
+            F.Z <- (r8 r).value |> ZBit
             F.NHC <- (CLEAR, CLEAR, CLEAR)
             PC.advance 2
         | SWAP_AR16 (r) ->
@@ -94,28 +90,23 @@ type CPU () =
             F.C <- CLEAR
             PC.advance 1
         | SET_R8 (n,r) ->
-            let r = r8 r
-            r.value <- setBit n r.value 
+            (r8 r).update (setBit n)
             PC.advance 2
         | SET_AR16 (n,r) ->
-            let a = (r16 r).value
-            mmu.update8 a (setBit n)
+            mmu.update8 (r16 r).value (setBit n)
             PC.advance 2
         | RES_R8 (n,r) ->
-            let r = r8 r
-            r.value <- clearBit n r.value 
+            (r8 r).update (clearBit n) 
             PC.advance 2
         | RES_AR16 (n,r) ->
-            let a = (r16 r).value
-            mmu.update8 a (clearBit n)
+            mmu.update8 (r16 r).value (clearBit n)
             PC.advance 2
         | BIT_R8 (n,r) ->
             F.Z <- bitStateOf n (r8 r).value |> bitStateInvert
             F.NH <- (CLEAR, SET)
             PC.advance 2
         | BIT_AR16 (n,r) ->
-            let a = (r16 r).value
-            F.Z <- bitStateOf n (mmu.read8 a) |> bitStateInvert
+            F.Z <- bitStateOf n (mmu.read8 (r16 r).value) |> bitStateInvert
             F.NH <- (CLEAR, SET)
             PC.advance 1
         | _ -> raise (System.Exception(sprintf "opcode <%O> not implemented" instruction))
@@ -157,7 +148,6 @@ type CPU () =
         registers.A.value <- 0x00uy
         registers.B.value <- 0x00uy
         registers.C.value <- 0x13uy
-        //registers.F.value <- 0xB0uy
         registers.DE.value <- 0x00D8us
         registers.HL.value <- 0x014Dus
         registers.SP.value <- 0xFFFEus

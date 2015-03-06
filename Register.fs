@@ -9,6 +9,8 @@ type Register16Name = |AF |BC |DE |HL |SP |PC
 type Register<'a>() =
     abstract value: 'a with get, set
 
+    member this.update fn = this.value <- fn this.value
+
 type DataRegister<'a>(init: 'a) =
     inherit Register<'a>()
 
@@ -25,10 +27,10 @@ type FlagRegister(z,n,h,c) =
     inherit Register<uint8>()
     
     // Flags
-    member val Z = z with get, set
-    member val N = n with get, set
-    member val H = h with get, set
-    member val C = c with get, set
+    member val Z = z with get, set // Zero flag
+    member val N = n with get, set // Substract flag
+    member val H = h with get, set // Half carry flag
+    member val C = c with get, set // Carry flag
 
     member private this._ZNHC
         with set (z, n, h, c) =

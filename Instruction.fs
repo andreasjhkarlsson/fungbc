@@ -59,12 +59,16 @@ type Instruction =
     | SET_AR16       of int*Register16Name                      // Set bit n in address in 16 bit register 
 
 
+
 let decodeOpcode (mmu: MMU) address =
     
+    let mutable consumed = 0
+
     let int8Operand () = mmu.read8 (address + 1us)
     let int16Operand () = mmu.read16 (address + 1us)
 
     let opcode = mmu.read8 address
+
     match int opcode with
     | 0x00 -> NOP
     | 0x01 -> LD_R16_D16    (BC,int16Operand ())

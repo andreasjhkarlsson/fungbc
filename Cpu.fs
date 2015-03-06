@@ -65,6 +65,12 @@ type CPU () =
         | LD_R8_A16 (r,a) ->
             (r8 r).value <- mmu.read8 a
             incPC 3
+        | INC_R16 (r) ->
+            (r16 r).update ((+) 1us)
+            incPC 1
+        | DEC_R16 (r) ->
+            (r16 r).update ((-) 1us)
+            incPC 1
         | INC_R8 (r) ->
             let r = r8 r
             r.value <- r.value + 1uy

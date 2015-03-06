@@ -42,86 +42,82 @@ type CPU () =
         let r16 = registers.from16Name
 
         let ZBit = function |0uy -> SET |_ -> CLEAR
-
-        // Quick PC manipulation
-        let inline incPC offset = PC.value <- PC.value + (uint16 offset)
-        let inline setPC address = PC.value <- address 
         
         match instruction with
         | NOP ->
-            incPC 1
+            PC.advance 1
         | STOP ->
-            incPC 0
+            PC.advance 0
         | LD_R8_R8 (r1,r2) ->
             let r1, r2 = r8r8 r1 r2
             r1.value <- r2.value
-            incPC 1
+            PC.advance 1
         | LD_R8_D8 (r,d) ->
             (r8 r).value <- d
-            incPC 2
+            PC.advance 2
         | LD_A16_R8 (a,r) ->
             mmu.write8 a ((r8 r).value)
-            incPC 3
+            PC.advance 3
         | LD_R8_A16 (r,a) ->
             (r8 r).value <- mmu.read8 a
-            incPC 3
+            PC.advance 3
         | INC_R16 (r) ->
             (r16 r).update ((+) 1us)
-            incPC 1
+            PC.advance 1
         | DEC_R16 (r) ->
             (r16 r).update ((-) 1us)
-            incPC 1
+            PC.advance 1
         | INC_R8 (r) ->
             let r = r8 r
             r.value <- r.value + 1uy
-            incPC 1
+            PC.advance 1
         | DEC_R8 (r) ->
             let r = r8 r
             r.value <- r.value - 1uy
-            incPC 1
+            PC.advance 1
         | SWAP_R8 (r) ->
             let r = r8 r
             r.value <- swapNibbles r.value
             F.Z <- r.value |> ZBit
             F.NHC <- (CLEAR, CLEAR, CLEAR)
-            incPC 2
+            PC.advance 2
         | SWAP_AR16 (r) ->
             let a = (r16 r).value
             mmu.update8 a swapNibbles
             F.Z <- mmu.read8 a |> ZBit
             F.NHC <- (CLEAR, CLEAR, CLEAR)
-            incPC 2
+            PC.advance 2
         | SCF ->
             F.C <- SET
-            incPC 1
+            PC.advance 1
         | CCF ->
             F.C <- CLEAR
-            incPC 1
+            PC.advance 1
         | SET_R8 (n,r) ->
             let r = r8 r
             r.value <- setBit n r.value 
-            incPC 2
+            PC.advance 2
         | SET_AR16 (n,r) ->
             let a = (r16 r).value
             mmu.update8 a (setBit n)
-            incPC 2
+            PC.advance 2
         | RES_R8 (n,r) ->
             let r = r8 r
             r.value <- clearBit n r.value 
-            incPC 2
+            PC.advance 2
         | RES_AR16 (n,r) ->
             let a = (r16 r).value
             mmu.update8 a (clearBit n)
-            incPC 2
+            PC.advance 2
         | BIT_R8 (n,r) ->
             F.Z <- bitStateOf n (r8 r).value |> bitStateInvert
             F.NH <- (CLEAR, SET)
-            incPC 2
+            PC.advance 2
         | BIT_AR16 (n,r) ->
             let a = (r16 r).value
             F.Z <- bitStateOf n (mmu.read8 a) |> bitStateInvert
             F.NH <- (CLEAR, SET)
-            incPC 2
+            PC.advance 1
         | _ -> raise (System.Exception(sprintf "opcode <%O> not implemented" instruction))
         
         if instruction <> STOP then

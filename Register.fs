@@ -69,6 +69,14 @@ type FlagRegister(z,n,h,c) =
 
 type DataRegister16 = DataRegister<uint16>
 
+type ProgramCounter (init) =
+    inherit DataRegister16(init)
+    member this.advance (offset: int) = this.update ((+) (uint16 offset))
+
+type StackPointer (init) =
+    inherit DataRegister16(init)
+
+
 type CombinedDataRegister16 (R1: Register<uint8>, R2: Register<uint8>) =
     inherit Register<uint16>()
 
@@ -93,8 +101,8 @@ type RegisterSet () =
     let _DE = CombinedDataRegister16(_D,_E)
     let _HL = CombinedDataRegister16(_H,_L) 
 
-    let _SP = DataRegister<uint16>(0us) 
-    let _PC = DataRegister<uint16>(0us) 
+    let _SP = StackPointer(0us) 
+    let _PC = ProgramCounter(0us) 
 
     member val A = _A
     member val B = _B

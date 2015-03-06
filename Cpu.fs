@@ -109,6 +109,10 @@ type CPU () =
             F.Z <- bitStateOf n (mmu.read8 (r16 r).value) |> bitStateInvert
             F.NH <- (CLEAR, SET)
             PC.advance 1
+        | CPL ->
+            A.update (~~~)
+            F.NH <- (SET,SET)
+            PC.advance 1
         | _ -> raise (System.Exception(sprintf "opcode <%O> not implemented" instruction))
         
         if instruction <> STOP then

@@ -57,6 +57,7 @@ type Instruction =
     | RES_AR16       of int*Register16Name                      // Clear bit n in address in 16 bit register 
     | SET_R8         of int*Register8Name                       // Set bit n in 8 bit register
     | SET_AR16       of int*Register16Name                      // Set bit n in address in 16 bit register 
+    | CPL                                                       // Bitwise NOT on register A
 
 
 
@@ -105,6 +106,7 @@ let decodeOpcode (mmu: MMU) address =
     | 0x2C -> INC_R8        (L)
     | 0x2D -> DEC_R8        (L)
     | 0x2E -> LD_R8_D8      (L,int8Operand ())
+    | 0x2F -> CPL
     | 0x31 -> LD_R16_D16    (SP,int16Operand ())
     | 0x32 -> LDD_AR16_R8   (HL,A)
     | 0x33 -> INC_R16       (SP)

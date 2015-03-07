@@ -133,6 +133,19 @@ type CPU () =
                 PC.value <- address
             else
                 PC.advance 1
+        | JR_A8 (offset) ->
+            PC.value <- (int16 PC.value) + (int16 offset) |> uint16 
+        | JR_F_A8 (f, offset) ->
+            if (F.flagFromName f) = SET then
+                PC.value <- (int16 PC.value) + (int16 offset) |> uint16
+            else
+                PC.advance 1 
+        | JR_NF_A8 (f, offset) ->
+            if (F.flagFromName f) = CLEAR then
+                PC.value <- (int16 PC.value) + (int16 offset) |> uint16
+            else
+                PC.advance 1
+                
         | _ -> raise (System.Exception(sprintf "opcode <%O> not implemented" instruction))
         
         if instruction <> STOP then

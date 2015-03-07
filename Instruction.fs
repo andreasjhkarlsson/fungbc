@@ -63,6 +63,9 @@ type Instruction =
     | JP_AR16        of Register16Name                          // Jump to address in address in 16 bit register (erhh)
     | JP_F_A16       of FlagName*MemoryAddress                  // Jump to address if flag is set
     | JP_NF_A16      of FlagName*MemoryAddress                  // Jump to address if flag is not set
+    | JR_A8          of int8                                    // Relative jump with signed offset
+    | JR_F_A8        of FlagName*int8                           // Relative jump with signed offset if flag is set
+    | JR_NF_A8       of FlagName*int8                           // Relative jump with signed offset if flag is not set
 
 let decodeOpcode (mmu: MMU) address =
     
@@ -93,23 +96,27 @@ let decodeOpcode (mmu: MMU) address =
     | 0x14 -> INC_R8        (D)
     | 0x15 -> DEC_R8        (D)
     | 0x16 -> LD_R8_D8      (D,int8Operand ())
+    | 0x18 -> JR_A8         (int8Operand () |> int8)
     | 0x1A -> LD_R8_AR16    (A,DE)
     | 0x1B -> DEC_R16       (DE)
     | 0x1C -> INC_R8        (E)
     | 0x1D -> DEC_R8        (E)
     | 0x1E -> LD_R8_D8      (E,int8Operand ())
+    | 0x20 -> JR_NF_A8      (Z, int8Operand () |> int8)
     | 0x21 -> LD_R16_D16    (HL,int16Operand ())
     | 0x22 -> LDI_AR16_R8   (HL,A)
     | 0x23 -> INC_R16       (HL)
     | 0x24 -> INC_R8        (H)
     | 0x25 -> DEC_R8        (H)
     | 0x26 -> LD_R8_D8      (H,int8Operand ())
+    | 0x28 -> JR_F_A8       (Z, int8Operand () |> int8)
     | 0x2A -> LDI_R8_AR16   (A,HL)
     | 0x2B -> DEC_R16       (HL)
     | 0x2C -> INC_R8        (L)
     | 0x2D -> DEC_R8        (L)
     | 0x2E -> LD_R8_D8      (L,int8Operand ())
     | 0x2F -> CPL
+    | 0x30 -> JR_NF_A8      (FlagName.C, int8Operand () |> int8)
     | 0x31 -> LD_R16_D16    (SP,int16Operand ())
     | 0x32 -> LDD_AR16_R8   (HL,A)
     | 0x33 -> INC_R16       (SP)
@@ -117,6 +124,7 @@ let decodeOpcode (mmu: MMU) address =
     | 0x35 -> DEC_AR16      (HL)
     | 0x36 -> LD_AR16_D8    (HL,int8Operand ())
     | 0x37 -> SCF
+    | 0x38 -> JR_F_A8       (FlagName.C, int8Operand () |> int8)
     | 0x3A -> LDD_R8_AR16   (A,HL)
     | 0x3B -> DEC_R16       (SP)
     | 0x3C -> INC_R8        (A)

@@ -2,14 +2,32 @@
 
 type BitState = |SET |CLEAR
 
-let bitStateToValue = function |SET -> 1uy |CLEAR -> 0uy
+let bitStateToValue8 = function |SET -> 1uy |CLEAR -> 0uy
 
-let bitStateOf bit value = if ((value >>> bit) &&& 1uy) = 1uy then SET else CLEAR
+let bitStateToValue16 = function |SET -> 1us |CLEAR -> 0us
+
+let inline isBitSet bit value = ((value >>> bit) &&& LanguagePrimitives.GenericOne) = LanguagePrimitives.GenericOne
+
+let inline bitStateOf bit value = if isBitSet bit value then SET else CLEAR
 
 let bitStateInvert = function |SET -> CLEAR |CLEAR -> SET
 
-let setBit bit value = value ||| (1uy <<< bit)
+let inline setBit bit value = value ||| (LanguagePrimitives.GenericOne <<< bit)
 
-let clearBit bit value = value &&& (~~~(1uy <<< bit))
+let inline clearBit bit value = value &&& (~~~(LanguagePrimitives.GenericOne <<< bit))
+
+let inline setIfZero value = if value = LanguagePrimitives.GenericZero then SET else CLEAR
+
+let inline setIfNotZero value = value |> setIfZero |> bitStateInvert
+
+let setIfTrue = function |true -> SET |false -> CLEAR
+
+let setIfFalse = function |false -> SET |true -> CLEAR
 
 let swapNibbles value = ((value >>> 4) &&& 0xFuy) ||| (value <<< 4)
+
+let nibbles value = ((value &&& 0xFuy) >>> 4, value &&& 0xFuy)
+
+let highNibble value = fst (nibbles value)
+
+let lowNibble value = snd (nibbles value)

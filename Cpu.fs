@@ -12,22 +12,18 @@ type ALU (registers: RegisterSet) =
 
     let F = registers.F
 
-    let SetIfZero = function |0uy -> SET |_ -> CLEAR
-
-    let SetIfTrue = function |true -> SET |false -> CLEAR
-
     member this.inc8 a =
         let result = a + 1uy
-        let halfCarry = SetIfTrue ((lowNibble a) = 0xFuy)
-        F.ZNH <- (SetIfZero result, CLEAR, halfCarry)
+        F.H <- (lowNibble a) = 0xFuy |> setIfTrue
+        F.ZH <- (setIfZero result, CLEAR)
         result
 
     member this.inc16 a = a + 1us // Does not set any flags
 
     member this.dec8 a =
         let result = a - 1uy
-        let halfCarry = SetIfTrue ((lowNibble a) = 0uy) 
-        F.ZNH <- (SetIfZero result, SET, halfCarry)
+        let halfCarry = (lowNibble a) = 0uy |> setIfTrue
+        F.ZNH <- (setIfZero result, SET, halfCarry)
         result
 
     member this.dec16 a = a - 1us // Does not set any flags (not even subtraction flag!)
@@ -38,13 +34,13 @@ type ALU (registers: RegisterSet) =
     
     member this.swapNibbles a =
         let result = swapNibbles a 
-        F.ZNHC <- (SetIfZero result, CLEAR, CLEAR, CLEAR)
+        F.ZNHC <- (setIfZero result, CLEAR, CLEAR, CLEAR)
         result
 
     member this.rotateLeftWithCarry8 a =
         let highestBit = bitStateOf 7 a
-        let result =  (a <<< 1) ||| (bitStateToValue highestBit)
-        F.ZNHC <- (SetIfZero result, CLEAR, CLEAR, highestBit)
+        let result =  (a <<< 1) ||| (bitStateToValue8 highestBit)
+        F.ZNHC <- (setIfZero result, CLEAR, CLEAR, highestBit)
         result
 
 type CPU () =
@@ -218,7 +214,7 @@ type CPU () =
             PC = 0x%04X
             SP = 0x%04X
         " r.A.value r.B.value r.C.value r.D.value r.E.value 
-            r.F.value (bitStateToValue r.F.Z) (bitStateToValue r.F.N) (bitStateToValue r.F.H) (bitStateToValue r.F.C)
+            r.F.value (bitStateToValue8 r.F.Z) (bitStateToValue8 r.F.N) (bitStateToValue8 r.F.H) (bitStateToValue8 r.F.C)
             r.H.value r.L.value r.AF.value r.BC.value
             r.DE.value r.HL.value r.PC.value r.SP.value
 

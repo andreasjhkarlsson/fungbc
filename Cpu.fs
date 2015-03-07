@@ -45,7 +45,7 @@ type ALU (registers: RegisterSet) =
 
     member this.rotateLeftWithCarry8 a =
         let highestBit = bitStateOf 7 a
-        let result =  (a <<< 1) ||| (bitStateToValue8 highestBit)
+        let result =  (a <<< 1) ||| (bitStateToValue highestBit)
         F.ZNHC <- (setIfZero result, CLEAR, CLEAR, highestBit)
         result
 
@@ -229,7 +229,7 @@ type CPU () =
             PC = 0x%04X
             SP = 0x%04X
         " r.A.value r.B.value r.C.value r.D.value r.E.value 
-            r.F.value (bitStateToValue8 r.F.Z) (bitStateToValue8 r.F.N) (bitStateToValue8 r.F.H) (bitStateToValue8 r.F.C)
+            r.F.value (bitStateToValue r.F.Z) (bitStateToValue r.F.N) (bitStateToValue r.F.H) (bitStateToValue r.F.C)
             r.H.value r.L.value r.AF.value r.BC.value
             r.DE.value r.HL.value r.PC.value r.SP.value
 

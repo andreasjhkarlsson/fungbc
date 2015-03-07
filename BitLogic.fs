@@ -2,9 +2,7 @@
 
 type BitState = |SET |CLEAR
 
-let bitStateToValue8 = function |SET -> 1uy |CLEAR -> 0uy
-
-let bitStateToValue16 = function |SET -> 1us |CLEAR -> 0us
+let inline bitStateToValue state: ^T = match state with |SET -> LanguagePrimitives.GenericOne |CLEAR -> LanguagePrimitives.GenericZero
 
 let inline isBitSet bit value = ((value >>> bit) &&& LanguagePrimitives.GenericOne) = LanguagePrimitives.GenericOne
 

@@ -59,10 +59,10 @@ type FlagRegister(z,n,h,c) =
     // Calculate and decompose flag bits as a value.
     override this.value
         with get () =
-            let zv = bitStateToValue8 this.Z
-            let nv = bitStateToValue8 this.N
-            let hv = bitStateToValue8 this.H
-            let cv = bitStateToValue8 this.C
+            let zv = bitStateToValue this.Z
+            let nv = bitStateToValue this.N
+            let hv = bitStateToValue this.H
+            let cv = bitStateToValue this.C
             (zv <<< 7) ||| (nv <<< 6) ||| (hv <<< 5) ||| (cv <<< 4)
         and set (value) =
             this.Z <- bitStateOf 7 value

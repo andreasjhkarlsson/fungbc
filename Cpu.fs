@@ -13,16 +13,24 @@ type ALU (registers: RegisterSet) =
     let F = registers.F
 
     let SetIfZero = function |0uy -> SET |_ -> CLEAR
-    
-    member this.add8 a b = a + b
 
-    member this.inc8 a = a + 1uy
+    let SetIfTrue = function |true -> SET |false -> CLEAR
 
-    member this.inc16 a = a + 1us
+    member this.inc8 a =
+        let result = a + 1uy
+        let halfCarry = SetIfTrue ((lowNibble a) = 0xFuy)
+        F.ZNH <- (SetIfZero result, CLEAR, halfCarry)
+        result
 
-    member this.dec8 a = a - 1uy
+    member this.inc16 a = a + 1us // Does not set any flags
 
-    member this.dec16 a = a - 1us
+    member this.dec8 a =
+        let result = a - 1uy
+        let halfCarry = SetIfTrue ((lowNibble a) = 0uy) 
+        F.ZNH <- (SetIfZero result, SET, halfCarry)
+        result
+
+    member this.dec16 a = a - 1us // Does not set any flags (not even subtraction flag!)
 
     member this.bitNot8 a =
         F.NH <- (SET,SET)

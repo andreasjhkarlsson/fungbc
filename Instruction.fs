@@ -66,6 +66,9 @@ type Instruction =
     | JR_A8          of int8                                    // Relative jump with signed offset
     | JR_F_A8        of FlagName*int8                           // Relative jump with signed offset if flag is set
     | JR_NF_A8       of FlagName*int8                           // Relative jump with signed offset if flag is not set
+    | ADD_R8_R8      of Register8Name*Register8Name             // Add 8 bit register to 8 bit register
+    | ADD_R8_D8      of Register8Name*uint8                     // Add 8 bit value to 8 bit register
+    | ADD_R8_AR16    of Register8Name*Register16Name            // Add value pointed by 16 bit register to 8 bit register
 
 let decodeOpcode (mmu: MMU) address =
     
@@ -195,8 +198,16 @@ let decodeOpcode (mmu: MMU) address =
     | 0x7D -> LD_R8_R8      (A,L)
     | 0x7E -> LD_R8_AR16    (A,HL)
     | 0x7F -> LD_R8_R8      (A,A)
+    | 0x80 -> ADD_R8_R8     (A,B)
+    | 0x81 -> ADD_R8_R8     (A,C)
+    | 0x82 -> ADD_R8_R8     (A,D)
+    | 0x83 -> ADD_R8_R8     (A,E)
+    | 0x84 -> ADD_R8_R8     (A,H)
+    | 0x85 -> ADD_R8_R8     (A,L)
+    | 0x86 -> ADD_R8_AR16   (A,HL)
     | 0xC2 -> JP_NF_A16     (Z,int16Operand ())
     | 0xC3 -> JP_A16        (int16Operand())
+    | 0xC6 -> ADD_R8_D8     (A, int8Operand ())
     | 0xCA -> JP_F_A16      (Z, int16Operand ())
     | 0xCB ->
         match int <| int8Operand() with

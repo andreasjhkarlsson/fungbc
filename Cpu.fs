@@ -12,6 +12,12 @@ type ALU (registers: RegisterSet) =
 
     let F = registers.F
 
+    member this.add8 a b =
+        let result = (uint16 a) + (uint16 b)
+        F.H <- bitStateOf 4 (((lowNibble a) + (lowNibble b)))
+        F.ZNC <- (setIfZero (uint8 result), CLEAR, bitStateOf 8 result )
+        uint8 result
+
     member this.inc8 a =
         let result = a + 1uy
         F.H <- (lowNibble a) = 0xFuy |> setIfTrue
@@ -100,6 +106,15 @@ type CPU () =
         (*
             ALU operations
         *)
+        | ADD_R8_R8 (r1,r2) ->
+            (r8 r1).value <- alu.add8 (r8 r1).value (r8 r2).value
+            PC.advance 1
+        | ADD_R8_D8 (r,operand) ->
+            (r8 r).value <- alu.add8 (r8 r).value operand
+            PC.advance 2
+        | ADD_R8_AR16 (r,ar) ->
+            (r8 r).value <- alu.add8 (r8 r).value (mmu.read8 (r16 ar).value)
+            PC.advance 1
         | INC_R16 (r) ->
             (r16 r).update alu.inc16
             PC.advance 1

@@ -5,11 +5,47 @@ open Register
 open Instruction
 open BitLogic
 
+// Alas, how how I wish that F# had inner types so that this type could be
+// contained inside the CPU type. Now it's exposed and dirty and has to take internal
+// state of the CPU type as parameters. Gross!
+type ALU (registers: RegisterSet) =
+
+    let F = registers.F
+
+    let SetIfZero = function |0uy -> SET |_ -> CLEAR
+    
+    member this.add8 a b = a + b
+
+    member this.inc8 a = a + 1uy
+
+    member this.inc16 a = a + 1us
+
+    member this.dec8 a = a - 1uy
+
+    member this.dec16 a = a - 1us
+
+    member this.bitNot8 a =
+        F.NH <- (SET,SET)
+        ~~~ a
+    
+    member this.swapNibbles a =
+        let result = swapNibbles a 
+        F.ZNHC <- (SetIfZero result, CLEAR, CLEAR, CLEAR)
+        result
+
+    member this.rotateLeftWithCarry8 a =
+        let highestBit = bitStateOf 7 a
+        let result =  (a <<< 1) ||| (bitStateToValue highestBit)
+        F.ZNHC <- (SetIfZero result, CLEAR, CLEAR, highestBit)
+        result
+
 type CPU () =
 
     let mmu = MMU()
     
     let registers = RegisterSet()
+
+    let alu = ALU(registers)
 
     let decodeOpcode = decodeOpcode mmu
 
@@ -40,14 +76,11 @@ type CPU () =
         let r8 = registers.from8Name
         let r8r8 r1 r2 = (r8 r1,r8 r2)
         let r16 = registers.from16Name
-
-        let ZBit = function |0uy -> SET |_ -> CLEAR
         
         match instruction with
-        | NOP ->
-            PC.advance 1
-        | STOP ->
-            PC.advance 0
+        (* 
+            Register loads
+        *)
         | LD_R8_R8 (r1,r2) ->
             (r8 r1).value <- (r8 r2).value
             PC.advance 1
@@ -60,35 +93,36 @@ type CPU () =
         | LD_R8_A16 (r,a) ->
             (r8 r).value <- mmu.read8 a
             PC.advance 3
+        (*
+            ALU operations
+        *)
         | INC_R16 (r) ->
-            (r16 r).update ((+) 1us)
+            (r16 r).update alu.inc16
             PC.advance 1
         | DEC_R16 (r) ->
-            (r16 r).update ((-) 1us)
+            (r16 r).update alu.dec16
             PC.advance 1
         | INC_R8 (r) ->
-            (r8 r).update ((+) 1uy)
+            (r8 r).update alu.inc8
             PC.advance 1
         | DEC_R8 (r) ->
-            (r8 r).update ((-) 1uy)
+            (r8 r).update alu.dec8
             PC.advance 1
         | SWAP_R8 (r) ->
-            (r8 r).update swapNibbles
-            F.Z <- (r8 r).value |> ZBit
-            F.NHC <- (CLEAR, CLEAR, CLEAR)
+            (r8 r).update alu.swapNibbles
             PC.advance 2
         | SWAP_AR16 (r) ->
-            let a = (r16 r).value
-            mmu.update8 a swapNibbles
-            F.Z <- mmu.read8 a |> ZBit
-            F.NHC <- (CLEAR, CLEAR, CLEAR)
+            mmu.update8 (r16 r).value alu.swapNibbles
             PC.advance 2
-        | SCF ->
-            F.NHC <- (CLEAR, CLEAR, SET)
+        | CPL ->
+            A.update alu.bitNot8
             PC.advance 1
-        | CCF ->
-            F.NHC <- (CLEAR, CLEAR, bitStateInvert F.C)
-            PC.advance 1
+        | RLC_R8 (r) ->
+            (r8 r).update alu.rotateLeftWithCarry8
+            PC.advance 2
+        (*
+            Set/Clear/Test bits
+        *)
         | SET_R8 (n,r) ->
             (r8 r).update (setBit n)
             PC.advance 2
@@ -109,43 +143,44 @@ type CPU () =
             F.Z <- bitStateOf n (mmu.read8 (r16 r).value) |> bitStateInvert
             F.NH <- (CLEAR, SET)
             PC.advance 1
-        | CPL ->
-            A.update (~~~)
-            F.NH <- (SET,SET)
-            PC.advance 1
-        | RLC_R8 (r) ->
-            let r = r8 r
-            let b7 = bitStateOf 7 r.value
-            r.value <- (r.value <<< 1) ||| (bitStateToValue b7)
-            F.ZNHC <- (ZBit r.value, CLEAR, CLEAR, b7)
-            PC.advance 2
+        (*
+            Jumps
+        *)
         | JP_A16 (address) ->
             PC.value <- address // Easiest instruction ever!
         | JP_AR16 (r) ->
             PC.value <- mmu.read16 (r16 r).value
         | JP_F_A16 (f,address) ->
-            if (F.flagFromName f) = SET then
-                PC.value <- address
-            else
-                PC.advance 1
+            match (F.flagFromName f) with
+            | SET -> PC.value <- address
+            | CLEAR -> PC.advance 1
         | JP_NF_A16 (f,address) ->
-            if (F.flagFromName f) = CLEAR then
-                PC.value <- address
-            else
-                PC.advance 1
+            match (F.flagFromName f) with
+            | SET -> PC.advance 1
+            | CLEAR -> PC.value <- address
         | JR_A8 (offset) ->
             PC.value <- (int16 PC.value) + (int16 offset) |> uint16 
         | JR_F_A8 (f, offset) ->
-            if (F.flagFromName f) = SET then
-                PC.value <- (int16 PC.value) + (int16 offset) |> uint16
-            else
-                PC.advance 1 
+            match (F.flagFromName f) with
+            | SET -> PC.value <- (int16 PC.value) + (int16 offset) |> uint16
+            | CLEAR -> PC.advance 1
         | JR_NF_A8 (f, offset) ->
-            if (F.flagFromName f) = CLEAR then
-                PC.value <- (int16 PC.value) + (int16 offset) |> uint16
-            else
-                PC.advance 1
-                
+            match (F.flagFromName f) with
+            | CLEAR -> PC.value <- (int16 PC.value) + (int16 offset) |> uint16
+            | SET -> PC.advance 1
+        (*
+            Misc
+        *)
+        | SCF ->
+            F.NHC <- (CLEAR, CLEAR, SET)
+            PC.advance 1
+        | CCF ->
+            F.NHC <- (CLEAR, CLEAR, bitStateInvert F.C)
+            PC.advance 1
+        | NOP ->
+            PC.advance 1
+        | STOP ->
+            PC.advance 0
         | _ -> raise (System.Exception(sprintf "opcode <%O> not implemented" instruction))
         
         if instruction <> STOP then
@@ -189,7 +224,6 @@ type CPU () =
         registers.HL.value <- 0x014Dus
         registers.SP.value <- 0xFFFEus
         registers.PC.value <- 0us
-
 
     member this.start () =
         this.reset()

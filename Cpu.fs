@@ -85,7 +85,7 @@ type CPU (mmu) =
 
         let instruction = decodeOpcode PC.Value
 
-        printfn "Executing instruction: %s @ 0x%04X" (readable instruction) PC.Value
+        //printfn "Executing instruction: %s @ 0x%04X" (readable instruction) PC.Value
 
         // Shorted versions of name -> register lookup functions
         let r8 = registers.From8Name
@@ -183,21 +183,21 @@ type CPU (mmu) =
         | JP_F_A16 (f,address) ->
             match (F.FlagFromName f) with
             | SET -> PC.Value <- address
-            | CLEAR -> PC.Advance 1
+            | CLEAR -> PC.Advance 3
         | JP_NF_A16 (f,address) ->
             match (F.FlagFromName f) with
-            | SET -> PC.Advance 1
+            | SET -> PC.Advance 3
             | CLEAR -> PC.Value <- address
         | JR_A8 (offset) ->
             PC.Value <- (int16 PC.Value) + (int16 offset) |> uint16 
         | JR_F_A8 (f, offset) ->
             match (F.FlagFromName f) with
             | SET -> PC.Value <- (int16 PC.Value) + (int16 offset) |> uint16
-            | CLEAR -> PC.Advance 1
+            | CLEAR -> PC.Advance 2
         | JR_NF_A8 (f, offset) ->
             match (F.FlagFromName f) with
             | CLEAR -> PC.Value <- (int16 PC.Value) + (int16 offset) |> uint16
-            | SET -> PC.Advance 1
+            | SET -> PC.Advance 2
         (*
             Misc
         *)
@@ -211,7 +211,11 @@ type CPU (mmu) =
             PC.Advance 1
         | STOP ->
             PC.Advance 0
+        | FGBC_PRINT_R8 (r) ->
+            printfn "%d" (r8 r).Value
+            PC.Advance 1
         | _ -> raise (System.Exception(sprintf "opcode <%O> not implemented" instruction))
+
         
         if instruction <> STOP then
             execute ()    

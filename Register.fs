@@ -151,7 +151,8 @@ type RegisterSet () =
     member this.Print () =
 
         printfn 
-          @"A  = 0x%02X
+          @"Registers:
+            A  = 0x%02X
             B  = 0x%02X
             C  = 0x%02X
             D  = 0x%02X

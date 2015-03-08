@@ -59,9 +59,9 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CpuTest.fs" />
     <None Include="App.config" />
     <None Include="MSTest.runsettings" />
+    <Compile Include="InstructionTest.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\FunGBC.fsproj">

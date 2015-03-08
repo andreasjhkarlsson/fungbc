@@ -25,6 +25,8 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DocumentationFile>bin\Debug\FunGBC.XML</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
+    <StartArguments>programs\countdown.fgbc</StartArguments>
+    <StartWorkingDirectory>C:\Users\Andreas\Desktop\FunGBC\FunGBC\</StartWorkingDirectory>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -50,6 +52,7 @@
     <None Include="App.config" />
     <Compile Include="Misc.fs" />
     <Compile Include="BitLogic.fs" />
+    <Compile Include="Rom.fs" />
     <Compile Include="Mmu.fs" />
     <Compile Include="Register.fs" />
     <Compile Include="Instruction.fs" />

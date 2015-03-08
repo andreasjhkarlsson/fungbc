@@ -8,7 +8,7 @@ open Mmu
 open Register
 
 [<TestClass>]
-type CpuTest() = 
+type InstructionTest() = 
 
     let runProgramAnd opcodes onComplete =
         let mmu = MMU()

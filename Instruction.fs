@@ -69,6 +69,7 @@ type Instruction =
     | ADD_R8_R8      of Register8Name*Register8Name             // Add 8 bit register to 8 bit register
     | ADD_R8_D8      of Register8Name*uint8                     // Add 8 bit value to 8 bit register
     | ADD_R8_AR16    of Register8Name*Register16Name            // Add value pointed by 16 bit register to 8 bit register
+    | ADD_R16_R16    of Register16Name*Register16Name           // Add 16 bit register to 16 bit register
 
 let decodeOpcode (mmu: MMU) address =
     
@@ -87,6 +88,7 @@ let decodeOpcode (mmu: MMU) address =
     | 0x04 -> INC_R8        (B)
     | 0x05 -> DEC_R8        (B)
     | 0x06 -> LD_R8_D8      (B,int8Operand ())
+    | 0x09 -> ADD_R16_R16   (HL,BC)
     | 0x0A -> LD_R8_AR16    (A,BC)
     | 0x0B -> DEC_R16       (BC)
     | 0x0C -> INC_R8        (C)
@@ -99,6 +101,7 @@ let decodeOpcode (mmu: MMU) address =
     | 0x14 -> INC_R8        (D)
     | 0x15 -> DEC_R8        (D)
     | 0x16 -> LD_R8_D8      (D,int8Operand ())
+    | 0x19 -> ADD_R16_R16   (HL,DE)
     | 0x18 -> JR_A8         (int8Operand () |> int8)
     | 0x1A -> LD_R8_AR16    (A,DE)
     | 0x1B -> DEC_R16       (DE)
@@ -113,6 +116,7 @@ let decodeOpcode (mmu: MMU) address =
     | 0x25 -> DEC_R8        (H)
     | 0x26 -> LD_R8_D8      (H,int8Operand ())
     | 0x28 -> JR_F_A8       (Z, int8Operand () |> int8)
+    | 0x29 -> ADD_R16_R16   (HL,HL)
     | 0x2A -> LDI_R8_AR16   (A,HL)
     | 0x2B -> DEC_R16       (HL)
     | 0x2C -> INC_R8        (L)
@@ -128,6 +132,7 @@ let decodeOpcode (mmu: MMU) address =
     | 0x36 -> LD_AR16_D8    (HL,int8Operand ())
     | 0x37 -> SCF
     | 0x38 -> JR_F_A8       (FlagName.C, int8Operand () |> int8)
+    | 0x39 -> ADD_R16_R16   (HL,SP)
     | 0x3A -> LDD_R8_AR16   (A,HL)
     | 0x3B -> DEC_R16       (SP)
     | 0x3C -> INC_R8        (A)

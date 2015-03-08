@@ -75,10 +75,10 @@ let decodeOpcode (mmu: MMU) address =
     
     let mutable consumed = 0
 
-    let int8Operand () = mmu.read8 (address + 1us)
-    let int16Operand () = mmu.read16 (address + 1us)
+    let int8Operand () = mmu.Read8 (address + 1us)
+    let int16Operand () = mmu.Read16 (address + 1us)
 
-    let opcode = mmu.read8 address
+    let opcode = mmu.Read8 address
 
     match int opcode with
     | 0x00 -> NOP

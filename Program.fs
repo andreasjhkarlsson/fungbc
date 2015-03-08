@@ -1,11 +1,13 @@
 ﻿
 open Cpu
+open Mmu
 
 [<EntryPoint>]
 let main argv = 
     
-    
-    let cpu = CPU()
+    let mmu = MMU()
+
+    let cpu = CPU(mmu)
 
 
     let program = [
@@ -19,12 +21,12 @@ let main argv =
                     0x10;               // STOP
                   ]|> List.map uint8 |> List.toArray
 
-    cpu.loadProgram program
+    mmu.LoadBlob 0us program
 
-    cpu.start ()
+    cpu.Start ()
 
-    cpu.printState ()
+    cpu.Registers.Print ()
 
-    cpu.printMemory 0x0 0xFF
+    mmu.PrintDump 0x0 0xFF
 
     0

@@ -56,6 +56,21 @@ type ALU (registers: RegisterSet) =
         F.ZNHC <- (setIfZero result, CLEAR, CLEAR, highestBit)
         result
 
+    member this.And8 a b =
+        let result = a &&& b
+        F.ZNHC <- (setIfZero result,CLEAR,SET,CLEAR)
+        result
+
+    member this.Or8 a b =
+        let result = a ||| b
+        F.ZNHC <- (setIfZero result,CLEAR,CLEAR,CLEAR)
+        result
+
+    member this.Xor8 a b = 
+        let result = a ^^^ b
+        F.ZNHC <- (setIfZero result,CLEAR,CLEAR,CLEAR)
+        result
+
 type CPU (mmu) =
 
     let registers = RegisterSet()
@@ -162,6 +177,33 @@ type CPU (mmu) =
         | RLC_R8 (r) ->
             (r8 r).Update alu.rotateLeftWithCarry8
             PC.Advance 2
+        | AND_R8_R8 (r1,r2) ->
+            (r8 r1).Update (alu.And8 (r8 r2).Value)
+            PC.Advance 1
+        | AND_R8_D8 (r,operand) ->
+            (r8 r).Update (alu.And8 operand)
+            PC.Advance 2
+        | AND_R8_AR16 (r,ar) ->
+            (r8 r).Update (alu.And8 <| mmu.Read8 (r16 ar).Value)
+            PC.Advance 1
+        | OR_R8_R8 (r1,r2) ->
+            (r8 r1).Update (alu.Or8 (r8 r2).Value)
+            PC.Advance 1
+        | OR_R8_D8 (r,operand) ->
+            (r8 r).Update (alu.Or8 operand)
+            PC.Advance 2
+        | OR_R8_AR16 (r,ar) ->
+            (r8 r).Update (alu.Or8 <| mmu.Read8 (r16 ar).Value)
+            PC.Advance 1
+        | XOR_R8_R8 (r1,r2) ->
+            (r8 r1).Update (alu.Xor8 (r8 r2).Value)
+            PC.Advance 1
+        | XOR_R8_D8 (r,operand) ->
+            (r8 r).Update (alu.Xor8 operand)
+            PC.Advance 2
+        | XOR_R8_AR16 (r,ar) ->
+            (r8 r).Update (alu.Xor8 <| mmu.Read8 (r16 ar).Value)
+            PC.Advance 1
         (*
             Set/Clear/Test bits
         *)

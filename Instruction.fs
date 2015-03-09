@@ -73,6 +73,15 @@ type Instruction =
     | ADC_R8_R8      of Register8Name*Register8Name             // Add 8 bit register to 8 bit register with carry
     | ADC_R8_D8      of Register8Name*uint8                     // Add 8 bit value to 8 bit register with carry
     | ADC_R8_AR16    of Register8Name*Register16Name            // Add value in address in 16 bit register to 8 bit register with carry
+    | AND_R8_R8      of Register8Name*Register8Name             // Bitwise AND between 8 bit registers
+    | AND_R8_D8      of Register8Name*uint8                     // Bitwise AND between 8 bit register and 8 bit value
+    | AND_R8_AR16    of Register8Name*Register16Name            // Bitwise AND between 8 bit register and value in address in 16 bit register
+    | OR_R8_R8       of Register8Name*Register8Name             // Bitwise OR between 8 bit registers
+    | OR_R8_D8       of Register8Name*uint8                     // Bitwise OR between 8 bit register and 8 bit value
+    | OR_R8_AR16     of Register8Name*Register16Name            // Bitwise OR between 8 bit register and value in address in 16 bit register
+    | XOR_R8_R8      of Register8Name*Register8Name             // Bitwise XOR between 8 bit registers
+    | XOR_R8_D8      of Register8Name*uint8                     // Bitwise XOR between 8 bit register and 8 bit value
+    | XOR_R8_AR16    of Register8Name*Register16Name            // Bitwise XOR between 8 bit register and value in address in 16 bit register
     | FGBC_PRINT_R8  of Register8Name                           // Print register to STDOUT (FunGBC debug extension) (with newline)
     | FGBC_PRINTA_R8 of Register8Name                           // Print ascii character in register
 
@@ -223,6 +232,30 @@ let decodeOpcode (mmu: MMU) address =
     | 0x8D -> ADC_R8_R8     (A,L)
     | 0x8E -> ADC_R8_AR16   (A,HL)
     | 0x8F -> ADC_R8_R8     (A,A)
+    | 0xA0 -> AND_R8_R8     (A,B)
+    | 0xA1 -> AND_R8_R8     (A,C)
+    | 0xA2 -> AND_R8_R8     (A,D)
+    | 0xA3 -> AND_R8_R8     (A,E)
+    | 0xA4 -> AND_R8_R8     (A,H)
+    | 0xA5 -> AND_R8_R8     (A,L)
+    | 0xA6 -> AND_R8_AR16   (A,HL)
+    | 0xA7 -> AND_R8_R8     (A,A)    
+    | 0xA8 -> XOR_R8_R8     (A,B)
+    | 0xA9 -> XOR_R8_R8     (A,C)
+    | 0xAA -> XOR_R8_R8     (A,D)
+    | 0xAB -> XOR_R8_R8     (A,E)
+    | 0xAC -> XOR_R8_R8     (A,H)
+    | 0xAD -> XOR_R8_R8     (A,L)
+    | 0xAE -> XOR_R8_AR16   (A,HL)
+    | 0xAF -> XOR_R8_R8     (A,A)
+    | 0xB0 -> OR_R8_R8      (A,B)
+    | 0xB1 -> OR_R8_R8      (A,C)
+    | 0xB2 -> OR_R8_R8      (A,D)
+    | 0xB3 -> OR_R8_R8      (A,E)
+    | 0xB4 -> OR_R8_R8      (A,H)
+    | 0xB5 -> OR_R8_R8      (A,L)
+    | 0xB6 -> OR_R8_AR16    (A,HL)
+    | 0xB7 -> OR_R8_R8      (A,A)  
     | 0xC2 -> JP_NF_A16     (Z,int16Operand ())
     | 0xC3 -> JP_A16        (int16Operand())
     | 0xC6 -> ADD_R8_D8     (A, int8Operand ())
@@ -442,9 +475,12 @@ let decodeOpcode (mmu: MMU) address =
     | 0xDA -> JP_F_A16      (FlagName.C, int16Operand ())
     | 0xE0 -> LDH_A8_R8     (int8Operand (), A)
     | 0xE2 -> LDH_AR8_R8    (C, A)
+    | 0xE6 -> AND_R8_D8     (A, int8Operand ())
     | 0xE9 -> JP_AR16       (HL)
     | 0xEA -> LD_A16_R8     (uint16 <| int16Operand(), A)
+    | 0xEE -> XOR_R8_D8     (A, int8Operand ())
     | 0xF0 -> LDH_R8_A8     (A,int8Operand ())
+    | 0xF6 -> OR_R8_D8      (A, int8Operand ())
     | 0xF8 -> LDHL_R16_D8   (SP,int8Operand ())
     | 0xF9 -> LD_R16_R16    (SP,HL)
     | 0xFA -> LD_R8_A16     (A,uint16 <| int16Operand ())

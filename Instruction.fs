@@ -73,7 +73,8 @@ type Instruction =
     | ADC_R8_R8      of Register8Name*Register8Name             // Add 8 bit register to 8 bit register with carry
     | ADC_R8_D8      of Register8Name*uint8                     // Add 8 bit value to 8 bit register with carry
     | ADC_R8_AR16    of Register8Name*Register16Name            // Add value in address in 16 bit register to 8 bit register with carry
-    | FGBC_PRINT_R8  of Register8Name                           // Print register to STDOUT (FunGBC debug extension)
+    | FGBC_PRINT_R8  of Register8Name                           // Print register to STDOUT (FunGBC debug extension) (with newline)
+    | FGBC_PRINTA_R8 of Register8Name                           // Print ascii character in register
 
 let decodeOpcode (mmu: MMU) address =
     
@@ -447,6 +448,7 @@ let decodeOpcode (mmu: MMU) address =
     | 0xF8 -> LDHL_R16_D8   (SP,int8Operand ())
     | 0xF9 -> LD_R16_R16    (SP,HL)
     | 0xFA -> LD_R8_A16     (A,uint16 <| int16Operand ())
+    | 0xFC -> FGBC_PRINTA_R8(A)
     | 0xFD -> FGBC_PRINT_R8 (A)
     | _ -> raise (System.Exception(sprintf "decoder for opcode 0x%02X> not implemented" opcode))
 

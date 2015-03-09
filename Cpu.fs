@@ -108,6 +108,9 @@ type CPU (mmu) =
         | LD_R8_A16 (r,a) ->
             (r8 r).Value <- mmu.Read8 a
             PC.Advance 3
+        | LD_R8_AR16 (r, ar) ->
+            (r8 r).Value <- mmu.Read8 (r16 ar).Value
+            PC.Advance 1
         | LD_R16_D16 (r,value) ->
             (r16 r).Value <- value
             PC.Advance 3
@@ -222,6 +225,9 @@ type CPU (mmu) =
             PC.Advance 0
         | FGBC_PRINT_R8 (r) ->
             printfn "%d" (r8 r).Value
+            PC.Advance 1
+        | FGBC_PRINTA_R8 (r) ->
+            printf "%c" <| char (r8 r).Value 
             PC.Advance 1
         | _ -> raise (System.Exception(sprintf "opcode <%O> not implemented" instruction))
 

@@ -41,7 +41,7 @@ type FlagRegister(z,n,h,c) =
             this.Z <- match z with |Some state -> state |None -> this.Z
             this.N <- match n with |Some state -> state |None -> this.N
             this.H <- match h with |Some state -> state |None -> this.H
-            this.C <- match c with |Some state -> state |None -> this.Z
+            this.C <- match c with |Some state -> state |None -> this.C
     
     // Poor man's swizzling (cookie for anyone who finds a nice generic syntax)
     member this.ZN   with set (z,n)     = this._ZNHC <- (Some z, Some n, None,   None  )

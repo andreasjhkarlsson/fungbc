@@ -1,3 +1,7 @@
 *.suo
 obj/*
 bin/*
+.nuget/*
+FunGBC-Test/bin/*
+FunGBC-Test/obj/*
+packages/*

@@ -70,6 +70,9 @@ type Instruction =
     | ADD_R8_D8      of Register8Name*uint8                     // Add 8 bit value to 8 bit register
     | ADD_R8_AR16    of Register8Name*Register16Name            // Add value pointed by 16 bit register to 8 bit register
     | ADD_R16_R16    of Register16Name*Register16Name           // Add 16 bit register to 16 bit register
+    | ADC_R8_R8      of Register8Name*Register8Name             // Add 8 bit register to 8 bit register with carry
+    | ADC_R8_D8      of Register8Name*uint8                     // Add 8 bit value to 8 bit register with carry
+    | ADC_R8_AR16    of Register8Name*Register16Name            // Add value in address in 16 bit register to 8 bit register with carry
     | FGBC_PRINT_R8  of Register8Name                           // Print register to STDOUT (FunGBC debug extension)
 
 let decodeOpcode (mmu: MMU) address =
@@ -211,6 +214,14 @@ let decodeOpcode (mmu: MMU) address =
     | 0x84 -> ADD_R8_R8     (A,H)
     | 0x85 -> ADD_R8_R8     (A,L)
     | 0x86 -> ADD_R8_AR16   (A,HL)
+    | 0x88 -> ADC_R8_R8     (A,B)
+    | 0x89 -> ADC_R8_R8     (A,C)
+    | 0x8A -> ADC_R8_R8     (A,D)
+    | 0x8B -> ADC_R8_R8     (A,E)
+    | 0x8C -> ADC_R8_R8     (A,H)
+    | 0x8D -> ADC_R8_R8     (A,L)
+    | 0x8E -> ADC_R8_AR16   (A,HL)
+    | 0x8F -> ADC_R8_R8     (A,A)
     | 0xC2 -> JP_NF_A16     (Z,int16Operand ())
     | 0xC3 -> JP_A16        (int16Operand())
     | 0xC6 -> ADD_R8_D8     (A, int8Operand ())
@@ -425,6 +436,7 @@ let decodeOpcode (mmu: MMU) address =
         | 0xFE -> SET_AR16       (7,HL)
         | 0xFF -> SET_R8         (7,A)
         | _ as extended -> raise (System.Exception(sprintf "decoder for extended opcode <%d %d> not implemented" opcode extended)) 
+    | 0xCE -> ADC_R8_D8     (A, int8Operand ())
     | 0xD2 -> JP_NF_A16     (FlagName.C, int16Operand ())
     | 0xDA -> JP_F_A16      (FlagName.C, int16Operand ())
     | 0xE0 -> LDH_A8_R8     (int8Operand (), A)

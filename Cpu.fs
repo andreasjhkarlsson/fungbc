@@ -12,9 +12,9 @@ type ALU (registers: RegisterSet) =
 
     let F = registers.F
 
-    member this.add8 a b =
-        let result = (uint16 a) + (uint16 b)
-        F.H <- bitStateOf 4 ((lowNibble a) + (lowNibble b))
+    member this.add8 a b carry =
+        let result = (uint16 a) + (uint16 b) + (uint16 carry)
+        F.H <- bitStateOf 4 ((lowNibble a) + (lowNibble b) + carry)
         F.ZNC <- (setIfZero (uint8 result), CLEAR, bitStateOf 8 result )
         uint8 result
 
@@ -115,16 +115,25 @@ type CPU (mmu) =
             ALU operations
         *)
         | ADD_R8_R8 (r1,r2) ->
-            (r8 r1).Value <- alu.add8 (r8 r1).Value (r8 r2).Value
+            (r8 r1).Value <- alu.add8 (r8 r1).Value (r8 r2).Value 0uy
             PC.Advance 1
         | ADD_R8_D8 (r,operand) ->
-            (r8 r).Value <- alu.add8 (r8 r).Value operand
+            (r8 r).Value <- alu.add8 (r8 r).Value operand 0uy
             PC.Advance 2
         | ADD_R8_AR16 (r,ar) ->
-            (r8 r).Value <- alu.add8 (r8 r).Value (mmu.Read8 (r16 ar).Value)
+            (r8 r).Value <- alu.add8 (r8 r).Value (mmu.Read8 (r16 ar).Value) 0uy
             PC.Advance 1
         | ADD_R16_R16 (r1,r2) ->
             (r16 r1).Value <- alu.add16 (r16 r1).Value (r16 r2).Value
+            PC.Advance 1
+        | ADC_R8_R8 (r1, r2) ->
+            (r8 r1).Value <- alu.add8 (r8 r1).Value (r8 r2).Value (bitStateToValue F.C)
+            PC.Advance 1
+        | ADC_R8_D8 (r, operand) ->
+            (r8 r).Value <- alu.add8 (r8 r).Value operand (bitStateToValue F.C)
+            PC.Advance 2
+        | ADC_R8_AR16 (r, ar) ->
+            (r8 r).Value <- alu.add8 (r8 r).Value (mmu.Read8 (r16 ar).Value) (bitStateToValue F.C)
             PC.Advance 1
         | INC_R16 (r) ->
             (r16 r).Update alu.inc16

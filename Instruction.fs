@@ -42,7 +42,7 @@ type Instruction =
     | LDH_R8_A8      of Register8Name*uint8                     // Load value in address (FF00 + 8 bit address) in 8 bit register
     | LDH_A8_R8      of uint8*Register8Name                     // Store value in 8 bit register in address (FF00 + 8 bit address)
     | LDH_AR8_R8     of Register8Name*Register8Name             // Store value in 8 bit register in address (FF00 + 8 bit register)
-    | LDHL_R16_D8    of Register16Name*uint8                    // Add signed 8 bit value to SP and copy SP to 16 bit register
+    | LDHL_R16_D8    of Register16Name*int8                     // Add signed 8 bit value to SP and copy SP to 16 bit register
     | INC_R8         of Register8Name                           // Inc value in 8 bit register
     | INC_R16        of Register16Name                          // Inc value in 16 bit register
     | INC_AR16       of Register16Name                          // Inc value address in 16 bit register
@@ -73,6 +73,9 @@ type Instruction =
     | ADC_R8_R8      of Register8Name*Register8Name             // Add 8 bit register to 8 bit register with carry
     | ADC_R8_D8      of Register8Name*uint8                     // Add 8 bit value to 8 bit register with carry
     | ADC_R8_AR16    of Register8Name*Register16Name            // Add value in address in 16 bit register to 8 bit register with carry
+    | SUB_R8_R8      of Register8Name*Register8Name             // Subtract value in 8 bit register with 8 bit register
+    | SUB_R8_D8      of Register8Name*uint8                     // Subtract 8 bit value from 8 bit register
+    | SUB_R8_AR16    of Register8Name*Register16Name            // Subtract value in address in 16 bit register from 8 bit register
     | AND_R8_R8      of Register8Name*Register8Name             // Bitwise AND between 8 bit registers
     | AND_R8_D8      of Register8Name*uint8                     // Bitwise AND between 8 bit register and 8 bit value
     | AND_R8_AR16    of Register8Name*Register16Name            // Bitwise AND between 8 bit register and value in address in 16 bit register
@@ -232,6 +235,14 @@ let decodeOpcode (mmu: MMU) address =
     | 0x8D -> ADC_R8_R8     (A,L)
     | 0x8E -> ADC_R8_AR16   (A,HL)
     | 0x8F -> ADC_R8_R8     (A,A)
+    | 0x90 -> SUB_R8_R8     (A,B)
+    | 0x91 -> SUB_R8_R8     (A,C)
+    | 0x92 -> SUB_R8_R8     (A,D)
+    | 0x93 -> SUB_R8_R8     (A,E)
+    | 0x94 -> SUB_R8_R8     (A,H)
+    | 0x95 -> SUB_R8_R8     (A,L)
+    | 0x96 -> SUB_R8_AR16   (A,HL)
+    | 0x97 -> SUB_R8_R8     (A,A) 
     | 0xA0 -> AND_R8_R8     (A,B)
     | 0xA1 -> AND_R8_R8     (A,C)
     | 0xA2 -> AND_R8_R8     (A,D)
@@ -472,6 +483,7 @@ let decodeOpcode (mmu: MMU) address =
         | _ as extended -> raise (System.Exception(sprintf "decoder for extended opcode <%d %d> not implemented" opcode extended)) 
     | 0xCE -> ADC_R8_D8     (A, int8Operand ())
     | 0xD2 -> JP_NF_A16     (FlagName.C, int16Operand ())
+    | 0xD6 -> SUB_R8_D8     (A, int8Operand ())
     | 0xDA -> JP_F_A16      (FlagName.C, int16Operand ())
     | 0xE0 -> LDH_A8_R8     (int8Operand (), A)
     | 0xE2 -> LDH_AR8_R8    (C, A)
@@ -481,7 +493,7 @@ let decodeOpcode (mmu: MMU) address =
     | 0xEE -> XOR_R8_D8     (A, int8Operand ())
     | 0xF0 -> LDH_R8_A8     (A,int8Operand ())
     | 0xF6 -> OR_R8_D8      (A, int8Operand ())
-    | 0xF8 -> LDHL_R16_D8   (SP,int8Operand ())
+    | 0xF8 -> LDHL_R16_D8   (SP,int8 <| int8Operand ())
     | 0xF9 -> LD_R16_R16    (SP,HL)
     | 0xFA -> LD_R8_A16     (A,uint16 <| int16Operand ())
     | 0xFC -> FGBC_PRINTA_R8(A)

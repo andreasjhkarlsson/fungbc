@@ -24,6 +24,12 @@ type ALU (registers: RegisterSet) =
         F.ZNC <- (setIfZero (uint16 result), CLEAR, bitStateOf 16 result)
         uint16 result
 
+    member this.Sub8 a b =
+        let result = (a) - (b)
+        F.C <- setIfTrue (b > a)
+        F.H <- setIfTrue ((b &&& 0xFuy) > (a &&& 0xFuy))
+        F.ZN <- (setIfZero result, SET)
+        result
 
     member this.Inc8 a =
         let result = a + 1uy
@@ -178,6 +184,15 @@ type CPU (mmu) =
         | ADC_R8_AR16 (r, ar) ->
             (r8 r).Value <- alu.Add8 (r8 r).Value (mmu.Read8 (r16 ar).Value) (bitStateToValue F.C)
             PC.Advance 1
+        | SUB_R8_R8 (r1,r2) ->
+            (r8 r1).Value <- alu.Sub8 (r8 r1).Value (r8 r2).Value
+            PC.Advance 1
+        | SUB_R8_AR16 (r,ar) ->
+            (r8 r).Value <- alu.Sub8 (r8 r).Value (mmu.Read8 (r16 ar).Value)
+            PC.Advance 1
+        | SUB_R8_D8 (r, operand) ->
+            (r8 r).Value <- alu.Sub8 (r8 r).Value operand
+            PC.Advance 2
         | INC_R16 (r) ->
             (r16 r).Update alu.Inc16
             PC.Advance 1

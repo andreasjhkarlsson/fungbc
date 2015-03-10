@@ -145,6 +145,15 @@ type CPU (mmu) =
             mmu.Write8 (r16 ar).Value (r8 r).Value
             (r16 ar).Update ((-) 1us)
             PC.Advance 1
+        | LDH_A8_R8 (offset, r) ->
+            mmu.Write8 (0xFF00us + (uint16 offset)) (r8 r).Value
+            PC.Advance 2
+        | LDH_R8_A8 (r, offset) ->
+            (r8 r).Value <- mmu.Read8 (0xFF00us + (uint16 offset))
+            PC.Advance 2
+        | LDH_AR8_R8 (ar, r) ->
+            mmu.Write8 (0xFF00us + (uint16 (r8 ar).Value)) (r8 r).Value
+            PC.Advance 1
         (*
             ALU operations
         *)

@@ -24,6 +24,15 @@ type DataRegister<'a>(init: 'a) =
         with get () = data
         and set (newValue) = data <- newValue
 
+type BitRegister(init) =
+    inherit DataRegister<BitState>(init)
+
+    member this.Clear = this.Value <- CLEAR
+    member this.Set = this.Value <- SET
+    member this.Flip = this.Update bitStateInvert
+
+     
+
 type DataRegister8(init: uint8) =
     inherit DataRegister<uint8>(init)
 
@@ -110,6 +119,8 @@ type RegisterSet () =
     let sp = StackPointer(0us) 
     let pc = ProgramCounter(0us) 
 
+    let ie = BitRegister(CLEAR)
+
     member val A = a
     member val B = b
     member val C = c
@@ -126,6 +137,8 @@ type RegisterSet () =
 
     member val SP = sp
     member val PC = pc
+
+    member val IE = ie
 
     member this.From8Name (name: Register8Name) =
         match name with
@@ -165,7 +178,8 @@ type RegisterSet () =
             DE = 0x%04X
             HL = 0x%04X
             PC = 0x%04X
-            SP = 0x%04X" a.Value b.Value c.Value d.Value e.Value 
+            SP = 0x%04X
+            IE = %d" a.Value b.Value c.Value d.Value e.Value 
             f.Value (bitStateToValue f.Z) (bitStateToValue f.N) (bitStateToValue f.H) (bitStateToValue f.C)
             h.Value l.Value af.Value bc.Value
-            de.Value hl.Value pc.Value sp.Value
+            de.Value hl.Value pc.Value sp.Value (bitStateToValue ie.Value)

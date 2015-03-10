@@ -87,6 +87,8 @@ type Instruction =
     | XOR_R8_AR16    of Register8Name*Register16Name            // Bitwise XOR between 8 bit register and value in address in 16 bit register
     | FGBC_PRINT_R8  of Register8Name                           // Print register to STDOUT (FunGBC debug extension) (with newline)
     | FGBC_PRINTA_R8 of Register8Name                           // Print ascii character in register
+    | EI                                                        // Enabled interrupts
+    | DI                                                        // Disable interrupts
 
 let decodeOpcode (mmu: MMU) address =
     
@@ -492,10 +494,12 @@ let decodeOpcode (mmu: MMU) address =
     | 0xEA -> LD_A16_R8     (uint16 <| int16Operand(), A)
     | 0xEE -> XOR_R8_D8     (A, int8Operand ())
     | 0xF0 -> LDH_R8_A8     (A,int8Operand ())
+    | 0xF3 -> DI
     | 0xF6 -> OR_R8_D8      (A, int8Operand ())
     | 0xF8 -> LDHL_R16_D8   (SP,int8 <| int8Operand ())
     | 0xF9 -> LD_R16_R16    (SP,HL)
     | 0xFA -> LD_R8_A16     (A,uint16 <| int16Operand ())
+    | 0xFB -> EI
     | 0xFC -> FGBC_PRINTA_R8(A)
     | 0xFD -> FGBC_PRINT_R8 (A)
     | _ -> raise (System.Exception(sprintf "decoder for opcode 0x%02X> not implemented" opcode))

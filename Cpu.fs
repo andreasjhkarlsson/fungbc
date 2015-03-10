@@ -103,6 +103,7 @@ type CPU (mmu) =
         let HL = registers.HL
         let SP = registers.SP
         let PC = registers.PC
+        let IE = registers.IE
 
         let instruction = decodeOpcode PC.Value
 
@@ -305,6 +306,12 @@ type CPU (mmu) =
             PC.Advance 1
         | STOP ->
             PC.Advance 0
+        | EI ->
+            IE.Set
+            PC.Advance 1
+        | DI ->
+            IE.Clear
+            PC.Advance 1
         | FGBC_PRINT_R8 (r) ->
             printfn "%d" (r8 r).Value
             PC.Advance 1
@@ -326,6 +333,7 @@ type CPU (mmu) =
         registers.HL.Value <- 0x014Dus
         registers.SP.Value <- 0xFFFEus
         registers.PC.Value <- 0us
+        registers.IE.Set
 
     member this.Start () =
         this.Reset()

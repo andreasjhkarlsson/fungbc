@@ -129,6 +129,22 @@ type CPU (mmu) =
         | LD_R16_D16 (r,value) ->
             (r16 r).Value <- value
             PC.Advance 3
+        | LDI_R8_AR16 (r,ar) ->
+            (r8 r).Value <- mmu.Read8 (r16 ar).Value
+            (r16 ar).Update ((+) 1us)
+            PC.Advance 1
+        | LDI_AR16_R8 (ar,r) ->
+            mmu.Write8 (r16 ar).Value (r8 r).Value
+            (r16 ar).Update ((+) 1us)
+            PC.Advance 1
+        | LDD_R8_AR16 (r,ar) ->
+            (r8 r).Value <- mmu.Read8 (r16 ar).Value
+            (r16 ar).Update ((-) 1us)
+            PC.Advance 1
+        | LDD_AR16_R8 (ar,r) ->
+            mmu.Write8 (r16 ar).Value (r8 r).Value
+            (r16 ar).Update ((-) 1us)
+            PC.Advance 1
         (*
             ALU operations
         *)

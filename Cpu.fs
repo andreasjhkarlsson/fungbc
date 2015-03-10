@@ -12,45 +12,45 @@ type ALU (registers: RegisterSet) =
 
     let F = registers.F
 
-    member this.add8 a b carry =
+    member this.Add8 a b carry =
         let result = (uint16 a) + (uint16 b) + (uint16 carry)
         F.H <- bitStateOf 4 ((lowNibble a) + (lowNibble b) + carry)
         F.ZNC <- (setIfZero (uint8 result), CLEAR, bitStateOf 8 result )
         uint8 result
 
-    member this.add16 a b =
+    member this.Add16 a b =
         let result = (int a) + (int b)
         F.H <- bitStateOf 12 ((a &&& 0xFFFus) + (b &&& 0xFFFus))
         F.ZNC <- (setIfZero (uint16 result), CLEAR, bitStateOf 16 result)
         uint16 result
 
 
-    member this.inc8 a =
+    member this.Inc8 a =
         let result = a + 1uy
         F.H <- (lowNibble a) = 0xFuy |> setIfTrue
         F.ZH <- (setIfZero result, CLEAR)
         result
 
-    member this.inc16 a = a + 1us // Does not set any flags
+    member this.Inc16 a = a + 1us // Does not set any flags
 
-    member this.dec8 a =
+    member this.Dec8 a =
         let result = a - 1uy
         let halfCarry = (lowNibble a) = 0uy |> setIfTrue
         F.ZNH <- (setIfZero result, SET, halfCarry)
         result
 
-    member this.dec16 a = a - 1us // Does not set any flags (not even subtraction flag!)
+    member this.Dec16 a = a - 1us // Does not set any flags (not even subtraction flag!)
 
-    member this.bitNot8 a =
+    member this.BitNot8 a =
         F.NH <- (SET,SET)
         ~~~ a
     
-    member this.swapNibbles a =
+    member this.SwapNibbles a =
         let result = swapNibbles a 
         F.ZNHC <- (setIfZero result, CLEAR, CLEAR, CLEAR)
         result
 
-    member this.rotateLeftWithCarry8 a =
+    member this.RotateLeftWithCarry8 a =
         let highestBit = bitStateOf 7 a
         let result =  (a <<< 1) ||| (bitStateToValue highestBit)
         F.ZNHC <- (setIfZero result, CLEAR, CLEAR, highestBit)
@@ -158,49 +158,49 @@ type CPU (mmu) =
             ALU operations
         *)
         | ADD_R8_R8 (r1,r2) ->
-            (r8 r1).Value <- alu.add8 (r8 r1).Value (r8 r2).Value 0uy
+            (r8 r1).Value <- alu.Add8 (r8 r1).Value (r8 r2).Value 0uy
             PC.Advance 1
         | ADD_R8_D8 (r,operand) ->
-            (r8 r).Value <- alu.add8 (r8 r).Value operand 0uy
+            (r8 r).Value <- alu.Add8 (r8 r).Value operand 0uy
             PC.Advance 2
         | ADD_R8_AR16 (r,ar) ->
-            (r8 r).Value <- alu.add8 (r8 r).Value (mmu.Read8 (r16 ar).Value) 0uy
+            (r8 r).Value <- alu.Add8 (r8 r).Value (mmu.Read8 (r16 ar).Value) 0uy
             PC.Advance 1
         | ADD_R16_R16 (r1,r2) ->
-            (r16 r1).Value <- alu.add16 (r16 r1).Value (r16 r2).Value
+            (r16 r1).Value <- alu.Add16 (r16 r1).Value (r16 r2).Value
             PC.Advance 1
         | ADC_R8_R8 (r1, r2) ->
-            (r8 r1).Value <- alu.add8 (r8 r1).Value (r8 r2).Value (bitStateToValue F.C)
+            (r8 r1).Value <- alu.Add8 (r8 r1).Value (r8 r2).Value (bitStateToValue F.C)
             PC.Advance 1
         | ADC_R8_D8 (r, operand) ->
-            (r8 r).Value <- alu.add8 (r8 r).Value operand (bitStateToValue F.C)
+            (r8 r).Value <- alu.Add8 (r8 r).Value operand (bitStateToValue F.C)
             PC.Advance 2
         | ADC_R8_AR16 (r, ar) ->
-            (r8 r).Value <- alu.add8 (r8 r).Value (mmu.Read8 (r16 ar).Value) (bitStateToValue F.C)
+            (r8 r).Value <- alu.Add8 (r8 r).Value (mmu.Read8 (r16 ar).Value) (bitStateToValue F.C)
             PC.Advance 1
         | INC_R16 (r) ->
-            (r16 r).Update alu.inc16
+            (r16 r).Update alu.Inc16
             PC.Advance 1
         | DEC_R16 (r) ->
-            (r16 r).Update alu.dec16
+            (r16 r).Update alu.Dec16
             PC.Advance 1
         | INC_R8 (r) ->
-            (r8 r).Update alu.inc8
+            (r8 r).Update alu.Inc8
             PC.Advance 1
         | DEC_R8 (r) ->
-            (r8 r).Update alu.dec8
+            (r8 r).Update alu.Dec8
             PC.Advance 1
         | SWAP_R8 (r) ->
-            (r8 r).Update alu.swapNibbles
+            (r8 r).Update alu.SwapNibbles
             PC.Advance 2
         | SWAP_AR16 (r) ->
-            mmu.Update8 (r16 r).Value alu.swapNibbles
+            mmu.Update8 (r16 r).Value alu.SwapNibbles
             PC.Advance 2
         | CPL ->
-            A.Update alu.bitNot8
+            A.Update alu.BitNot8
             PC.Advance 1
         | RLC_R8 (r) ->
-            (r8 r).Update alu.rotateLeftWithCarry8
+            (r8 r).Update alu.RotateLeftWithCarry8
             PC.Advance 2
         | AND_R8_R8 (r1,r2) ->
             (r8 r1).Update (alu.And8 (r8 r2).Value)

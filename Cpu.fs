@@ -47,6 +47,8 @@ type ALU (registers: RegisterSet) =
 
     member this.Dec16 a = a - 1us // Does not set any flags (not even subtraction flag!)
 
+    member this.Compare8 a b = this.Sub8 a b |> ignore // Compare is just subtraction with the result thrown away.
+
     member this.BitNot8 a =
         F.NH <- (SET,SET)
         ~~~ a
@@ -193,6 +195,15 @@ type CPU (mmu) =
             PC.Advance 1
         | SUB_R8_D8 (r, operand) ->
             (r8 r).Value <- alu.Sub8 (r8 r).Value operand
+            PC.Advance 2
+        | CP_R8_R8  (r1,r2) ->
+            alu.Compare8 (r8 r1).Value (r8 r2).Value
+            PC.Advance 1
+        | CP_R8_AR16 (r, ar) ->
+            alu.Compare8 (r8 r).Value (mmu.Read8 (r16 ar).Value)
+            PC.Advance 1
+        | CP_R8_D8 (r, operand) ->
+            alu.Compare8 (r8 r).Value operand
             PC.Advance 2
         | INC_R16 (r) ->
             (r16 r).Update alu.Inc16

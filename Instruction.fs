@@ -89,6 +89,9 @@ type Instruction =
     | FGBC_PRINTA_R8 of Register8Name                           // Print ascii character in register
     | EI                                                        // Enabled interrupts
     | DI                                                        // Disable interrupts
+    | CP_R8_R8       of Register8Name*Register8Name             // Compare 8 bit register with 8 bit register
+    | CP_R8_AR16     of Register8Name*Register16Name            // Compare 8 bit register with value in address in 16 bit register
+    | CP_R8_D8       of Register8Name*uint8                     // Compare 8 bit register with 8 bit value
 
 let decodeOpcode (mmu: MMU) address =
     
@@ -269,6 +272,14 @@ let decodeOpcode (mmu: MMU) address =
     | 0xB5 -> OR_R8_R8      (A,L)
     | 0xB6 -> OR_R8_AR16    (A,HL)
     | 0xB7 -> OR_R8_R8      (A,A)  
+    | 0xB8 -> CP_R8_R8      (A,B)
+    | 0xB9 -> CP_R8_R8      (A,C)
+    | 0xBA -> CP_R8_R8      (A,D)
+    | 0xBB -> CP_R8_R8      (A,E)
+    | 0xBC -> CP_R8_R8      (A,H)
+    | 0xBD -> CP_R8_R8      (A,L)
+    | 0xBE -> CP_R8_AR16    (A,HL)
+    | 0xBF -> CP_R8_R8      (A,A)
     | 0xC2 -> JP_NF_A16     (Z,int16Operand ())
     | 0xC3 -> JP_A16        (int16Operand())
     | 0xC6 -> ADD_R8_D8     (A, int8Operand ())
@@ -502,6 +513,7 @@ let decodeOpcode (mmu: MMU) address =
     | 0xFB -> EI
     | 0xFC -> FGBC_PRINTA_R8(A)
     | 0xFD -> FGBC_PRINT_R8 (A)
+    | 0xFE -> CP_R8_D8      (A, int8Operand ())
     | _ -> raise (System.Exception(sprintf "decoder for opcode 0x%02X> not implemented" opcode))
 
 let readable instruction = GetUnionCaseName instruction

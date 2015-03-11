@@ -76,6 +76,9 @@ type Instruction =
     | SUB_R8_R8      of Register8Name*Register8Name             // Subtract value in 8 bit register with 8 bit register
     | SUB_R8_D8      of Register8Name*uint8                     // Subtract 8 bit value from 8 bit register
     | SUB_R8_AR16    of Register8Name*Register16Name            // Subtract value in address in 16 bit register from 8 bit register
+    | SBC_R8_R8      of Register8Name*Register8Name             // Subtract value in 8 bit register + carry from 8 bit register 
+    | SBC_R8_AR16    of Register8Name*Register16Name            // Subtract value in address in 16 bit register + carry from 8 bit register 
+    | SBC_R8_D8      of Register8Name*uint8                     // Subtract 8 bit value + carry from 8 bit register
     | AND_R8_R8      of Register8Name*Register8Name             // Bitwise AND between 8 bit registers
     | AND_R8_D8      of Register8Name*uint8                     // Bitwise AND between 8 bit register and 8 bit value
     | AND_R8_AR16    of Register8Name*Register16Name            // Bitwise AND between 8 bit register and value in address in 16 bit register
@@ -248,6 +251,14 @@ let decodeOpcode (mmu: MMU) address =
     | 0x95 -> SUB_R8_R8     (A,L)
     | 0x96 -> SUB_R8_AR16   (A,HL)
     | 0x97 -> SUB_R8_R8     (A,A) 
+    | 0x98 -> SBC_R8_R8     (A,B)
+    | 0x99 -> SBC_R8_R8     (A,C)
+    | 0x9A -> SBC_R8_R8     (A,D)
+    | 0x9B -> SBC_R8_R8     (A,E)
+    | 0x9C -> SBC_R8_R8     (A,H)
+    | 0x9D -> SBC_R8_R8     (A,L)
+    | 0x9E -> SBC_R8_AR16   (A,HL)
+    | 0x9F -> SBC_R8_R8     (A,A)
     | 0xA0 -> AND_R8_R8     (A,B)
     | 0xA1 -> AND_R8_R8     (A,C)
     | 0xA2 -> AND_R8_R8     (A,D)
@@ -498,6 +509,7 @@ let decodeOpcode (mmu: MMU) address =
     | 0xD2 -> JP_NF_A16     (FlagName.C, int16Operand ())
     | 0xD6 -> SUB_R8_D8     (A, int8Operand ())
     | 0xDA -> JP_F_A16      (FlagName.C, int16Operand ())
+    | 0xDE -> SBC_R8_D8     (A, int8Operand ())
     | 0xE0 -> LDH_A8_R8     (int8Operand (), A)
     | 0xE2 -> LDH_AR8_R8    (C, A)
     | 0xE6 -> AND_R8_D8     (A, int8Operand ())

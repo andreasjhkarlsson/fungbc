@@ -24,12 +24,12 @@ type ALU (registers: RegisterSet) =
         F.ZNC <- (setIfZero (uint16 result), CLEAR, bitStateOf 16 result)
         uint16 result
 
-    member this.Sub8 a b =
-        let result = (a) - (b)
-        F.C <- setIfTrue (b > a)
-        F.H <- setIfTrue ((b &&& 0xFuy) > (a &&& 0xFuy))
-        F.ZN <- (setIfZero result, SET)
-        result
+    member this.Sub8 a b carry =
+        let result = (int16 a) - (int16 b) - (int16 carry)
+        F.C <- setIfTrue (result < 0s)
+        F.H <- setIfTrue ((int8 <| lowNibble a) - (int8 <| lowNibble b) - (int8 carry) < 0y)
+        F.ZN <- (setIfZero (uint8 result), SET)
+        uint8 result
 
     member this.Inc8 a =
         let result = a + 1uy
@@ -47,7 +47,7 @@ type ALU (registers: RegisterSet) =
 
     member this.Dec16 a = a - 1us // Does not set any flags (not even subtraction flag!)
 
-    member this.Compare8 a b = this.Sub8 a b |> ignore // Compare is just subtraction with the result thrown away.
+    member this.Compare8 a b = this.Sub8 a b 0uy |> ignore<uint8> // Compare is just subtraction with the result thrown away.
 
     member this.BitNot8 a =
         F.NH <- (SET,SET)
@@ -188,13 +188,22 @@ type CPU (mmu) =
             (r8 r).Value <- alu.Add8 (r8 r).Value (mmu.Read8 (r16 ar).Value) (bitStateToValue F.C)
             PC.Advance 1
         | SUB_R8_R8 (r1,r2) ->
-            (r8 r1).Value <- alu.Sub8 (r8 r1).Value (r8 r2).Value
+            (r8 r1).Value <- alu.Sub8 (r8 r1).Value (r8 r2).Value 0uy
             PC.Advance 1
         | SUB_R8_AR16 (r,ar) ->
-            (r8 r).Value <- alu.Sub8 (r8 r).Value (mmu.Read8 (r16 ar).Value)
+            (r8 r).Value <- alu.Sub8 (r8 r).Value (mmu.Read8 (r16 ar).Value) 0uy
             PC.Advance 1
         | SUB_R8_D8 (r, operand) ->
-            (r8 r).Value <- alu.Sub8 (r8 r).Value operand
+            (r8 r).Value <- alu.Sub8 (r8 r).Value operand 0uy
+            PC.Advance 2
+        | SBC_R8_R8 (r1, r2) ->
+            (r8 r1).Value <- alu.Sub8 (r8 r1).Value (r8 r2).Value (bitStateToValue F.C)
+            PC.Advance 1
+        | SBC_R8_AR16 (r, ar) ->
+            (r8 r).Value <- alu.Sub8 (r8 r).Value (mmu.Read8 (r16 ar).Value) (bitStateToValue F.C)
+            PC.Advance 1
+        | SBC_R8_D8 (r, operand) ->
+            (r8 r).Value <- alu.Sub8 (r8 r).Value operand (bitStateToValue F.C)
             PC.Advance 2
         | CP_R8_R8  (r1,r2) ->
             alu.Compare8 (r8 r1).Value (r8 r2).Value

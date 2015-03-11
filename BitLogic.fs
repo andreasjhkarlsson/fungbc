@@ -24,7 +24,7 @@ let setIfFalse = function |false -> SET |true -> CLEAR
 
 let swapNibbles value = ((value >>> 4) &&& 0xFuy) ||| (value <<< 4)
 
-let nibbles value = ((value &&& 0xFuy) >>> 4, value &&& 0xFuy)
+let nibbles value = ((value &&& 0xF0uy) >>> 4, value &&& 0xFuy)
 
 let highNibble value = fst (nibbles value)
 

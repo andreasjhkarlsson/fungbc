@@ -1,6 +1,7 @@
 ﻿module Register
 
 open BitLogic
+open Units
 
 type FlagName = |Z |N |H |C
 
@@ -86,11 +87,15 @@ type DataRegister16 = DataRegister<uint16>
 
 type ProgramCounter (init) =
     inherit DataRegister16(init)
-    member this.Advance (offset: int) = this.Update ((+) (uint16 offset))
+    member this.Advance (offset: int) = this.Value <- this.Value + (uint16 offset)
 
 type StackPointer (init) =
     inherit DataRegister16(init)
 
+type CycleCounter (init) =
+    inherit DataRegister<uint64>(init)
+    member this.Elapse (cycles: int<Cycle>) = this.Value <- this.Value + (uint64 cycles)
+    member this.Add = this.Elapse // alias
 
 type CombinedDataRegister16 (R1: Register<uint8>, R2: Register<uint8>) =
     inherit Register<uint16>()
@@ -100,6 +105,7 @@ type CombinedDataRegister16 (R1: Register<uint8>, R2: Register<uint8>) =
         and set (newValue) =
             R1.Value <-  uint8 ((newValue >>> 8) &&& 255us)  // No idea if this is correct
             R2.Value <- uint8 (newValue &&& 255us)           // Nor this.
+
 
 type RegisterSet () =
     let a = DataRegister8(0uy) 
@@ -121,6 +127,8 @@ type RegisterSet () =
 
     let ie = BitRegister(CLEAR)
 
+    let cc = CycleCounter(0UL)
+
     member val A = a
     member val B = b
     member val C = c
@@ -139,6 +147,8 @@ type RegisterSet () =
     member val PC = pc
 
     member val IE = ie
+
+    member val CC = cc
 
     member this.From8Name (name: Register8Name) =
         match name with

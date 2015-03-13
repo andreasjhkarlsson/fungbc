@@ -2,7 +2,6 @@
 
 open System.IO
 
-
 type ROM (code) =
     member this.Code = code
 

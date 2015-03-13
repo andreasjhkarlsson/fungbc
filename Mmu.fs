@@ -1,6 +1,5 @@
 ﻿module Mmu
 
-
 type MemoryAddress = uint16
 
 type MemoryLocation = | RAM of array<uint8>*int
@@ -18,8 +17,7 @@ type MMU () =
             | address -> address
         RAM (ram, newAddress)
 
-
-    member this.Read8  address =
+    member this.Read8 address =
         match translate address with
         | RAM (ram,address) ->
             Array.get ram address

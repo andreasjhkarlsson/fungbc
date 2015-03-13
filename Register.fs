@@ -8,8 +8,6 @@ type FlagName = |Z |N |H |C
 type Register8Name =  |A |B |C |D |E |F |H |L
 type Register16Name = |AF |BC |DE |HL |SP |PC
 
-
-
 [<AbstractClass>]
 type Register<'a>() =
     abstract Value: 'a with get, set
@@ -31,8 +29,6 @@ type BitRegister(init) =
     member this.Clear = this.Value <- CLEAR
     member this.Set = this.Value <- SET
     member this.Flip = this.Update bitStateInvert
-
-     
 
 type DataRegister8(init: uint8) =
     inherit DataRegister<uint8>(init)
@@ -82,7 +78,6 @@ type FlagRegister(z,n,h,c) =
 
     member this.FlagFromName = function |FlagName.Z -> this.Z |FlagName.N -> this.N |FlagName.H -> this.H |FlagName.C -> this.C 
     
-
 type DataRegister16 = DataRegister<uint16>
 
 type ProgramCounter (init) =

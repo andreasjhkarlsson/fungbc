@@ -34,7 +34,7 @@ type ALU (registers: RegisterSet) =
     member this.Inc8 a =
         let result = a + 1uy
         F.H <- (lowNibble a) = 0xFuy |> setIfTrue
-        F.ZH <- (setIfZero result, CLEAR)
+        F.ZN <- (setIfZero result, CLEAR)
         result
 
     member this.Inc16 a = a + 1us // Does not set any flags

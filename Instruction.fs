@@ -529,3 +529,97 @@ let decodeOpcode (mmu: MMU) address =
     | _ -> raise (System.Exception(sprintf "decoder for opcode 0x%02X> not implemented" opcode))
 
 let readable instruction = GetUnionCaseName instruction
+
+let sizeOf instruction =
+    match instruction with
+    | NOP
+    | STOP
+    | HALT
+    | ADC_R8_AR16 _
+    | ADC_R8_R8 _ 
+    | ADD_R16_R16 _
+    | ADD_R8_AR16 _
+    | ADD_R8_R8 _
+    | AND_R8_R8 _
+    | AND_R8_AR16 _
+    | CCF
+    | CPL 
+    | CP_R8_AR16 _
+    | CP_R8_R8 _
+    | DEC_AR16 _
+    | DEC_R16 _
+    | DEC_R8 _
+    | DI
+    | EI
+    | FGBC_PRINTA_R8 _
+    | FGBC_PRINT_R8 _
+    | INC_AR16 _
+    | INC_R16 _
+    | INC_R8 _
+    | JP_AR16 _
+    | LDD_AR16_R8 _
+    | LDD_R8_AR16 _
+    | LDH_AR8_R8 _
+    | LDI_AR16_R8 _
+    | LDI_R8_AR16 _
+    | LD_AR16_R8 _
+    | LD_R16_R16 _
+    | LD_R16_R8 _
+    | LD_R8_R8 _
+    | OR_R8_AR16 _
+    | OR_R8_R8 _
+    | RLC_R8 _
+    | SBC_R8_AR16 _
+    | SBC_R8_R8 _
+    | SCF 
+    | SUB_R8_AR16 _
+    | SUB_R8_R8 _
+    | XOR_R8_AR16 _
+    | XOR_R8_R8 _
+        -> 1
+    | BIT_AR16 _
+    | BIT_R8 _
+    | LD_R8_D8 _ 
+    | ADC_R8_D8 _
+    | ADD_R8_D8 _
+    | AND_R8_D8 _
+    | CP_R8_D8 _
+    | JR_A8 _
+    | JR_F_A8 _
+    | JR_NF_A8 _
+    | LDHL_R16_D8 _
+    | LDH_A8_R8 _
+    | LDH_R8_A8 _
+    | LD_AR16_D8 _
+    | LD_R16_D8 _
+    | OR_R8_D8 _
+    | RES_AR16 _
+    | RES_R8 _
+    | ADC_R8_D8 _
+    | SBC_R8_D8 _
+    | SET_AR16 _
+    | SET_R8 _
+    | SUB_R8_D8 _
+    | SWAP_AR16 _
+    | SWAP_R8 _
+    | XOR_R8_D8 _
+         -> 2
+    | LD_R8_A16 _
+    | JP_A16 _
+    | JP_F_A16 _
+    | JP_NF_A16 _
+    | LD_A16_R16 _
+    | LD_A16_R8 _
+    | LD_AR16_D16 _
+    | LD_R16_A16 _
+    | LD_R16_D16 _
+    | LD_R8_AR16 _
+        -> 3
+    
+
+
+
+
+
+
+

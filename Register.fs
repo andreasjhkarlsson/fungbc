@@ -103,8 +103,8 @@ type CombinedDataRegister16 (R1: Register<uint8>, R2: Register<uint8>) =
     override this.Value
         with get () = ((uint16 R1.Value) <<< 8) ||| (uint16 R2.Value)
         and set (newValue) =
-            R1.Value <-  uint8 ((newValue >>> 8) &&& 255us)  // No idea if this is correct
-            R2.Value <- uint8 (newValue &&& 255us)           // Nor this.
+            R1.Value <-  uint8 ((newValue >>> 8) &&& 0xFFus)  // No idea if this is correct
+            R2.Value <- uint8 (newValue &&& 0xFFus)           // Nor this.
 
 
 type RegisterSet () =

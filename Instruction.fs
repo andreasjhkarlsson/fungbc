@@ -4,6 +4,7 @@ open Register
 open Mmu
 open Misc
 
+
 // "Syntax" for instruction name:
 // NAME_OPERAND1TYPE_OPERAND2TYPE
 // Operand types:
@@ -26,15 +27,11 @@ type Instruction =
     | LD_A16_R8      of MemoryAddress*Register8Name             // Store value in 8 bit register into address               
     | LD_R8_R8       of Register8Name*Register8Name             // Load value in 8 bit register to another register
     | LD_R16_D16     of Register16Name*uint16                   // Load 16 bit value into 16 bit register 
-    | LD_R16_R16     of Register16Name*Register16Name           // Load value in 16 bit register in 16 bit register           
-    | LD_R16_A16     of Register16Name*MemoryAddress            // Load 16 bit pointed value into 16 bit register
-    | LD_AR16_D16    of Register16Name*uint16                   // Store 16 bit value into address in 16 bit register
+    | LD_R16_R16     of Register16Name*Register16Name           // Load value in 16 bit register in 16 bit register   
     | LD_AR16_R8     of Register16Name*Register8Name            // Store value in 8 bit register into adress in 16 bit register
     | LD_AR16_D8     of Register16Name*uint8                    // Store 8 bit value in address in 16 bit register
     | LD_R8_AR16     of Register8Name*Register16Name            // Load value in address in 16 bit register into 8 bit register
     | LD_A16_R16     of MemoryAddress*Register16Name            // Store value in 16 bit register into address
-    | LD_R16_D8      of Register16Name*uint8                    // Load 8 bit value into 16 bit register
-    | LD_R16_R8      of Register16Name*Register8Name            // Load value in 8 bit register into 16 bit register
     | LDI_AR16_R8    of Register16Name*Register8Name            // Store value in 8 bit register into address in 16 bit register and then increment 16 bit register
     | LDD_AR16_R8    of Register16Name*Register8Name            // Store value in 8 bit register into address in 16 bit register and then decrement 16 bit register
     | LDI_R8_AR16    of Register8Name*Register16Name            // Load value in address in 16 register into 8 bit register and increment 16 bit register
@@ -564,7 +561,6 @@ let sizeOf instruction =
     | LDI_R8_AR16 _
     | LD_AR16_R8 _
     | LD_R16_R16 _
-    | LD_R16_R8 _
     | LD_R8_R8 _
     | OR_R8_AR16 _
     | OR_R8_R8 _
@@ -591,7 +587,6 @@ let sizeOf instruction =
     | LDH_A8_R8 _
     | LDH_R8_A8 _
     | LD_AR16_D8 _
-    | LD_R16_D8 _
     | OR_R8_D8 _
     | RES_AR16 _
     | RES_R8 _
@@ -610,15 +605,99 @@ let sizeOf instruction =
     | JP_NF_A16 _
     | LD_A16_R16 _
     | LD_A16_R8 _
-    | LD_AR16_D16 _
-    | LD_R16_A16 _
     | LD_R16_D16 _
     | LD_R8_AR16 _
         -> 3
     
 
 
-
+let cycleCount instruction long =
+    match instruction with
+    | ADC_R8_R8 _
+    | ADD_R8_R8 _
+    | AND_R8_R8 _
+    | CCF
+    | CPL
+    | CP_R8_R8 _
+    | DEC_R8 _
+    | DI
+    | EI
+    | FGBC_PRINT_R8 _ // Since unused opcodes usually work as NOP use 4 cycles for custom instructions.
+    | FGBC_PRINTA_R8 _ // ↑
+    | HALT
+    | INC_R8 _
+    | JP_AR16 _
+    | LD_R8_R8 _
+    | NOP
+    | OR_R8_R8 _
+    | SBC_R8_R8 _
+    | SCF
+    | STOP
+    | SUB_R8_R8 _
+    | XOR_R8_R8 _
+        -> 4
+    | ADC_R8_AR16 _
+    | ADC_R8_D8 _
+    | ADD_R16_R16 _
+    | ADD_R8_AR16 _
+    | ADD_R8_D8 _
+    | AND_R8_D8 _
+    | AND_R8_AR16 _
+    | BIT_R8 _
+    | CP_R8_AR16 _
+    | CP_R8_D8 _
+    | DEC_R16 _
+    | INC_R16 _
+    | LDD_AR16_R8 _
+    | LDD_R8_AR16 _
+    | LDI_AR16_R8 _
+    | LDI_R8_AR16 _
+    | LD_R8_D8 _
+    | LD_AR16_R8 _
+    | LD_R8_AR16 _
+    | OR_R8_AR16 _
+    | OR_R8_D8 _
+    | RES_R8 _
+    | RLC_R8 _
+    | SBC_R8_AR16 _
+    | SBC_R8_D8 _
+    | SET_R8 _
+    | SUB_R8_AR16 _
+    | SUB_R8_D8 _
+    | SWAP_R8 _
+    | XOR_R8_AR16 _
+    | XOR_R8_D8 _
+        -> 8
+    | BIT_AR16 _
+    | DEC_AR16 _
+    | INC_AR16 _
+    | JR_A8 _
+    | LDHL_R16_D8 _
+    | LDH_A8_R8 _
+    | LD_R16_D16 _
+    | LD_R16_R16 _
+        -> 12
+    | JP_A16 _
+    | LD_A16_R8 _
+    | LD_R8_A16 _
+    | RES_AR16 _
+    | SET_AR16 _
+    | SWAP_AR16 _
+        -> 16
+    | LD_A16_R16 _
+        -> 20
+    | JP_F_A16 _
+    | JP_NF_A16 _
+        -> if not long then 12 else 16
+    | JR_F_A8 _
+    | JR_NF_A8 _
+        -> if not long then 8 else 12
+    | LDH_A8_R8 _ // Unsure
+    | LDH_AR8_R8 _ // Unsure
+    | LDH_R8_A8 _ // Unsure
+    | LD_AR16_D8 _ // Unsure
+        -> 0
+    
 
 
 

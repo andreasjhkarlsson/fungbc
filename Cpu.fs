@@ -108,12 +108,14 @@ type CPU (mmu) =
         let IE = registers.IE
         let CC = registers.CC
 
-     
         let instruction = decodeOpcode PC.Value
 
         let instructionSize = sizeOf instruction
 
         let nextInstruction = PC.Value + (uint16 instructionSize)
+
+        // Just one little mutable flag. Sorry purists.
+        let mutable longCycle = false
 
         //printfn "Executing instruction: %s @ 0x%04X" (readable instruction) PC.Value
 
@@ -304,25 +306,37 @@ type CPU (mmu) =
         | JP_F_A16 (f,address) ->
             PC.Value <-
                 match (F.FlagFromName f) with
-                | SET -> address
-                | CLEAR -> nextInstruction
+                | SET ->
+                    longCycle <- true
+                    address
+                | CLEAR ->
+                    nextInstruction
         | JP_NF_A16 (f,address) ->
             PC.Value <-
                 match (F.FlagFromName f) with
-                | SET -> nextInstruction
-                | CLEAR -> address
+                | SET ->
+                    nextInstruction
+                | CLEAR ->
+                    longCycle <- true
+                    address
         | JR_A8 (offset) ->
             PC.Value <- (int16 PC.Value) + (int16 offset) |> uint16 
         | JR_F_A8 (f, offset) ->
             PC.Value <-
                 match (F.FlagFromName f) with
-                | SET -> (int16 PC.Value) + (int16 offset) |> uint16
-                | CLEAR -> nextInstruction
+                | SET ->
+                    longCycle <- true
+                    (int16 PC.Value) + (int16 offset) |> uint16
+                | CLEAR ->
+                    nextInstruction
         | JR_NF_A8 (f, offset) ->
             PC.Value <-
                 match (F.FlagFromName f) with
-                | CLEAR -> (int16 PC.Value) + (int16 offset) |> uint16
-                | SET -> nextInstruction
+                | CLEAR ->
+                    longCycle <- true
+                    (int16 PC.Value) + (int16 offset) |> uint16
+                | SET ->
+                    nextInstruction
         (*
             Misc
         *)
@@ -350,9 +364,11 @@ type CPU (mmu) =
             PC.Value <- nextInstruction
         | _ -> raise (System.Exception(sprintf "opcode <%O> not implemented" instruction))
 
+        // Update cycle count register
+        CC.Elapse (cycleCount instruction longCycle)
         
         match instruction with
-        | STOP (_) -> ()
+        | STOP -> ()
         | _ -> execute ()
 
     
@@ -365,6 +381,7 @@ type CPU (mmu) =
         registers.SP.Value <- 0xFFFEus
         registers.PC.Value <- 0us
         registers.IE.Set
+        registers.CC.Value <- 0UL
 
     member this.Start () =
         this.Reset()

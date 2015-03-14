@@ -2,6 +2,7 @@
 
 open BitLogic
 open Units
+open Constants
 
 type FlagName = |Z |N |H |C
 
@@ -89,7 +90,7 @@ type StackPointer (init) =
 
 type CycleCounter (init) =
     inherit DataRegister<uint64>(init)
-    member this.Elapse (cycles: int<Cycle>) = this.Value <- this.Value + (uint64 cycles)
+    member this.Elapse (cycles: int) = this.Value <- this.Value + (uint64 cycles)
     member this.Add = this.Elapse // alias
 
 type CombinedDataRegister16 (R1: Register<uint8>, R2: Register<uint8>) =
@@ -184,7 +185,10 @@ type RegisterSet () =
             HL = 0x%04X
             PC = 0x%04X
             SP = 0x%04X
+            CC = %d cycles (%.4f ms)
             IE = %d" a.Value b.Value c.Value d.Value e.Value 
             f.Value (bitStateToValue f.Z) (bitStateToValue f.N) (bitStateToValue f.H) (bitStateToValue f.C)
             h.Value l.Value af.Value bc.Value
-            de.Value hl.Value pc.Value sp.Value (bitStateToValue ie.Value)
+            de.Value hl.Value pc.Value sp.Value
+            cc.Value ((float cc.Value) / (float CLOCK_FREQUENCY) * 1000.0)
+            (bitStateToValue ie.Value)

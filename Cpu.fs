@@ -371,6 +371,30 @@ type CPU (mmu) =
                     mmu.Write16 SP.Value nextInstruction
                     longCycle <- true
                     address
+        | RET ->
+            PC.Value <- mmu.Read16 SP.Value
+            SP.Value <- SP.Value + 2us
+        | RETI ->
+            PC.Value <- mmu.Read16 SP.Value
+            SP.Value <- SP.Value + 2us
+            IE.Set
+        | RET_F (flag) ->
+            match (F.FlagFromName flag) with
+            | SET ->
+                PC.Value <- mmu.Read16 SP.Value
+                SP.Value <- SP.Value + 2us
+                longCycle <- true
+            | CLEAR ->
+                PC.Value <- nextInstruction
+        | RET_NF (flag) ->
+            match (F.FlagFromName flag) with
+            | SET ->
+                PC.Value <- nextInstruction
+            | CLEAR ->
+                PC.Value <- mmu.Read16 SP.Value
+                SP.Value <- SP.Value + 2us
+                longCycle <- true
+                
         (*
             Misc
         *)

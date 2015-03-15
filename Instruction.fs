@@ -98,6 +98,10 @@ type Instruction =
     | CALL_A16       of MemoryAddress                           // Call routine at address
     | CALL_F_A16     of FlagName*MemoryAddress                  // Call routine at address if flag is set
     | CALL_NF_A16    of FlagName*MemoryAddress                  // Call routine at address if flag is not set
+    | RET                                                       // Return from subroutine
+    | RETI                                                      // Return from subroutine and enable interrupts
+    | RET_F         of FlagName                                 // Return if flag is set
+    | RET_NF        of FlagName                                 // Return if flag is not set
 
 let decodeOpcode (mmu: MMU) address =
     
@@ -295,12 +299,15 @@ let decodeOpcode (mmu: MMU) address =
     | 0xBD -> CP_R8_R8      (A,L)
     | 0xBE -> CP_R8_AR16    (A,HL)
     | 0xBF -> CP_R8_R8      (A,A)
+    | 0xC0 -> RET_NF        (Z)
     | 0xC1 -> POP_R16       (BC)
     | 0xC2 -> JP_NF_A16     (Z,int16Operand ())
     | 0xC3 -> JP_A16        (int16Operand())
     | 0xC4 -> CALL_NF_A16   (Z, int16Operand ())
     | 0xC5 -> PUSH_R16      (BC)
     | 0xC6 -> ADD_R8_D8     (A, int8Operand ())
+    | 0xC8 -> RET_F         (Z)
+    | 0xC9 -> RET
     | 0xCA -> JP_F_A16      (Z, int16Operand ())
     | 0xCB ->
         match int <| int8Operand() with
@@ -515,11 +522,14 @@ let decodeOpcode (mmu: MMU) address =
     | 0xCC -> CALL_F_A16    (Z, int16Operand ())
     | 0xCD -> CALL_A16      (int16Operand ())
     | 0xCE -> ADC_R8_D8     (A, int8Operand ())
+    | 0xD0 -> RET_NF        (FlagName.C)
     | 0xD1 -> POP_R16       (DE)
     | 0xD2 -> JP_NF_A16     (FlagName.C, int16Operand ())
     | 0xD4 -> CALL_NF_A16   (FlagName.C, int16Operand ())
     | 0xD5 -> PUSH_R16      (DE)
     | 0xD6 -> SUB_R8_D8     (A, int8Operand ())
+    | 0xD8 -> RET_F         (FlagName.C)
+    | 0xD9 -> RETI
     | 0xDA -> JP_F_A16      (FlagName.C, int16Operand ())
     | 0xDC -> CALL_F_A16    (FlagName.C, int16Operand ())
     | 0xE1 -> POP_R16       (HL)
@@ -595,6 +605,10 @@ let sizeOf instruction =
     | SUB_R8_R8 _
     | XOR_R8_AR16 _
     | XOR_R8_R8 _
+    | RET
+    | RETI
+    | RET_F _
+    | RET_NF _
         -> 1
     | BIT_AR16 _
     | BIT_R8 _
@@ -710,6 +724,8 @@ let cycleCount instruction long =
     | LD_R8_A16 _
     | PUSH_R16 _
     | RES_AR16 _
+    | RET
+    | RETI
     | SET_AR16 _
     | SWAP_AR16 _
         -> 16
@@ -726,6 +742,9 @@ let cycleCount instruction long =
     | JR_F_A8 _
     | JR_NF_A8 _
         -> if not long then 8 else 12
+    | RET_F _
+    | RET_NF _
+        -> if not long then 8 else 20
     | LDH_A8_R8 _ // Unsure
     | LDH_AR8_R8 _ // Unsure
     | LDH_R8_A8 _ // Unsure

@@ -356,6 +356,20 @@ type CPU (mmu) =
         | DI ->
             IE.Clear
             PC.Value <- nextInstruction
+        | DAA_R8 (r) ->
+            let value = (r8 r).Value
+            
+            let lowBCD = value % 10uy
+            let highBCD = ((value % 100uy) - lowBCD) / 10uy
+            let result = (highBCD <<< 4) ||| lowBCD 
+
+            F.Z <- setIfZero result
+            F.H <- CLEAR
+            F.C <- setIfTrue (value >= 100uy)
+
+            (r8 r).Value <- result
+
+            PC.Value <- nextInstruction
         | FGBC_PRINT_R8 (r) ->
             printfn "%d" (r8 r).Value
             PC.Value <- nextInstruction

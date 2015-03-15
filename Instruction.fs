@@ -92,6 +92,7 @@ type Instruction =
     | CP_R8_R8       of Register8Name*Register8Name             // Compare 8 bit register with 8 bit register
     | CP_R8_AR16     of Register8Name*Register16Name            // Compare 8 bit register with value in address in 16 bit register
     | CP_R8_D8       of Register8Name*uint8                     // Compare 8 bit register with 8 bit value
+    | DAA_R8         of Register8Name                           // Converts 8 bit register into packed BCD
 
 let decodeOpcode (mmu: MMU) address =
     
@@ -137,6 +138,7 @@ let decodeOpcode (mmu: MMU) address =
     | 0x24 -> INC_R8        (H)
     | 0x25 -> DEC_R8        (H)
     | 0x26 -> LD_R8_D8      (H,int8Operand ())
+    | 0x27 -> DAA_R8        (A)       
     | 0x28 -> JR_F_A8       (Z, int8Operand () |> int8)
     | 0x29 -> ADD_R16_R16   (HL,HL)
     | 0x2A -> LDI_R8_AR16   (A,HL)
@@ -543,6 +545,7 @@ let sizeOf instruction =
     | CPL 
     | CP_R8_AR16 _
     | CP_R8_R8 _
+    | DAA_R8 _
     | DEC_AR16 _
     | DEC_R16 _
     | DEC_R8 _
@@ -619,6 +622,7 @@ let cycleCount instruction long =
     | CCF
     | CPL
     | CP_R8_R8 _
+    | DAA_R8 _
     | DEC_R8 _
     | DI
     | EI

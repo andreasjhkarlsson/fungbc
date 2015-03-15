@@ -93,6 +93,8 @@ type Instruction =
     | CP_R8_AR16     of Register8Name*Register16Name            // Compare 8 bit register with value in address in 16 bit register
     | CP_R8_D8       of Register8Name*uint8                     // Compare 8 bit register with 8 bit value
     | DAA_R8         of Register8Name                           // Converts 8 bit register into packed BCD
+    | PUSH_R16       of Register16Name                          // Push 16 bit register onto stack
+    | POP_R16        of Register16Name                          // Pop 16 bit value from stack into 16 bit register
 
 let decodeOpcode (mmu: MMU) address =
     
@@ -290,8 +292,10 @@ let decodeOpcode (mmu: MMU) address =
     | 0xBD -> CP_R8_R8      (A,L)
     | 0xBE -> CP_R8_AR16    (A,HL)
     | 0xBF -> CP_R8_R8      (A,A)
+    | 0xC1 -> POP_R16       (BC)
     | 0xC2 -> JP_NF_A16     (Z,int16Operand ())
     | 0xC3 -> JP_A16        (int16Operand())
+    | 0xC5 -> PUSH_R16      (BC)
     | 0xC6 -> ADD_R8_D8     (A, int8Operand ())
     | 0xCA -> JP_F_A16      (Z, int16Operand ())
     | 0xCB ->
@@ -505,18 +509,24 @@ let decodeOpcode (mmu: MMU) address =
         | 0xFF -> SET_R8         (7,A)
         | _ as extended -> raise (System.Exception(sprintf "decoder for extended opcode <%d %d> not implemented" opcode extended)) 
     | 0xCE -> ADC_R8_D8     (A, int8Operand ())
+    | 0xD1 -> POP_R16       (DE)
     | 0xD2 -> JP_NF_A16     (FlagName.C, int16Operand ())
+    | 0xD5 -> PUSH_R16      (DE)
     | 0xD6 -> SUB_R8_D8     (A, int8Operand ())
     | 0xDA -> JP_F_A16      (FlagName.C, int16Operand ())
+    | 0xE1 -> POP_R16       (HL)
     | 0xDE -> SBC_R8_D8     (A, int8Operand ())
     | 0xE0 -> LDH_A8_R8     (int8Operand (), A)
     | 0xE2 -> LDH_AR8_R8    (C, A)
+    | 0xE5 -> PUSH_R16      (HL)
     | 0xE6 -> AND_R8_D8     (A, int8Operand ())
     | 0xE9 -> JP_AR16       (HL)
     | 0xEA -> LD_A16_R8     (uint16 <| int16Operand(), A)
     | 0xEE -> XOR_R8_D8     (A, int8Operand ())
     | 0xF0 -> LDH_R8_A8     (A,int8Operand ())
+    | 0xF1 -> POP_R16       (AF)
     | 0xF3 -> DI
+    | 0xF5 -> PUSH_R16      (AF)
     | 0xF6 -> OR_R8_D8      (A, int8Operand ())
     | 0xF8 -> LDHL_R16_D8   (SP,int8 <| int8Operand ())
     | 0xF9 -> LD_R16_R16    (SP,HL)
@@ -567,6 +577,8 @@ let sizeOf instruction =
     | LD_R8_R8 _
     | OR_R8_AR16 _
     | OR_R8_R8 _
+    | POP_R16 _
+    | PUSH_R16 _
     | RLC_R8 _
     | SBC_R8_AR16 _
     | SBC_R8_R8 _
@@ -680,10 +692,12 @@ let cycleCount instruction long =
     | LDH_A8_R8 _
     | LD_R16_D16 _
     | LD_R16_R16 _
+    | POP_R16 _
         -> 12
     | JP_A16 _
     | LD_A16_R8 _
     | LD_R8_A16 _
+    | PUSH_R16 _
     | RES_AR16 _
     | SET_AR16 _
     | SWAP_AR16 _

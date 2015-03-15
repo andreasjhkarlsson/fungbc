@@ -42,7 +42,9 @@ type ALU (registers: RegisterSet) =
     member this.Dec8 a =
         let result = a - 1uy
         let halfCarry = (lowNibble a) = 0uy |> setIfTrue
-        F.ZNH <- (setIfZero result, SET, halfCarry)
+        F.Z <- setIfZero result
+        F.N <- SET
+        F.H <- halfCarry
         result
 
     member this.Dec16 a = a - 1us // Does not set any flags (not even subtraction flag!)
@@ -170,6 +172,14 @@ type CPU (mmu) =
             PC.Value <- nextInstruction
         | LDH_AR8_R8 (ar, r) ->
             mmu.Write8 (0xFF00us + (uint16 (r8 ar).Value)) (r8 r).Value
+            PC.Value <- nextInstruction
+        | PUSH_R16 (r) ->
+            SP.Value <- SP.Value - 2us
+            mmu.Write16 SP.Value (r16 r).Value
+            PC.Value <- nextInstruction
+        | POP_R16 (r) ->
+            (r16 r).Value <- mmu.Read16 SP.Value
+            SP.Value <- SP.Value + 2us
             PC.Value <- nextInstruction
         (*
             ALU operations

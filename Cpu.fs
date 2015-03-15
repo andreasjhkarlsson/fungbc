@@ -347,6 +347,30 @@ type CPU (mmu) =
                     (int16 PC.Value) + (int16 offset) |> uint16
                 | SET ->
                     nextInstruction
+        | CALL_A16 (address) ->
+            SP.Value <- SP.Value - 2us
+            mmu.Write16 SP.Value nextInstruction
+            PC.Value <- address
+        | CALL_F_A16 (flag, address) ->
+            PC.Value <-
+                match (F.FlagFromName flag) with
+                | SET ->
+                    SP.Value <- SP.Value - 2us
+                    mmu.Write16 SP.Value nextInstruction
+                    longCycle <- true
+                    address
+                | CLEAR ->
+                    nextInstruction
+        | CALL_NF_A16 (flag, address) ->
+            PC.Value <-
+                match (F.FlagFromName flag) with
+                | SET ->
+                    nextInstruction
+                | CLEAR ->
+                    SP.Value <- SP.Value - 2us
+                    mmu.Write16 SP.Value nextInstruction
+                    longCycle <- true
+                    address
         (*
             Misc
         *)

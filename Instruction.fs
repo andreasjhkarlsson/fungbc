@@ -95,6 +95,9 @@ type Instruction =
     | DAA_R8         of Register8Name                           // Converts 8 bit register into packed BCD
     | PUSH_R16       of Register16Name                          // Push 16 bit register onto stack
     | POP_R16        of Register16Name                          // Pop 16 bit value from stack into 16 bit register
+    | CALL_A16       of MemoryAddress                           // Call routine at address
+    | CALL_F_A16     of FlagName*MemoryAddress                  // Call routine at address if flag is set
+    | CALL_NF_A16    of FlagName*MemoryAddress                  // Call routine at address if flag is not set
 
 let decodeOpcode (mmu: MMU) address =
     
@@ -295,6 +298,7 @@ let decodeOpcode (mmu: MMU) address =
     | 0xC1 -> POP_R16       (BC)
     | 0xC2 -> JP_NF_A16     (Z,int16Operand ())
     | 0xC3 -> JP_A16        (int16Operand())
+    | 0xC4 -> CALL_NF_A16   (Z, int16Operand ())
     | 0xC5 -> PUSH_R16      (BC)
     | 0xC6 -> ADD_R8_D8     (A, int8Operand ())
     | 0xCA -> JP_F_A16      (Z, int16Operand ())
@@ -508,12 +512,16 @@ let decodeOpcode (mmu: MMU) address =
         | 0xFE -> SET_AR16       (7,HL)
         | 0xFF -> SET_R8         (7,A)
         | _ as extended -> raise (System.Exception(sprintf "decoder for extended opcode <%d %d> not implemented" opcode extended)) 
+    | 0xCC -> CALL_F_A16    (Z, int16Operand ())
+    | 0xCD -> CALL_A16      (int16Operand ())
     | 0xCE -> ADC_R8_D8     (A, int8Operand ())
     | 0xD1 -> POP_R16       (DE)
     | 0xD2 -> JP_NF_A16     (FlagName.C, int16Operand ())
+    | 0xD4 -> CALL_NF_A16   (FlagName.C, int16Operand ())
     | 0xD5 -> PUSH_R16      (DE)
     | 0xD6 -> SUB_R8_D8     (A, int8Operand ())
     | 0xDA -> JP_F_A16      (FlagName.C, int16Operand ())
+    | 0xDC -> CALL_F_A16    (FlagName.C, int16Operand ())
     | 0xE1 -> POP_R16       (HL)
     | 0xDE -> SBC_R8_D8     (A, int8Operand ())
     | 0xE0 -> LDH_A8_R8     (int8Operand (), A)
@@ -622,6 +630,9 @@ let sizeOf instruction =
     | LD_A16_R8 _
     | LD_R16_D16 _
     | LD_R8_AR16 _
+    | CALL_A16 _
+    | CALL_F_A16 _
+    | CALL_NF_A16 _
         -> 3
     
 
@@ -704,6 +715,11 @@ let cycleCount instruction long =
         -> 16
     | LD_A16_R16 _
         -> 20
+    | CALL_A16 _
+        -> 24
+    | CALL_F_A16 _
+    | CALL_NF_A16 _
+        -> if not long then 12 else 24
     | JP_F_A16 _
     | JP_NF_A16 _
         -> if not long then 12 else 16

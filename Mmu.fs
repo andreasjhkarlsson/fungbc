@@ -1,31 +1,32 @@
 ﻿module Mmu
 
-type MemoryAddress = uint16
+open Constants
 
-type MemoryLocation = | RAM of array<uint8>*int
+type MemoryAddress = uint16
 
 type MMU () =
 
-    let ram = Array.create (pown 2 16) 0uy
+    let memory =
+        
+        let ram = Array.create (pown 2 16) 0uy
 
-    // Map memory address to different memory types (ram, vram, special registers etc.)
-    let translate (address: MemoryAddress) =
-        let newAddress =
-            match int address with
+        let map address =
+            match address with
             | echoed when echoed >= 0xE000 && echoed <= 0xFE00 ->
-                echoed - 0x2000
-            | address -> address
-        RAM (ram, newAddress)
+                (fun () -> Array.get ram (echoed - 0x2000)), Array.set ram (echoed - 0x2000)
+            | index ->
+                (fun () -> Array.get ram address), Array.set ram address
+
+        Array.init ADDRESS_SPACE_SIZE map |> Array.get
 
     member this.Read8 address =
-        match translate address with
-        | RAM (ram,address) ->
-            Array.get ram address
+        let get, _ = memory (int address)
+        get ()
+
 
     member this.Write8 address value =
-        match translate address with
-        | RAM (ram,address) ->
-            Array.set ram address value
+        let _, set = memory (int address)
+        set value
 
     member this.Update8 address fn = this.Read8 address |> fn |> this.Write8 address
 

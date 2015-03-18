@@ -1,32 +1,32 @@
 ﻿module Mmu
 
 open Constants
+open MemoryCell
 
 type MemoryAddress = uint16
 
 type MMU () =
+    
+    let memory = blankMemoryBlock ADDRESS_SPACE_SIZE
 
-    let memory =
+    let mapAddress (address: MemoryAddress) cell = Array.set memory (int address) cell
+
+    let mapBlock (start: MemoryAddress) (stop: MemoryAddress) block =
+        {start..stop} |> Seq.iter (fun address -> 
+            let cell = Array.get block (address - start |> int)
+            mapAddress address cell
+        ) 
+
+    member this.MapROM = mapBlock 0x0000us 0x07FFFus
+
+    member this.MapRAM working stack =
+        mapBlock 0xC000us 0xDFFFus working
+        mapBlock 0xE000us 0xFDFFus working 
+        mapBlock 0xFF80us 0xFFFEus stack
+    
+    member this.Read8 (address: MemoryAddress) = (Array.get memory (int address)).Value
         
-        let ram = Array.create (pown 2 16) 0uy
-
-        let map address =
-            match address with
-            | echoed when echoed >= 0xE000 && echoed <= 0xFE00 ->
-                (fun () -> Array.get ram (echoed - 0x2000)), Array.set ram (echoed - 0x2000)
-            | index ->
-                (fun () -> Array.get ram address), Array.set ram address
-
-        Array.init ADDRESS_SPACE_SIZE map |> Array.get
-
-    member this.Read8 address =
-        let get, _ = memory (int address)
-        get ()
-
-
-    member this.Write8 address value =
-        let _, set = memory (int address)
-        set value
+    member this.Write8 address value = (Array.get memory (int address)).Value <- value
 
     member this.Update8 address fn = this.Read8 address |> fn |> this.Write8 address
 
@@ -37,9 +37,6 @@ type MMU () =
     member this.Write16 address (value: uint16) =
         this.Write8 address (uint8 value)
         this.Write8 (address + 1us) (value >>> 8 |> uint8)
-
-    member this.LoadBlob address (blob: array<uint8>) =
-        blob |> Array.iteri (fun index b -> this.Write8 (address + (uint16 index)) b)
 
     member this.PrintDump fromAddress toAddress =
         

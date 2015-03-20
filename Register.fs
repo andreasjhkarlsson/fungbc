@@ -88,10 +88,6 @@ type ProgramCounter (init) =
 type StackPointer (init) =
     inherit DataRegister16(init)
 
-type CycleCounter (init) =
-    inherit DataRegister<uint64>(init)
-    member this.Elapse (cycles: int) = this.Value <- this.Value + (uint64 cycles)
-    member this.Add = this.Elapse // alias
 
 type CombinedDataRegister16 (R1: Register<uint8>, R2: Register<uint8>) =
     inherit Register<uint16>()
@@ -123,7 +119,6 @@ type RegisterSet () =
 
     let masterIE = BitRegister(CLEAR)
 
-    let cc = CycleCounter(0UL)
 
     member val A = a
     member val B = b
@@ -144,7 +139,6 @@ type RegisterSet () =
 
     member val MasterIE = masterIE
 
-    member val CC = cc
 
     member this.From8Name (name: Register8Name) =
         match name with
@@ -185,10 +179,8 @@ type RegisterSet () =
             HL = 0x%04X
             PC = 0x%04X
             SP = 0x%04X
-            CC = %d cycles (%.4f ms)
             IE = %d" a.Value b.Value c.Value d.Value e.Value 
             f.Value (bitStateToValue f.Z) (bitStateToValue f.N) (bitStateToValue f.H) (bitStateToValue f.C)
             h.Value l.Value af.Value bc.Value
             de.Value hl.Value pc.Value sp.Value
-            cc.Value ((float cc.Value) / (float CLOCK_FREQUENCY) * 1000.0)
             (bitStateToValue masterIE.Value)

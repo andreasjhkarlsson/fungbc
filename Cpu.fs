@@ -4,6 +4,7 @@ open Mmu
 open Register
 open Instruction
 open BitLogic
+open Clock
 
 // Alas, how how I wish that F# had inner types so that this type could be
 // contained inside the CPU type. Now it's exposed and dirty and has to take internal
@@ -81,7 +82,7 @@ type ALU (registers: RegisterSet) =
         F.ZNHC <- (setIfZero result,CLEAR,CLEAR,CLEAR)
         result
 
-type CPU (mmu) =
+type CPU (mmu, clock: Clock) =
 
     let registers = RegisterSet()
 
@@ -108,7 +109,6 @@ type CPU (mmu) =
         let SP = registers.SP
         let PC = registers.PC
         let MasterIE = registers.MasterIE
-        let CC = registers.CC
 
         let instruction = decodeOpcode PC.Value
 
@@ -436,8 +436,8 @@ type CPU (mmu) =
             PC.Value <- nextInstruction
         | _ -> raise (System.Exception(sprintf "opcode <%O> not implemented" instruction))
 
-        // Update cycle count register
-        CC.Elapse (cycleCount instruction longCycle)
+        // Update clock
+        clock.Tick (cycleCount instruction longCycle)
         
         match instruction with
         | STOP -> ()
@@ -453,7 +453,6 @@ type CPU (mmu) =
         registers.SP.Value <- 0xFFFEus
         registers.PC.Value <- 0us
         registers.MasterIE.Set
-        registers.CC.Value <- 0UL
 
     member this.Start () =
         this.Reset()

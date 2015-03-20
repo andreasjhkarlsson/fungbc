@@ -5,6 +5,7 @@ open Rom
 open Ram
 open Interrupts
 open IORegisters
+open Clock
 
 [<EntryPoint>]
 let main argv = 
@@ -17,13 +18,15 @@ let main argv =
 
     let ioRegisters = IORegisters()
 
+    let clock = Clock()
+
     let mmu = MMU()
 
     mmu.MapRAM ram
     mmu.MapROM rom
     mmu.MapIORegisters ioRegisters
 
-    let cpu = CPU(mmu)
+    let cpu = CPU(mmu, clock)
 
     let stopWatch = System.Diagnostics.Stopwatch.StartNew()
 
@@ -32,6 +35,8 @@ let main argv =
     stopWatch.Stop()
 
     printfn "CPU execution time: %d ms" (int stopWatch.Elapsed.TotalMilliseconds) 
+
+    clock.Print ()
 
     cpu.Registers.Print ()
 

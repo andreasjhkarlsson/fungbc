@@ -60,6 +60,7 @@
     <Compile Include="Rom.fs" />
     <Compile Include="Ram.fs" />
     <Compile Include="IORegisters.fs" />
+    <Compile Include="Clock.fs" />
     <Compile Include="Interrupts.fs" />
     <Compile Include="Mmu.fs" />
     <Compile Include="Register.fs" />

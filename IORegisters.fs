@@ -7,22 +7,20 @@ open Units
 open Clock
 
 [<AbstractClass>]
-type IORegister () =
+type IORegister () as this =
     abstract MemoryValue: uint8 with get, set
+    member val MemoryCell = VirtualCell((fun () -> this.MemoryValue), (fun newValue -> this.MemoryValue <- newValue))
 
-type ValueBackedIORegister(init) as this =
+type ValueBackedIORegister(init) =
     inherit IORegister ()
 
     // We seperate the concept of register value and memory value
     // as writes for example may be disabled from memory, but enabled overall for the register.
     member val Value = init with get, set
 
-    member val MemoryCell = VirtualCell((fun () -> this.MemoryValue), (fun newValue -> this.MemoryValue <- newValue))
-
-    default this.MemoryValue
+    override this.MemoryValue
         with get () = this.Value
-        and set newValue = this.Value <- newValue
-    
+        and set newValue = this.Value <- newValue 
 
 type InterruptEnableRegister (init) =
     inherit ValueBackedIORegister(0uy)

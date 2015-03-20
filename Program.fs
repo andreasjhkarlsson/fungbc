@@ -20,11 +20,7 @@ let main argv =
 
     let ioRegisters = IORegisters(clock)
 
-    let mmu = MMU()
-
-    mmu.MapRAM ram
-    mmu.MapROM rom
-    mmu.MapIORegisters ioRegisters
+    let mmu = MMU(rom,ram,ioRegisters)
 
     let cpu = CPU(mmu, clock)
 

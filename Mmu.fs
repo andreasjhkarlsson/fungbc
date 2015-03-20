@@ -8,7 +8,7 @@ open IORegisters
 
 type MemoryAddress = uint16
 
-type MMU () =
+type MMU (rom: ROM, ram: GBCRam, ioRegisters: IORegisters) =
     
     let memory = blankMemoryBlock ADDRESS_SPACE_SIZE
 
@@ -18,16 +18,19 @@ type MMU () =
         {start..stop} |> Seq.iter (fun address -> 
             let cell = Array.get block (address - start |> int)
             mapAddress address cell
-        ) 
+        )
 
-    member this.MapROM (rom: ROM) = mapBlock 0x0000us 0x07FFFus rom.Code
+    do
+        // Map ROM
+        mapBlock 0x0000us 0x07FFFus rom.Code
+        mapBlock 0x0000us 0x07FFFus rom.Code
 
-    member this.MapRAM (ram: GBCRam) =
+        // Map RAM
         mapBlock 0xC000us 0xDFFFus ram.Working
         mapBlock 0xE000us 0xFDFFus ram.Working 
         mapBlock 0xFF80us 0xFFFEus ram.Stack
 
-    member this.MapIORegisters (ioRegisters: IORegisters) =
+        // Map I/O Registers
         mapAddress 0xFFFFus ioRegisters.IE.MemoryCell
         mapAddress 0xFF04us ioRegisters.DIV.MemoryCell
 

@@ -28,7 +28,8 @@ type MMU () =
         mapBlock 0xFF80us 0xFFFEus ram.Stack
 
     member this.MapIORegisters (ioRegisters: IORegisters) =
-        mapAddress 0xFFFFus ioRegisters.IE
+        mapAddress 0xFFFFus ioRegisters.IE.MemoryCell
+        mapAddress 0xFF04us ioRegisters.DIV.MemoryCell
 
     member this.Read8 (address: MemoryAddress) = (Array.get memory (int address)).Value
         

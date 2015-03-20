@@ -46,5 +46,5 @@ let hookReadWrite (cell: MemoryCell) read write =
 
 let hookRead (cell: MemoryCell) fn = hookReadWrite cell fn (fun v -> v)
 
-let hookWrite (cell: MemoryCell) fn = hookReadWrite cell (fun v -> v) fn
+let hookWrite fn (cell: MemoryCell) = hookReadWrite cell (fun v -> v) fn
 

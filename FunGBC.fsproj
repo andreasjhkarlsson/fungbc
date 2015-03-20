@@ -38,7 +38,7 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DocumentationFile>bin\Release\FunGBC.XML</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
-    <StartArguments>programs\amilliondecs.fgbc</StartArguments>
+    <StartArguments>programs\test.fgbc</StartArguments>
     <StartWorkingDirectory>C:\Users\Andreas\Desktop\FunGBC\FunGBC\</StartWorkingDirectory>
   </PropertyGroup>
   <ItemGroup>
@@ -54,13 +54,14 @@
     <None Include="App.config" />
     <Compile Include="Misc.fs" />
     <Compile Include="Units.fs" />
-    <Compile Include="BitLogic.fs" />
     <Compile Include="Constants.fs" />
+    <Compile Include="BitLogic.fs" />
     <Compile Include="MemoryCell.fs" />
     <Compile Include="Rom.fs" />
     <Compile Include="Ram.fs" />
-    <Compile Include="IORegisters.fs" />
     <Compile Include="Clock.fs" />
+    <Compile Include="Timer.fs" />
+    <Compile Include="IORegisters.fs" />
     <Compile Include="Interrupts.fs" />
     <Compile Include="Mmu.fs" />
     <Compile Include="Register.fs" />

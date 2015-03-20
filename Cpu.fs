@@ -437,7 +437,7 @@ type CPU (mmu, clock: Clock) =
         | _ -> raise (System.Exception(sprintf "opcode <%O> not implemented" instruction))
 
         // Update clock
-        clock.Tick (cycleCount instruction longCycle)
+        clock.Tick (cycleCount instruction longCycle |> uint64)
         
         match instruction with
         | STOP -> ()

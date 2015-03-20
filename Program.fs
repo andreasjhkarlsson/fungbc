@@ -16,9 +16,9 @@ let main argv =
 
     let ram = GBCRam()
 
-    let ioRegisters = IORegisters()
-
     let clock = Clock()
+
+    let ioRegisters = IORegisters(clock)
 
     let mmu = MMU()
 
@@ -41,5 +41,7 @@ let main argv =
     cpu.Registers.Print ()
 
     mmu.PrintDump 0x0 0xFF
+
+    mmu.PrintDump 0xFF00 0xFFFF
 
     0

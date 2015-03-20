@@ -107,7 +107,7 @@ type CPU (mmu) =
         let HL = registers.HL
         let SP = registers.SP
         let PC = registers.PC
-        let IE = registers.IE
+        let MasterIE = registers.MasterIE
         let CC = registers.CC
 
         let instruction = decodeOpcode PC.Value
@@ -377,7 +377,7 @@ type CPU (mmu) =
         | RETI ->
             PC.Value <- mmu.Read16 SP.Value
             SP.Value <- SP.Value + 2us
-            IE.Set
+            MasterIE.Set
         | RET_F (flag) ->
             match (F.FlagFromName flag) with
             | SET ->
@@ -409,10 +409,10 @@ type CPU (mmu) =
         | STOP ->
             () // Do nooooothing
         | EI ->
-            IE.Set
+            MasterIE.Set
             PC.Value <- nextInstruction
         | DI ->
-            IE.Clear
+            MasterIE.Clear
             PC.Value <- nextInstruction
         | DAA_R8 (r) ->
             let value = (r8 r).Value
@@ -452,7 +452,7 @@ type CPU (mmu) =
         registers.HL.Value <- 0x014Dus
         registers.SP.Value <- 0xFFFEus
         registers.PC.Value <- 0us
-        registers.IE.Set
+        registers.MasterIE.Set
         registers.CC.Value <- 0UL
 
     member this.Start () =

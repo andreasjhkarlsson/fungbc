@@ -121,7 +121,7 @@ type RegisterSet () =
     let sp = StackPointer(0us) 
     let pc = ProgramCounter(0us) 
 
-    let ie = BitRegister(CLEAR)
+    let masterIE = BitRegister(CLEAR)
 
     let cc = CycleCounter(0UL)
 
@@ -142,7 +142,7 @@ type RegisterSet () =
     member val SP = sp
     member val PC = pc
 
-    member val IE = ie
+    member val MasterIE = masterIE
 
     member val CC = cc
 
@@ -191,4 +191,4 @@ type RegisterSet () =
             h.Value l.Value af.Value bc.Value
             de.Value hl.Value pc.Value sp.Value
             cc.Value ((float cc.Value) / (float CLOCK_FREQUENCY) * 1000.0)
-            (bitStateToValue ie.Value)
+            (bitStateToValue masterIE.Value)

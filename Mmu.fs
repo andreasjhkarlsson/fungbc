@@ -2,6 +2,9 @@
 
 open Constants
 open MemoryCell
+open Rom
+open Ram
+open IORegisters
 
 type MemoryAddress = uint16
 
@@ -17,13 +20,16 @@ type MMU () =
             mapAddress address cell
         ) 
 
-    member this.MapROM = mapBlock 0x0000us 0x07FFFus
+    member this.MapROM (rom: ROM) = mapBlock 0x0000us 0x07FFFus rom.Code
 
-    member this.MapRAM working stack =
-        mapBlock 0xC000us 0xDFFFus working
-        mapBlock 0xE000us 0xFDFFus working 
-        mapBlock 0xFF80us 0xFFFEus stack
-    
+    member this.MapRAM (ram: GBCRam) =
+        mapBlock 0xC000us 0xDFFFus ram.Working
+        mapBlock 0xE000us 0xFDFFus ram.Working 
+        mapBlock 0xFF80us 0xFFFEus ram.Stack
+
+    member this.MapIORegisters (ioRegisters: IORegisters) =
+        mapAddress 0xFFFFus ioRegisters.IE
+
     member this.Read8 (address: MemoryAddress) = (Array.get memory (int address)).Value
         
     member this.Write8 address value = (Array.get memory (int address)).Value <- value

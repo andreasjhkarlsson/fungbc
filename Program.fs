@@ -3,6 +3,8 @@ open Cpu
 open Mmu
 open Rom
 open Ram
+open Interrupts
+open IORegisters
 
 [<EntryPoint>]
 let main argv = 
@@ -13,10 +15,13 @@ let main argv =
 
     let ram = GBCRam()
 
+    let ioRegisters = IORegisters()
+
     let mmu = MMU()
 
-    mmu.MapRAM ram.Working ram.Stack
-    mmu.MapROM rom.Code
+    mmu.MapRAM ram
+    mmu.MapROM rom
+    mmu.MapIORegisters ioRegisters
 
     let cpu = CPU(mmu)
 

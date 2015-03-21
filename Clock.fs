@@ -37,7 +37,7 @@ type AbsoluteClock(reference: Clock) =
 
     override this.Ticks with get () = ticks
 
-let derive clock frequency = DerivedClock(clock,frequency,0UL) :> Clock
+let derive clock frequency = DerivedClock(clock,frequency,clock.Ticks) :> Clock
 
 let freeze clock = AbsoluteClock(clock) :> Clock
 

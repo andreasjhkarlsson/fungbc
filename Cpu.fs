@@ -7,7 +7,7 @@ open BitLogic
 open Clock
 
 // Alas, how how I wish that F# had inner types so that this type could be
-// contained inside the CPU type. Now it's exposed and dirty and has to take internal
+// contained inside the CPU type. Now it's exposed and dirty and have to take internal
 // state of the CPU type as parameters. Gross!
 type ALU (registers: RegisterSet) =
 

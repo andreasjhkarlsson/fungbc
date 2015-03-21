@@ -20,6 +20,7 @@ type ReadOnlyCell (value) =
         with get () = value
         and set _ = printfn "Warning: tried to write to read-only cell"
 
+// Memory cell not represented by a concrete value
 type VirtualCell (getter, setter) =
     inherit MemoryCell()
 

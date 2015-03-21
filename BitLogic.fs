@@ -22,7 +22,7 @@ let inline (|BitsChanged|_|) bitPattern (oldValue, newValue) =
     | true -> Some (newValue &&& bitPattern)
     | false -> None
 
-let bitStateInvert = function |SET -> CLEAR |CLEAR -> SET
+let inline bitStateInvert state = match state with |SET -> CLEAR |CLEAR -> SET
 
 let inline setBit bit value = value ||| (LanguagePrimitives.GenericOne <<< bit)
 
@@ -32,14 +32,14 @@ let inline setIfZero value = if value = LanguagePrimitives.GenericZero then SET 
 
 let inline setIfNotZero value = value |> setIfZero |> bitStateInvert
 
-let setIfTrue = function |true -> SET |false -> CLEAR
+let inline setIfTrue boolean = match boolean with |true -> SET |false -> CLEAR
 
-let setIfFalse = function |false -> SET |true -> CLEAR
+let inline setIfFalse boolean = match boolean with |false -> SET |true -> CLEAR
 
-let swapNibbles value = ((value >>> 4) &&& 0xFuy) ||| (value <<< 4)
+let inline swapNibbles value = ((value >>> 4) &&& 0xFuy) ||| (value <<< 4)
 
-let nibbles value = ((value &&& 0xF0uy) >>> 4, value &&& 0xFuy)
+let inline nibbles value = ((value &&& 0xF0uy) >>> 4, value &&& 0xFuy)
 
-let highNibble value = fst (nibbles value)
+let inline highNibble value = fst (nibbles value)
 
-let lowNibble value = snd (nibbles value)
+let inline lowNibble value = snd (nibbles value)

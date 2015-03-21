@@ -5,11 +5,13 @@ open BitLogic
 open Units
 open Clock
 
+// IORegister = Memory register
 [<AbstractClass>]
 type IORegister () as this =
     abstract MemoryValue: uint8 with get, set
     member val MemoryCell = VirtualCell((fun () -> this.MemoryValue), (fun newValue -> this.MemoryValue <- newValue))
 
+// A memory register that is fundamentally a regular byte value
 type ValueBackedIORegister(init) =
     inherit IORegister ()
 
@@ -21,6 +23,7 @@ type ValueBackedIORegister(init) =
         with get () = this.Value
         and set newValue = this.Value <- newValue 
 
+// Interrupt enabled register. Controls if specific interrupts are enabled.
 type InterruptEnableRegister (init) =
     inherit ValueBackedIORegister(0uy)
     
@@ -30,6 +33,7 @@ type InterruptEnableRegister (init) =
     member this.SerialIOTransfer =  isBitSet 3 this.MemoryValue
     member this.P10P13Flip       =  isBitSet 4 this.MemoryValue
 
+// Divider register. Simply increments 16384 times per second
 type DIVRegister(clock: Clock) =
     inherit IORegister ()
 
@@ -38,9 +42,10 @@ type DIVRegister(clock: Clock) =
     let mutable clock = startClock ()
 
     override this.MemoryValue
-        with get () = clock.Ticks |> uint8
-        and set _ = clock <- startClock ()
+        with get () = clock.Ticks |> uint8 // Converting to uint8 == % 256
+        and set _ = clock <- startClock () // Writing any vlaue clears register (i.e. restart clock)
 
+// Timer counter. Increments at a frequency controlled by TAC register
 type TIMARegister (systemClock: Clock, startFrequency: int<Hz>) =
     inherit IORegister ()
 
@@ -65,6 +70,7 @@ type TIMARegister (systemClock: Clock, startFrequency: int<Hz>) =
         with get () = clock.Ticks |> uint8
         and set _ = () // This is probably wrong. TODO. 
 
+// Timer control register. Controls the TIMA register.
 type TACRegister (tima: TIMARegister,init) =
     inherit ValueBackedIORegister(init)
 
@@ -94,6 +100,7 @@ type TACRegister (tima: TIMARegister,init) =
 
             base.MemoryValue <- newValue
 
+// Timer modulo register. Is loaded into TIMA when TIMA overflows.
 type TMARegister (init) = inherit ValueBackedIORegister(init)
 
 type IORegisters (clock) =

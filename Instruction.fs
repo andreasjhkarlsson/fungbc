@@ -103,6 +103,7 @@ type Instruction =
     | RET_F         of FlagName                                 // Return if flag is set
     | RET_NF        of FlagName                                 // Return if flag is not set
 
+// Parse opcode at address and extract operands.
 let decodeOpcode (mmu: MMU) address =
     
     let mutable consumed = 0
@@ -557,6 +558,7 @@ let decodeOpcode (mmu: MMU) address =
 
 let readable instruction = GetUnionCaseName instruction
 
+// How many bytes does this instruction use in memory?
 let sizeOf instruction =
     match instruction with
     | NOP
@@ -649,8 +651,7 @@ let sizeOf instruction =
     | CALL_NF_A16 _
         -> 3
     
-
-
+// How many cycles does it take to execute this instruction?
 let cycleCount instruction long =
     match instruction with
     | ADC_R8_R8 _

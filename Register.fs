@@ -9,12 +9,14 @@ type FlagName = |Z |N |H |C
 type Register8Name =  |A |B |C |D |E |F |H |L
 type Register16Name = |AF |BC |DE |HL |SP |PC
 
+// Any type of cpu register
 [<AbstractClass>]
 type Register<'a>() =
     abstract Value: 'a with get, set
 
     member this.Update fn = this.Value <- fn this.Value
 
+// A regulat read/write register
 type DataRegister<'a>(init: 'a) =
     inherit Register<'a>()
 
@@ -24,6 +26,7 @@ type DataRegister<'a>(init: 'a) =
         with get () = data
         and set (newValue) = data <- newValue
 
+// Register consisting of a single bit
 type BitRegister(init) =
     inherit DataRegister<BitState>(init)
 
@@ -31,9 +34,11 @@ type BitRegister(init) =
     member this.Set = this.Value <- SET
     member this.Flip = this.Update bitStateInvert
 
+// A regular 8 bit register!
 type DataRegister8(init: uint8) =
     inherit DataRegister<uint8>(init)
 
+// The "F" register
 type FlagRegister(z,n,h,c) =
     inherit Register<uint8>()
     
@@ -88,7 +93,7 @@ type ProgramCounter (init) =
 type StackPointer (init) =
     inherit DataRegister16(init)
 
-
+// A 16 bit register composed of 2 8 bit ones.
 type CombinedDataRegister16 (R1: Register<uint8>, R2: Register<uint8>) =
     inherit Register<uint16>()
 
@@ -98,7 +103,7 @@ type CombinedDataRegister16 (R1: Register<uint8>, R2: Register<uint8>) =
             R1.Value <-  uint8 ((newValue >>> 8) &&& 0xFFus)  // No idea if this is correct
             R2.Value <- uint8 (newValue &&& 0xFFus)           // Nor this.
 
-
+// Collect a complete setup of cpu registers.
 type RegisterSet () =
     let a = DataRegister8(0uy) 
     let b = DataRegister8(0uy) 
@@ -161,6 +166,7 @@ type RegisterSet () =
         | PC -> pc :> Register<uint16>
         | SP -> sp :> Register<uint16>  
 
+    // Print all registers
     member this.Print () =
 
         printfn 

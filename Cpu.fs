@@ -82,7 +82,7 @@ type ALU (registers: RegisterSet) =
         F.ZNHC <- (setIfZero result,CLEAR,CLEAR,CLEAR)
         result
 
-type CPU (mmu, clock: Clock) =
+type CPU (mmu, clock: MutableClock) =
 
     let registers = RegisterSet()
 

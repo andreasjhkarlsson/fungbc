@@ -42,7 +42,7 @@ type DIVRegister(clock: Clock) =
 
     override this.MemoryValue
         with get () = count() |> uint8
-        and set _ = count <- startCount() // Writing any value to memory will clear register (count)
+        and set _ = count <- startCount () // Writing any value to memory will clear register (count)
 
 type IORegisters (clock) =
     

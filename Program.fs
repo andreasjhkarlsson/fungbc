@@ -6,6 +6,7 @@ open Ram
 open Interrupts
 open IORegisters
 open Clock
+open Constants
 
 [<EntryPoint>]
 let main argv = 
@@ -16,13 +17,13 @@ let main argv =
 
     let ram = GBCRam()
 
-    let clock = Clock()
+    let systemClock = MutableClock(GBC_SYSTEM_CLOCK_FREQUENCY,0UL)
 
-    let ioRegisters = IORegisters(clock)
+    let ioRegisters = IORegisters(systemClock)
 
     let mmu = MMU(rom,ram,ioRegisters)
 
-    let cpu = CPU(mmu, clock)
+    let cpu = CPU(mmu, systemClock)
 
     let stopWatch = System.Diagnostics.Stopwatch.StartNew()
 
@@ -32,7 +33,7 @@ let main argv =
 
     printfn "CPU execution time: %d ms" (int stopWatch.Elapsed.TotalMilliseconds) 
 
-    clock.Print ()
+    systemClock.Print ()
 
     cpu.Registers.Print ()
 

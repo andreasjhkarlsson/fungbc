@@ -23,10 +23,12 @@ type MutableClock (frequency,start) =
 
     member this.Tick count = ticks <- ticks + count
 
-type DerivedClock(reference: Clock, start) =
-    inherit Clock(reference.Frequency)
+type DerivedClock(reference: Clock, frequency, start) =
+    inherit Clock(frequency)
 
-    override this.Ticks with get () = reference.Ticks - start
+    let factor = uint64 <| reference.Frequency / frequency
+
+    override this.Ticks with get () = (reference.Ticks - start) / factor
 
 type AbsoluteClock(reference: Clock) =
     inherit Clock(reference.Frequency)
@@ -35,8 +37,8 @@ type AbsoluteClock(reference: Clock) =
 
     override this.Ticks with get () = ticks
 
-let derive clock = DerivedClock(clock,0UL) :> Clock
+let derive clock frequency = DerivedClock(clock,frequency,0UL) :> Clock
 
 let freeze clock = AbsoluteClock(clock) :> Clock
 
-let unfreeze (clock: Clock) reference = DerivedClock(reference,reference.Ticks - clock.Ticks) :> Clock
+let unfreeze (clock: Clock) reference = DerivedClock(reference,clock.Frequency,reference.Ticks - clock.Ticks) :> Clock

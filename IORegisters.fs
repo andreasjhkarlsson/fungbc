@@ -2,7 +2,6 @@
 
 open MemoryCell
 open BitLogic
-open Timer
 open Units
 open Clock
 
@@ -34,15 +33,13 @@ type InterruptEnableRegister (init) =
 type DIVRegister(clock: Clock) =
     inherit IORegister ()
 
-    let frequency = 16384<Hz>
+    let startClock () = derive clock 16384<Hz>
 
-    let startCount () = timedCount frequency clock
-
-    let mutable count = startCount ()
+    let mutable clock = startClock ()
 
     override this.MemoryValue
-        with get () = count() |> uint8
-        and set _ = count <- startCount () // Writing any value to memory will clear register (count)
+        with get () = clock.Ticks |> uint8
+        and set _ = clock <- startClock ()
 
 type IORegisters (clock) =
     

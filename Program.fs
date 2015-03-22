@@ -23,7 +23,7 @@ let main argv =
 
     let mmu = MMU(rom,ram,ioRegisters)
 
-    let cpu = CPU(mmu, systemClock)
+    let cpu = CPU(mmu,ioRegisters,systemClock)
 
     let stopWatch = System.Diagnostics.Stopwatch.StartNew()
 

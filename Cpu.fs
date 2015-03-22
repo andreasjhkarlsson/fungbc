@@ -5,6 +5,8 @@ open Register
 open Instruction
 open BitLogic
 open Clock
+open Interrupts
+open IORegisters
 
 // Alas, how how I wish that F# had inner types so that this type could be
 // contained inside the CPU type. Now it's exposed and dirty and have to take internal
@@ -82,33 +84,56 @@ type ALU (registers: RegisterSet) =
         F.ZNHC <- (setIfZero result,CLEAR,CLEAR,CLEAR)
         result
 
-type CPU (mmu, clock: MutableClock) =
+type CPU (mmu, ioRegisters: IORegisters, clock: MutableClock) as this =
 
     let registers = RegisterSet()
 
     let alu = ALU(registers)
 
+    let A = registers.A
+    let B = registers.B
+    let C = registers.C
+    let D = registers.D
+    let E = registers.E
+    let F = registers.F
+    let H = registers.H
+    let L = registers.L
+    let AF = registers.AF
+    let BC = registers.BC
+    let DE = registers.DE
+    let HL = registers.HL
+    let SP = registers.SP
+    let PC = registers.PC
+    let MasterIE = registers.MasterIE
+
     let decodeOpcode = decodeOpcode mmu
 
     let mutable debugEnabled = false
 
-    let rec execute () = 
+    let push16 value =
+        SP.Value <- SP.Value - 2us
+        mmu.Write16 SP.Value value
 
-        let A = registers.A
-        let B = registers.B
-        let C = registers.C
-        let D = registers.D
-        let E = registers.E
-        let F = registers.F
-        let H = registers.H
-        let L = registers.L
-        let AF = registers.AF
-        let BC = registers.BC
-        let DE = registers.DE
-        let HL = registers.HL
-        let SP = registers.SP
-        let PC = registers.PC
-        let MasterIE = registers.MasterIE
+    let pop16 () =
+        let result = mmu.Read16 SP.Value
+        SP.Value <- SP.Value + 2us
+        result
+
+    let checkForInterrupts () =
+
+        let checkForTimerInterrupt () =
+            if ioRegisters.TIMA.Overflowed () then
+                TIMER_OVERFLOW (ioRegisters.TIMA,ioRegisters.TMA, ioRegisters.IF) |> this.RaiseInterrupt
+            else
+                ()
+
+        match MasterIE.Value with
+        | SET ->
+            if ioRegisters.IE.TimerOverflow then checkForTimerInterrupt ()
+        | CLEAR ->
+            ()
+
+    let rec execute () = 
 
         let instruction = decodeOpcode PC.Value
 
@@ -174,12 +199,10 @@ type CPU (mmu, clock: MutableClock) =
             mmu.Write8 (0xFF00us + (uint16 (r8 ar).Value)) (r8 r).Value
             PC.Value <- nextInstruction
         | PUSH_R16 (r) ->
-            SP.Value <- SP.Value - 2us
-            mmu.Write16 SP.Value (r16 r).Value
+            push16 (r16 r).Value
             PC.Value <- nextInstruction
         | POP_R16 (r) ->
-            (r16 r).Value <- mmu.Read16 SP.Value
-            SP.Value <- SP.Value + 2us
+            (r16 r).Value <- pop16 ()
             PC.Value <- nextInstruction
         (*
             ALU operations
@@ -348,15 +371,13 @@ type CPU (mmu, clock: MutableClock) =
                 | SET ->
                     nextInstruction
         | CALL_A16 (address) ->
-            SP.Value <- SP.Value - 2us
-            mmu.Write16 SP.Value nextInstruction
+            push16 nextInstruction
             PC.Value <- address
         | CALL_F_A16 (flag, address) ->
             PC.Value <-
                 match (F.FlagFromName flag) with
                 | SET ->
-                    SP.Value <- SP.Value - 2us
-                    mmu.Write16 SP.Value nextInstruction
+                    push16 nextInstruction
                     longCycle <- true
                     address
                 | CLEAR ->
@@ -367,22 +388,18 @@ type CPU (mmu, clock: MutableClock) =
                 | SET ->
                     nextInstruction
                 | CLEAR ->
-                    SP.Value <- SP.Value - 2us
-                    mmu.Write16 SP.Value nextInstruction
+                    push16 nextInstruction
                     longCycle <- true
                     address
         | RET ->
-            PC.Value <- mmu.Read16 SP.Value
-            SP.Value <- SP.Value + 2us
+            PC.Value <- pop16 ()
         | RETI ->
-            PC.Value <- mmu.Read16 SP.Value
-            SP.Value <- SP.Value + 2us
+            PC.Value <- pop16 ()
             MasterIE.Set
         | RET_F (flag) ->
             match (F.FlagFromName flag) with
             | SET ->
-                PC.Value <- mmu.Read16 SP.Value
-                SP.Value <- SP.Value + 2us
+                PC.Value <- pop16 ()
                 longCycle <- true
             | CLEAR ->
                 PC.Value <- nextInstruction
@@ -391,8 +408,7 @@ type CPU (mmu, clock: MutableClock) =
             | SET ->
                 PC.Value <- nextInstruction
             | CLEAR ->
-                PC.Value <- mmu.Read16 SP.Value
-                SP.Value <- SP.Value + 2us
+                PC.Value <- pop16 ()
                 longCycle <- true
                 
         (*
@@ -438,10 +454,19 @@ type CPU (mmu, clock: MutableClock) =
 
         // Update clock
         clock.Tick (cycleCount instruction longCycle |> uint64)
+
+        // Check for interrupts
+        checkForInterrupts ()
         
         match instruction with
         | STOP -> ()
         | _ -> execute ()
+
+    member this.RaiseInterrupt interrupt =
+        registers.MasterIE.Clear
+        push16 PC.Value
+        PC.Value <- Interrupts.handler interrupt
+        Interrupts.execute interrupt
 
     
     member this.Reset () =
@@ -457,8 +482,6 @@ type CPU (mmu, clock: MutableClock) =
     member this.Start () =
         this.Reset()
         execute ()
-
-    member this.MMU = mmu
 
     member this.Registers = registers
 

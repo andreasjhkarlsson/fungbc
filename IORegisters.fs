@@ -25,7 +25,7 @@ type ValueBackedIORegister(init) =
 
 // Interrupt enabled register. Controls if specific interrupts are enabled.
 type InterruptEnableRegister (init) =
-    inherit ValueBackedIORegister(0uy)
+    inherit ValueBackedIORegister(init)
     
     member this.VBlank           =  isBitSet 0 this.MemoryValue 
     member this.LCDC             =  isBitSet 1 this.MemoryValue
@@ -53,11 +53,14 @@ type TIMARegister (systemClock: Clock, startFrequency: int<Hz>) =
     
     let mutable clock = startClock startFrequency 
     let mutable paused = false
+    let mutable baseValue = 0uy
 
     member this.Frequency
         with set frequency =
             clock <- startClock frequency
             if paused then clock <- freeze clock
+
+    member this.ResetClock () = this.Frequency <- clock.Frequency 
 
     member this.Paused
         with set state =
@@ -67,8 +70,14 @@ type TIMARegister (systemClock: Clock, startFrequency: int<Hz>) =
             paused <- state
 
     override this.MemoryValue
-        with get () = clock.Ticks |> uint8
-        and set _ = () // This is probably wrong. TODO. 
+        with get () =
+            clock.Ticks + uint64 baseValue |> uint8
+        and set value =
+            baseValue <- value
+            this.ResetClock ()
+
+    member this.Overflowed () = clock.Ticks + uint64 baseValue > 0xFFUL
+
 
 // Timer control register. Controls the TIMA register.
 type TACRegister (tima: TIMARegister,init) =
@@ -103,17 +112,34 @@ type TACRegister (tima: TIMARegister,init) =
 // Timer modulo register. Is loaded into TIMA when TIMA overflows.
 type TMARegister (init) = inherit ValueBackedIORegister(init)
 
+// Interrupt flag register. I set according to the current interrupt
+type IFRegister(init) as this =
+    inherit ValueBackedIORegister(init)
+
+    let setBit bit = this.Value <- 0uy |> BitLogic.setBit bit
+    
+    member this.SetVBlank ()            = setBit 0
+    member this.SetLCDC ()              = setBit 1
+    member this.SetTimerOverflow ()     = setBit 2
+    member this.SetSerialIOTransfer ()  = setBit 3
+    member this.P10P13Flip ()           = setBit 4
+
+    member this.Clear = this.Value <- 0uy
+
 type IORegisters (clock) =
     
-    let ie = InterruptEnableRegister(0uy)   
+    let ie = InterruptEnableRegister(0x1Fuy)   
     let div = DIVRegister(clock)
     let tima = TIMARegister(clock,4096<Hz>)
     let tma = TMARegister(0uy)
     let tac = TACRegister(tima,0x4uy)
+    let _if = IFRegister(0uy)
     
     member this.IE = ie
+    member this.IF = _if
     member this.DIV = div
     member this.TIMA = tima
     member this.TMA = tma
     member this.TAC = tac
+
     

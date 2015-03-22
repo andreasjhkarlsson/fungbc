@@ -40,8 +40,9 @@ type MMU (rom: ROM, ram: GBCRam, ioRegisters: IORegisters) =
         mapAddress 0xFF05us ioRegisters.TIMA.MemoryCell
         mapAddress 0xFF06us ioRegisters.TMA.MemoryCell
         mapAddress 0xFF07us ioRegisters.TAC.MemoryCell
+        mapAddress 0xFF0Fus ioRegisters.IF.MemoryCell
         mapAddress 0xFFFFus ioRegisters.IE.MemoryCell
-        
+
     // Read mapped byte
     member this.Read8 (address: MemoryAddress) = (Array.get memory (int address)).Value
     

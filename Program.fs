@@ -11,9 +11,15 @@ open Constants
 [<EntryPoint>]
 let main argv = 
     
-    if argv.Length <> 1 then raise (System.Exception("Usage: fgbc <fgbc-file>"))
+    if argv.Length <> 1 then raise <| System.Exception("Usage: fgbc <fgbc-file>")
 
-    let rom = LoadROMFromFGBC argv.[0]
+    let rom =
+        let path = argv.[0]
+        let ext = (System.IO.Path.GetExtension path).ToLower ()
+        match ext with
+        | ".fgbc" -> Rom.loadFromFGBC path
+        | ".gb" -> Rom.loadFromCartDump path
+        | _ -> raise <| System.Exception(sprintf "Unsupported file extension: %s" ext)
 
     let ram = GBCRam()
 

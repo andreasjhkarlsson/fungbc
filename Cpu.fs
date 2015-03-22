@@ -476,7 +476,7 @@ type CPU (mmu, ioRegisters: IORegisters, clock: MutableClock) as this =
         registers.DE.Value <- 0x00D8us
         registers.HL.Value <- 0x014Dus
         registers.SP.Value <- 0xFFFEus
-        registers.PC.Value <- 0us
+        registers.PC.Value <- 0x100us
         registers.MasterIE.Set
 
     member this.Start () =

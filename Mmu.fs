@@ -27,8 +27,7 @@ type MMU (rom: ROM, ram: GBCRam, ioRegisters: IORegisters) =
     // Map memory!!!
     do
         // Map ROM
-        mapBlock 0x0000us 0x07FFFus rom.Code
-        mapBlock 0x0000us 0x07FFFus rom.Code
+        mapBlock 0x0000us 0x07FFFus rom.MemoryBlock
 
         // Map RAM
         mapBlock 0xC000us 0xDFFFus ram.Working

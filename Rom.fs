@@ -122,7 +122,7 @@ type CartHeader(bytes: array<uint8>) =
 
         member this.HeaderChecksum = bytes.[0x4D]
 
-        member this.GlobalChecksum = bytes.[0x4E] ||| (bytes.[0x4F] <<< 8) // Little endian
+        member this.GlobalChecksum = (bytes.[0x4E] <<< 8) ||| (bytes.[0x4F]) // Big endian
 
 
 type CartROM (data) =

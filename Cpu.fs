@@ -345,13 +345,13 @@ type CPU (mmu, timerInterrupt: TimerInterrupt, clock: MutableClock) as this =
                     longCycle <- true
                     address
         | JR_A8 (offset) ->
-            PC.Value <- (int16 PC.Value) + (int16 offset) |> uint16 
+            PC.Value <- (int16 nextInstruction) + (int16 offset) |> uint16 
         | JR_F_A8 (f, offset) ->
             PC.Value <-
                 match (F.FlagFromName f) with
                 | SET ->
                     longCycle <- true
-                    (int16 PC.Value) + (int16 offset) |> uint16
+                    (int16 nextInstruction) + (int16 offset) |> uint16
                 | CLEAR ->
                     nextInstruction
         | JR_NF_A8 (f, offset) ->
@@ -359,7 +359,7 @@ type CPU (mmu, timerInterrupt: TimerInterrupt, clock: MutableClock) as this =
                 match (F.FlagFromName f) with
                 | CLEAR ->
                     longCycle <- true
-                    (int16 PC.Value) + (int16 offset) |> uint16
+                    (int16 nextInstruction) + (int16 offset) |> uint16
                 | SET ->
                     nextInstruction
         | CALL_A16 (address) ->

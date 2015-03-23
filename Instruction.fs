@@ -244,6 +244,7 @@ let decodeOpcode (mmu: MMU) address =
     | 0x84 -> ADD_R8_R8     (A,H)
     | 0x85 -> ADD_R8_R8     (A,L)
     | 0x86 -> ADD_R8_AR16   (A,HL)
+    | 0x87 -> ADD_R8_R8     (A,A)
     | 0x88 -> ADC_R8_R8     (A,B)
     | 0x89 -> ADC_R8_R8     (A,C)
     | 0x8A -> ADC_R8_R8     (A,D)

@@ -162,6 +162,9 @@ type CPU (mmu, timerInterrupt: TimerInterrupt, clock: MutableClock) as this =
         | LD_R8_AR16 (r, ar) ->
             (r8 r).Value <- mmu.Read8 (r16 ar).Value
             PC.Value <- nextInstruction
+        | LD_AR16_R8 (ar, r) ->
+            mmu.Write8 (r16 ar).Value (r8 r).Value
+            PC.Value <- nextInstruction
         | LD_R16_D16 (r,value) ->
             (r16 r).Value <- value
             PC.Value <- nextInstruction

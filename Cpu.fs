@@ -6,7 +6,6 @@ open Instruction
 open BitLogic
 open Clock
 open Interrupts
-open IORegisters
 
 // Alas, how how I wish that F# had inner types so that this type could be
 // contained inside the CPU type. Now it's exposed and dirty and have to take internal
@@ -84,7 +83,7 @@ type ALU (registers: RegisterSet) =
         F.ZNHC <- (setIfZero result,CLEAR,CLEAR,CLEAR)
         result
 
-type CPU (mmu, ioRegisters: IORegisters, clock: MutableClock) as this =
+type CPU (mmu, timerInterrupt: TimerInterrupt, clock: MutableClock) as this =
 
     let registers = RegisterSet()
 
@@ -119,17 +118,10 @@ type CPU (mmu, ioRegisters: IORegisters, clock: MutableClock) as this =
         SP.Value <- SP.Value + 2us
         result
 
-    let checkForInterrupts () =
-
-        let checkForTimerInterrupt () =
-            if ioRegisters.TIMA.Overflowed () then
-                TIMER_OVERFLOW (ioRegisters.TIMA,ioRegisters.TMA, ioRegisters.IF) |> this.RaiseInterrupt
-            else
-                ()
-
+    let checkForTimerInterrupt () =
         match MasterIE.Value with
         | SET ->
-            if ioRegisters.IE.TimerOverflow then checkForTimerInterrupt ()
+            if timerInterrupt.Check () then this.RaiseInterrupt timerInterrupt
         | CLEAR ->
             ()
 
@@ -456,18 +448,16 @@ type CPU (mmu, ioRegisters: IORegisters, clock: MutableClock) as this =
         clock.Tick (cycleCount instruction longCycle |> uint64)
 
         // Check for interrupts
-        checkForInterrupts ()
+        checkForTimerInterrupt ()
         
         match instruction with
         | STOP -> ()
         | _ -> execute ()
 
-    member this.RaiseInterrupt interrupt =
+    member this.RaiseInterrupt (interrupt: Interrupt) =
         registers.MasterIE.Clear
         push16 PC.Value
-        PC.Value <- Interrupts.handler interrupt
-        Interrupts.execute interrupt
-
+        PC.Value <- match interrupt.Execute () with | InterruptHandler address -> address
     
     member this.Reset () =
         registers.A.Value <- 0x00uy

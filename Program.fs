@@ -5,9 +5,9 @@ open Mmu
 open Rom
 open Ram
 open Interrupts
-open IORegisters
 open Clock
 open Constants
+open Timer
 
 [<EntryPoint>]
 let main argv = 
@@ -26,13 +26,17 @@ let main argv =
 
     let systemClock = MutableClock(GBC_SYSTEM_CLOCK_FREQUENCY,0UL)
 
-    let ioRegisters = IORegisters(systemClock)
+    let interruptRegisters = InterruptRegisters()
+
+    let timers = Timers(systemClock)
+
+    let timerInterrupt = TimerInterrupt(timers,interruptRegisters)
 
     let gpu = GPU()
 
-    let mmu = MMU(gpu, rom,ram,ioRegisters)
+    let mmu = MMU(gpu, rom,ram,interruptRegisters,timers)
 
-    let cpu = CPU(mmu,ioRegisters,systemClock)
+    let cpu = CPU(mmu,timerInterrupt,systemClock)
 
     let stopWatch = System.Diagnostics.Stopwatch.StartNew()
 
@@ -49,7 +53,5 @@ let main argv =
     mmu.PrintDump 0x0 0xFF
 
     mmu.PrintDump 0xFF00 0xFFFF
-
-
 
     0

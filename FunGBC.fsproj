@@ -64,6 +64,7 @@
     <Compile Include="Ram.fs" />
     <Compile Include="Clock.fs" />
     <Compile Include="IORegisters.fs" />
+    <Compile Include="Timer.fs" />
     <Compile Include="Interrupts.fs" />
     <Compile Include="Gpu.fs" />
     <Compile Include="Mmu.fs" />

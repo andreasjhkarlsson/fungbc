@@ -5,11 +5,12 @@ open MemoryCell
 open Rom
 open Ram
 open IORegisters
+open Gpu
 
 type MemoryAddress = uint16
 
 // Maps the address space of the GBC into different parts (rom, ram, ioregisters, etc.)
-type MMU (rom: ROM, ram: GBCRam, ioRegisters: IORegisters) =
+type MMU (gpu: GPU, rom: ROM, ram: GBCRam, ioRegisters: IORegisters) =
     
     // Initially make all memory blank.
     let memory = blankMemoryBlock ADDRESS_SPACE_SIZE
@@ -28,6 +29,9 @@ type MMU (rom: ROM, ram: GBCRam, ioRegisters: IORegisters) =
     do
         // Map ROM
         mapBlock 0x0000us 0x07FFFus rom.MemoryBlock
+
+        // Map VRAM
+        mapBlock 0x8000us 0x9FFFus gpu.VRAM.MemoryBlock
 
         // Map RAM
         mapBlock 0xC000us 0xDFFFus ram.Working

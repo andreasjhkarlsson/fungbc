@@ -25,7 +25,7 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DocumentationFile>bin\Debug\FunGBC.XML</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
-    <StartArguments>programs\test.fgbc</StartArguments>
+    <StartArguments>programs\amilliondecs.fgbc</StartArguments>
     <StartWorkingDirectory>C:\Users\Andreas\Desktop\FunGBC\FunGBC\</StartWorkingDirectory>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
@@ -48,7 +48,9 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Numerics" />
+    <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
@@ -58,10 +60,12 @@
     <Compile Include="BitLogic.fs" />
     <Compile Include="MemoryCell.fs" />
     <Compile Include="Rom.fs" />
+    <Compile Include="Tile.fs" />
     <Compile Include="Ram.fs" />
     <Compile Include="Clock.fs" />
     <Compile Include="IORegisters.fs" />
     <Compile Include="Interrupts.fs" />
+    <Compile Include="Gpu.fs" />
     <Compile Include="Mmu.fs" />
     <Compile Include="Register.fs" />
     <Compile Include="Instruction.fs" />

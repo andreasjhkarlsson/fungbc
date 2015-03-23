@@ -1,5 +1,6 @@
 ﻿
 open Cpu
+open Gpu
 open Mmu
 open Rom
 open Ram
@@ -27,7 +28,9 @@ let main argv =
 
     let ioRegisters = IORegisters(systemClock)
 
-    let mmu = MMU(rom,ram,ioRegisters)
+    let gpu = GPU()
+
+    let mmu = MMU(gpu, rom,ram,ioRegisters)
 
     let cpu = CPU(mmu,ioRegisters,systemClock)
 
@@ -46,5 +49,7 @@ let main argv =
     mmu.PrintDump 0x0 0xFF
 
     mmu.PrintDump 0xFF00 0xFFFF
+
+
 
     0

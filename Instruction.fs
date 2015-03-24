@@ -557,7 +557,7 @@ let decodeOpcode (mmu: MMU) address =
     | 0xFE -> CP_R8_D8      (A, int8Operand ())
     | _ -> raise (System.Exception(sprintf "decoder for opcode 0x%02X> not implemented" opcode))
 
-let readable instruction = GetUnionCaseName instruction
+let readable instruction = sprintf "%A" instruction
 
 // How many bytes does this instruction use in memory?
 let sizeOf instruction =

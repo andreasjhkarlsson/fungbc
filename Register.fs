@@ -165,28 +165,3 @@ type RegisterSet () =
         | HL -> hl :> Register<uint16>
         | PC -> pc :> Register<uint16>
         | SP -> sp :> Register<uint16>  
-
-    // Print all registers
-    member this.Print () =
-
-        printfn 
-          @"Registers:
-            A  = 0x%02X
-            B  = 0x%02X
-            C  = 0x%02X
-            D  = 0x%02X
-            E  = 0x%02X
-            F  = 0x%02X (Z = %d, N = %d, H = %d, C = %d)
-            H  = 0x%02X
-            L  = 0x%02X
-            AF = 0x%04X
-            BC = 0x%04X
-            DE = 0x%04X
-            HL = 0x%04X
-            PC = 0x%04X
-            SP = 0x%04X
-            IE = %d" a.Value b.Value c.Value d.Value e.Value 
-            f.Value (bitStateToValue f.Z) (bitStateToValue f.N) (bitStateToValue f.H) (bitStateToValue f.C)
-            h.Value l.Value af.Value bc.Value
-            de.Value hl.Value pc.Value sp.Value
-            (bitStateToValue masterIE.Value)

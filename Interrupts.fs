@@ -30,7 +30,7 @@ type IFRegister(init) as this =
     member this.Clear = this.Value <- 0uy
 
 type InterruptRegisters () =
-    let ie = InterruptEnableRegister(0x1Fuy)   
+    let ie = InterruptEnableRegister(0x00uy)   
     let _if = IFRegister(0uy)
     
     member this.IE = ie

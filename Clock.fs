@@ -14,8 +14,6 @@ type Clock (frequency: int<Hz>) =
 
     member this.MilliSeconds = this.Seconds * 1000.0
 
-    member this.Print () = printfn "Clock:\n\tCycles: %d,\tTime: %.4f ms" this.Ticks this.MilliSeconds
-
 // This clock ticks according to a mutable value that clients manipulate
 type MutableClock (frequency,start) =
     inherit Clock(frequency)

@@ -107,7 +107,7 @@ type CPU (mmu, timerInterrupt: TimerInterrupt, clock: MutableClock) as this =
 
     let decodeOpcode = decodeOpcode mmu
 
-    let mutable debugEnabled = false
+    let mutable stopped = false
 
     let push16 value =
         SP.Value <- SP.Value - 2us
@@ -129,14 +129,14 @@ type CPU (mmu, timerInterrupt: TimerInterrupt, clock: MutableClock) as this =
 
         let instruction = decodeOpcode PC.Value
 
+        match this.Hook with | Some hook -> hook instruction | None -> ()
+
         let instructionSize = sizeOf instruction
 
         PC.Value <- PC.Value + (uint16 instructionSize)
 
         // Just one little mutable flag. Sorry purists.
         let mutable longCycle = false
-
-        //printfn "Executing instruction: %s @ 0x%04X" (readable instruction) PC.Value
 
         // Shorted versions of name -> register lookup functions
         let r8 = registers.From8Name
@@ -391,9 +391,7 @@ type CPU (mmu, timerInterrupt: TimerInterrupt, clock: MutableClock) as this =
         // Check for interrupts
         checkForTimerInterrupt ()
         
-        match instruction with
-        | STOP -> ()
-        | _ -> execute ()
+        if not stopped then execute ()
 
     member this.RaiseInterrupt (interrupt: Interrupt) =
         registers.MasterIE.Clear
@@ -414,6 +412,10 @@ type CPU (mmu, timerInterrupt: TimerInterrupt, clock: MutableClock) as this =
         this.Reset()
         execute ()
 
+    member this.Stop () = stopped <- true
+
     member this.Registers = registers
+
+    member val Hook: (Instruction -> unit) option = None with get, set
 
 

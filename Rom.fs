@@ -6,8 +6,13 @@ open BitLogic
 
 [<AbstractClass>]
 type ROM () =
+    
+    let ram = readWriteMemoryBlock 8192
+
     abstract getCell: int -> MemoryCell
     member this.MemoryBlock = Array.init (pown 2 15) this.getCell
+
+    member this.Ram = ram
 
 
 type StaticROM (code) =

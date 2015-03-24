@@ -8,6 +8,7 @@ open Interrupts
 open Clock
 open Constants
 open Timer
+open Debugger
 
 [<EntryPoint>]
 let main argv = 
@@ -32,26 +33,18 @@ let main argv =
 
     let timerInterrupt = TimerInterrupt(timers,interruptRegisters)
 
-    let gpu = GPU()
+    let gpu = GPU(systemClock)
 
     let mmu = MMU(gpu, rom,ram,interruptRegisters,timers)
 
     let cpu = CPU(mmu,timerInterrupt,systemClock)
 
-    let stopWatch = System.Diagnostics.Stopwatch.StartNew()
+    let debugger = Debugger(cpu,mmu, systemClock)
 
-    cpu.Start ()
+    debugger.Attach ()
 
-    stopWatch.Stop()
+    debugger.Start ()
 
-    printfn "CPU execution time: %d ms" (int stopWatch.Elapsed.TotalMilliseconds) 
-
-    systemClock.Print ()
-
-    cpu.Registers.Print ()
-
-    mmu.PrintDump 0x0 0xFF
-
-    mmu.PrintDump 0xFF00 0xFFFF
+    debugger.PrintSummary ()
 
     0

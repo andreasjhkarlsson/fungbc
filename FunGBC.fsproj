@@ -25,7 +25,7 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DocumentationFile>bin\Debug\FunGBC.XML</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
-    <StartArguments>programs\amilliondecs.fgbc</StartArguments>
+    <StartArguments>programs\test.gb</StartArguments>
     <StartWorkingDirectory>C:\Users\Andreas\Desktop\FunGBC\FunGBC\</StartWorkingDirectory>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
@@ -38,7 +38,7 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DocumentationFile>bin\Release\FunGBC.XML</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
-    <StartArguments>programs\test.fgbc</StartArguments>
+    <StartArguments>programs\test.gb</StartArguments>
     <StartWorkingDirectory>C:\Users\Andreas\Desktop\FunGBC\FunGBC\</StartWorkingDirectory>
   </PropertyGroup>
   <ItemGroup>
@@ -71,6 +71,7 @@
     <Compile Include="Register.fs" />
     <Compile Include="Instruction.fs" />
     <Compile Include="Cpu.fs" />
+    <Compile Include="Debugger.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <PropertyGroup>

@@ -67,18 +67,5 @@ type MMU (gpu: GPU, rom: ROM, ram: GBCRam, interruptRegisters: InterruptRegister
     member this.Write16 address (value: uint16) =
         this.Write8 address (uint8 value)
         this.Write8 (address + 1us) (value >>> 8 |> uint8)
-    
-    // Print contents of memory inside range
-    member this.PrintDump fromAddress toAddress =
-        
-        printfn "Memory dump (0x%04X - 0x%04X):\n\n        0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F\n" (fromAddress &&& 0xFFF0) (toAddress ||| 0xF)
-        [(fromAddress >>> 4)..(toAddress >>> 4)] |> Seq.iter (fun x ->
-            printf "0x%03Xx " x
-            [0..15] |> Seq.iter (fun y ->
-                printf "%02X " (this.Read8 (x <<< 4 ||| y |> uint16))
-                )
-            printfn ""
-            )
-        
 
     

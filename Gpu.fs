@@ -23,7 +23,7 @@ type VRAM () =
     member this.MemoryBlock = memory
 
 
-type GPU () =
+type GPU (clock) =
     let vram = VRAM()
 
     member this.VRAM = vram

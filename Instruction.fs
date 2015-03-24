@@ -67,6 +67,7 @@ type Instruction =
     | ADD_R8_D8      of Register8Name*uint8                     // Add 8 bit value to 8 bit register
     | ADD_R8_AR16    of Register8Name*Register16Name            // Add value pointed by 16 bit register to 8 bit register
     | ADD_R16_R16    of Register16Name*Register16Name           // Add 16 bit register to 16 bit register
+    | ADD_R16_D8     of Register16Name*int8                     // Add signed 8 bit value to 16 bit register
     | ADC_R8_R8      of Register8Name*Register8Name             // Add 8 bit register to 8 bit register with carry
     | ADC_R8_D8      of Register8Name*uint8                     // Add 8 bit value to 8 bit register with carry
     | ADC_R8_AR16    of Register8Name*Register16Name            // Add value in address in 16 bit register to 8 bit register with carry
@@ -540,6 +541,7 @@ let decodeOpcode (mmu: MMU) address =
     | 0xE2 -> LDH_AR8_R8    (C, A)
     | 0xE5 -> PUSH_R16      (HL)
     | 0xE6 -> AND_R8_D8     (A, int8Operand ())
+    | 0xE8 -> ADD_R16_D8    (SP, int8Operand () |> int8)
     | 0xE9 -> JP_AR16       (HL)
     | 0xEA -> LD_A16_R8     (uint16 <| int16Operand(), A)
     | 0xEE -> XOR_R8_D8     (A, int8Operand ())
@@ -619,6 +621,7 @@ let sizeOf instruction =
     | LD_R8_D8 _ 
     | ADC_R8_D8 _
     | ADD_R8_D8 _
+    | ADD_R16_D8 _
     | AND_R8_D8 _
     | CP_R8_D8 _
     | JR_A8 _
@@ -721,6 +724,7 @@ let cycleCount instruction long =
     | LD_R16_R16 _
     | POP_R16 _
         -> 12
+    | ADD_R16_D8 _
     | JP_A16 _
     | LD_A16_R8 _
     | LD_R8_A16 _

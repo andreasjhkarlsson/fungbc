@@ -159,6 +159,8 @@ type CPU (mmu, timerInterrupt: TimerInterrupt, clock: MutableClock) as this =
             (r8 r).Value <- mmu.Read8 (r16 ar).Value
         | LD_AR16_R8 (ar, r) ->
             mmu.Write8 (r16 ar).Value (r8 r).Value
+        | LD_AR16_D8 (ar, operand) ->
+            mmu.Write8 (r16 ar).Value operand
         | LD_R16_D16 (r,value) ->
             (r16 r).Value <- value
         | LDI_R8_AR16 (r,ar) ->
@@ -194,6 +196,10 @@ type CPU (mmu, timerInterrupt: TimerInterrupt, clock: MutableClock) as this =
             (r8 r).Value <- alu.Add8 (r8 r).Value (mmu.Read8 (r16 ar).Value) 0uy
         | ADD_R16_R16 (r1,r2) ->
             (r16 r1).Value <- alu.Add16 (r16 r1).Value (r16 r2).Value
+        | ADD_R16_D8 (r, operand) ->
+            (r16 r).Value <- alu.Add16 (r16 r).Value (uint16 operand) // No idea if this sets correct flags.
+        | LDHL_R16_D8 (r, operand) ->
+            HL.Value <- alu.Add16 (r16 r).Value (uint16 operand) // No idea if this sets correct flags.
         | ADC_R8_R8 (r1, r2) ->
             (r8 r1).Value <- alu.Add8 (r8 r1).Value (r8 r2).Value (bitStateToValue F.C)
         | ADC_R8_D8 (r, operand) ->

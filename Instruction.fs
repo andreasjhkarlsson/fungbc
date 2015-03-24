@@ -596,6 +596,7 @@ let sizeOf instruction =
     | LD_AR16_R8 _
     | LD_R16_R16 _
     | LD_R8_R8 _
+    | LD_R8_AR16 _
     | OR_R8_AR16 _
     | OR_R8_R8 _
     | POP_R16 _
@@ -646,7 +647,6 @@ let sizeOf instruction =
     | LD_A16_R16 _
     | LD_A16_R8 _
     | LD_R16_D16 _
-    | LD_R8_AR16 _
     | CALL_A16 _
     | CALL_F_A16 _
     | CALL_NF_A16 _

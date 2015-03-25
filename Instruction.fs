@@ -103,6 +103,7 @@ type Instruction =
     | RETI                                                      // Return from subroutine and enable interrupts
     | RET_F         of FlagName                                 // Return if flag is set
     | RET_NF        of FlagName                                 // Return if flag is not set
+    | RST           of MemoryAddress                            // Restart at address (simple call to address)
     
 
 // Parse opcode at address and extract operands.
@@ -311,6 +312,7 @@ let decodeOpcode (mmu: MMU) address =
     | 0xC4 -> CALL_NF_A16   (Z, int16Operand ())
     | 0xC5 -> PUSH_R16      (BC)
     | 0xC6 -> ADD_R8_D8     (A, int8Operand ())
+    | 0xC7 -> RST           (0x0000us)
     | 0xC8 -> RET_F         (Z)
     | 0xC9 -> RET
     | 0xCA -> JP_F_A16      (Z, int16Operand ())
@@ -520,31 +522,37 @@ let decodeOpcode (mmu: MMU) address =
     | 0xCC -> CALL_F_A16    (Z, int16Operand ())
     | 0xCD -> CALL_A16      (int16Operand ())
     | 0xCE -> ADC_R8_D8     (A, int8Operand ())
+    | 0xCF -> RST           (0x0008us)
     | 0xD0 -> RET_NF        (FlagName.C)
     | 0xD1 -> POP_R16       (DE)
     | 0xD2 -> JP_NF_A16     (FlagName.C, int16Operand ())
     | 0xD4 -> CALL_NF_A16   (FlagName.C, int16Operand ())
     | 0xD5 -> PUSH_R16      (DE)
     | 0xD6 -> SUB_R8_D8     (A, int8Operand ())
+    | 0xD7 -> RST           (0x0010us)
     | 0xD8 -> RET_F         (FlagName.C)
     | 0xD9 -> RETI
     | 0xDA -> JP_F_A16      (FlagName.C, int16Operand ())
     | 0xDC -> CALL_F_A16    (FlagName.C, int16Operand ())
+    | 0xDF -> RST           (0x0018us)
     | 0xE1 -> POP_R16       (HL)
     | 0xDE -> SBC_R8_D8     (A, int8Operand ())
     | 0xE0 -> LDH_A8_R8     (int8Operand (), A)
     | 0xE2 -> LDH_AR8_R8    (C, A)
     | 0xE5 -> PUSH_R16      (HL)
     | 0xE6 -> AND_R8_D8     (A, int8Operand ())
+    | 0xE7 -> RST           (0x0020us)
     | 0xE8 -> ADD_R16_D8    (SP, int8Operand () |> int8)
     | 0xE9 -> JP_AR16       (HL)
     | 0xEA -> LD_A16_R8     (uint16 <| int16Operand(), A)
     | 0xEE -> XOR_R8_D8     (A, int8Operand ())
+    | 0xEF -> RST           (0x0028us)
     | 0xF0 -> LDH_R8_A8     (A,int8Operand ())
     | 0xF1 -> POP_R16       (AF)
     | 0xF3 -> DI
     | 0xF5 -> PUSH_R16      (AF)
     | 0xF6 -> OR_R8_D8      (A, int8Operand ())
+    | 0xF7 -> RST           (0x0030us)
     | 0xF8 -> LDHL_R16_D8   (SP,int8 <| int8Operand ())
     | 0xF9 -> LD_R16_R16    (SP,HL)
     | 0xFA -> LD_R8_A16     (A,uint16 <| int16Operand ())
@@ -552,6 +560,7 @@ let decodeOpcode (mmu: MMU) address =
     | 0xFC -> FGBC_PRINTA_R8(A)
     | 0xFD -> FGBC_PRINT_R8 (A)
     | 0xFE -> CP_R8_D8      (A, int8Operand ())
+    | 0xFF -> RST           (0x0038us)
     | _ -> raise (System.Exception(sprintf "decoder for opcode 0x%02X> not implemented" opcode))
 
 let readable instruction = sprintf "%A" instruction
@@ -610,6 +619,7 @@ let sizeOf instruction =
     | RETI
     | RET_F _
     | RET_NF _
+    | RST _
         -> 1
     | BIT_AR16 _
     | BIT_R8 _
@@ -729,6 +739,7 @@ let cycleCount instruction long =
     | RETI
     | SET_AR16 _
     | SWAP_AR16 _
+    | RST _
         -> 16
     | LD_A16_R16 _
         -> 20

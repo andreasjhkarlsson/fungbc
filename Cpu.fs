@@ -350,7 +350,9 @@ type CPU (mmu, timerInterrupt: TimerInterrupt, clock: MutableClock) as this =
             | CLEAR ->
                 PC.Value <- pop16 ()
                 longCycle <- true
-                
+        | RST (address) ->
+            push16 PC.Value
+            PC.Value <- address                
         (*
             Misc
         *)

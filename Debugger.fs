@@ -9,6 +9,8 @@ open Clock
 open System.IO
 open System.Text.RegularExpressions
 
+let parseAddress str = System.UInt16.Parse(str,System.Globalization.NumberStyles.HexNumber)
+
 type Breakpoint(address) =
     member this.Address = address
     member val Active = true with get, set
@@ -32,8 +34,7 @@ type MapInfo (symbols) =
                 groups |> Seq.cast<Match>
                 |> Seq.map (fun m -> m.Groups.Item(2).Value, m.Groups.Item(3).Value)
                 |> Seq.map (fun (name, address) ->
-                    let address = System.UInt16.Parse(address,System.Globalization.NumberStyles.HexNumber)
-                    address, Symbol(address,name))
+                    parseAddress address, Symbol(parseAddress address,name))
                 |> Map.ofSeq
        
         MapInfo(symbols)
@@ -44,6 +45,8 @@ type Debugger(cpu: CPU, mmu: MMU, systemClock: Clock, mapInfo: MapInfo) as this 
     let mutable breakpoints = Map.empty<uint16,Breakpoint>
 
     let mutable stepping = false
+
+    let mutable previousPC = 0us
     
     let registers = cpu.Registers
 
@@ -73,31 +76,57 @@ type Debugger(cpu: CPU, mmu: MMU, systemClock: Clock, mapInfo: MapInfo) as this 
         | Some symbol -> printfn "Symbol: %s" symbol.Name
         | None -> ()
             
-        printfn "continue (c), step (s), print registers (r), print stack (z), print summary (x), halt (h)"
+        printfn "continue (c), step (s), print registers (r), print stack (z), print uint8 at address (a8 address), print uint16 at address (a16 address), print summary (x), halt (h)"
 
-        match System.Console.ReadLine () with
-        | "c" ->
-            stepping <- false
-        | "s" ->
-            stepping <- true
-        | "r" ->
-            this.PrintRegisters ()
-            interactive ()
-        | "z" ->
-            this.PrintStack 0x20us
-            interactive ()
-        | "x" ->
-            this.PrintSummary ()
-            interactive ()
-        | "h" ->
-            cpu.Stop ()
-        | _ ->
+        let cmdline = (System.Console.ReadLine ()).Split([|' '|])
+
+        if cmdline.Length > 0 then
+
+            let command = cmdline.[0]
+
+            let parameter = if cmdline.Length > 1 then Some cmdline.[1] else None
+
+            match command with
+            | "c" ->
+                stepping <- false
+            | "s" ->
+                stepping <- true
+            | "r" ->
+                this.PrintRegisters ()
+                interactive ()
+            | "z" ->
+                this.PrintStack 0x20us
+                interactive ()
+            | "x" ->
+                this.PrintSummary ()
+                interactive ()
+            | "h" ->
+                cpu.Stop ()
+            | "a8" ->
+                match parameter with
+                | Some address ->
+                    let address = parseAddress address
+                    printfn "0x%04X = %02X" address (mmu.Read8 address)
+                | None -> ()
+                interactive ()
+            | "a16" ->
+                match parameter with
+                | Some address ->
+                    let address = parseAddress address
+                    printfn "0x%04X = %04X" address (mmu.Read16 address)
+                | None -> ()
+                interactive ()
+            | _ ->
+                interactive ()
+        else
             interactive ()
 
     let cpuHook instruction = 
 
         if stepping || (this.HasBreakpoint PC.Value) then
             interactive ()
+
+        previousPC <- PC.Value
 
         match instruction with
         | STOP -> cpu.Stop ()
@@ -114,7 +143,14 @@ type Debugger(cpu: CPU, mmu: MMU, systemClock: Clock, mapInfo: MapInfo) as this 
     
     member this.Start () =
         stopWatch.Start ()
-        cpu.Start ()
+        try
+            cpu.Start ()
+        with
+        | ex ->
+            printfn "DEBUGGER: Unhandled exception: %s" <| ex.ToString ()  
+            printfn "Rewinding CPU to last instruction"
+            PC.Value <- previousPC
+            interactive ()
         stopWatch.Stop ()
         printfn "Debugger: execution halted"
 

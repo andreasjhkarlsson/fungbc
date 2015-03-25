@@ -21,7 +21,6 @@ let main argv =
         
         let ext = (System.IO.Path.GetExtension romPath).ToLower ()
         match ext with
-        | ".fgbc" -> Rom.loadFromFGBC romPath
         | ".gb" ->  Rom.loadFromCartDump romPath
         | _ -> raise <| System.Exception(sprintf "Unsupported file extension: %s" ext)
 
@@ -54,10 +53,6 @@ let main argv =
     let debugger = Debugger(cpu,mmu, systemClock, mapInfo)
 
     debugger.Attach ()
-
-    match debugger.Map.SymbolByName "_main" with
-    | Some symbol -> debugger.AddBreakpoint (Breakpoint(symbol.Address))
-    | None -> ()
 
     debugger.Start ()
 

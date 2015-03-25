@@ -1,5 +1,0 @@
-3E 0A	// LD A, 10
-FD		// FGBC_PRINT A
-3D		// DEC A
-20 FE	// JR_NZ -2
-10		// STOP

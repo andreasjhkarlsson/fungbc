@@ -14,16 +14,6 @@ type ROM () =
 
     member this.Ram = ram
 
-
-type StaticROM (code) =
-    inherit ROM ()
-    override this.getCell index =
-        if index < 0x100 then
-            readOnlyCell 0uy
-        else
-            readOnlyCell(if (index - 0x100) < (Array.length code) then code.[index - 0x100] else 0uy)
-
-
 type GBCFlag = |GB |GBC |GBC_ONLY
 
 type SGBFlag = |SGB |NO_SGB
@@ -140,24 +130,5 @@ type CartROM (data) =
         | bank0Index when index <= 0x3FFF ->
             readOnlyCell (data.[index])
         | _ -> blankCell
-
-
-
-let loadFromFGBC path =
-    let lineToCode (line: string) = 
-        
-        let decodeByte (str: string) =
-            System.Byte.Parse(str,System.Globalization.NumberStyles.HexNumber)
-
-        line.Split [|' '; '\t'|] |>
-            Array.toSeq |>
-            Seq.map (fun x -> x.Trim()) |>
-            Seq.takeWhile (fun x ->
-                (not <| x.Contains "//") && x <> "" ) |>
-            Seq.map decodeByte
-
-    let code = (File.ReadAllLines path) |> Array.map lineToCode |> Seq.concat |> Seq.toArray
-
-    StaticROM(code) :> ROM
 
 let loadFromCartDump path = CartROM(File.ReadAllBytes path) :> ROM

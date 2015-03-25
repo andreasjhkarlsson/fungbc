@@ -380,7 +380,7 @@ type CPU (mmu, timerInterrupt: TimerInterrupt, clock: MutableClock) as this =
             (r8 r).Value <- result
 
         | FGBC_PRINT_R8 (r) ->
-            printfn "%d" (r8 r).Value
+            printf "%d" (r8 r).Value
         | FGBC_PRINTA_R8 (r) ->
             printf "%c" <| char (r8 r).Value 
         | _ -> raise (System.Exception(sprintf "opcode <%O> not implemented" instruction))

@@ -68,6 +68,11 @@ type Debugger(cpu: CPU, mmu: MMU, systemClock: Clock, mapInfo: MapInfo) as this 
     let PC = registers.PC
     let MasterIE = registers.MasterIE
 
+    do
+        match mapInfo.SymbolByName "_fgbc_debugger_break" with
+        | Some symbol -> breakpoints <- breakpoints |> Map.add symbol.Address (Breakpoint(symbol.Address))
+        | None -> ()
+
     let rec interactive () =
         printfn "-- DEBUGGER --"
         printfn "CPU paused at instruction 0x%04X = %s" PC.Value (Instruction.decodeOpcode mmu PC.Value |> Instruction.readable) 

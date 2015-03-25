@@ -6,20 +6,42 @@ open Instruction
 open BitLogic
 open Register
 open Clock
+open System.IO
+open System.Text.RegularExpressions
 
 type Breakpoint(address) =
     member this.Address = address
     member val Active = true with get, set
 
-type Symbol(address,name) =
+type Symbol(address: uint16,name) =
     member this.Address = address
     member this.Name = name
 
-type Debugger(cpu: CPU, mmu: MMU, systemClock: Clock) as this =
+type MapInfo (symbols) =
+
+    member this.SymbolByName name = symbols |> Map.tryPick (fun _ (symbol: Symbol) -> if symbol.Name = name then Some symbol else None)
+
+    member this.SymbolByAddress address = symbols |> Map.tryFind address
+
+    new () = MapInfo(Map.empty)
+
+    new (path: string) =
+        let groups = Regex.Matches(File.ReadAllText path ,@"((\S+)\s+([0-9A-F]+))",RegexOptions.Multiline)
+
+        let symbols = 
+                groups |> Seq.cast<Match>
+                |> Seq.map (fun m -> m.Groups.Item(2).Value, m.Groups.Item(3).Value)
+                |> Seq.map (fun (name, address) ->
+                    let address = System.UInt16.Parse(address,System.Globalization.NumberStyles.HexNumber)
+                    address, Symbol(address,name))
+                |> Map.ofSeq
+       
+        MapInfo(symbols)
+    
+
+type Debugger(cpu: CPU, mmu: MMU, systemClock: Clock, mapInfo: MapInfo) as this =
 
     let mutable breakpoints = Map.empty<uint16,Breakpoint>
-
-    let mutable symbols = Map.empty<uint16,Symbol>
 
     let mutable stepping = false
     
@@ -44,8 +66,15 @@ type Debugger(cpu: CPU, mmu: MMU, systemClock: Clock) as this =
     let MasterIE = registers.MasterIE
 
     let rec interactive () =
+        printfn "-- DEBUGGER --"
         printfn "CPU paused at instruction 0x%04X = %s" PC.Value (Instruction.decodeOpcode mmu PC.Value |> Instruction.readable) 
+
+        match mapInfo.SymbolByAddress PC.Value with
+        | Some symbol -> printfn "Symbol: %s" symbol.Name
+        | None -> ()
+            
         printfn "continue (c), step (s), print registers (r), print stack (z), print summary (x), halt (h)"
+
         match System.Console.ReadLine () with
         | "c" ->
             stepping <- false
@@ -67,7 +96,7 @@ type Debugger(cpu: CPU, mmu: MMU, systemClock: Clock) as this =
 
     let cpuHook instruction = 
 
-        if stepping || (breakpoints |> Map.containsKey PC.Value) then
+        if stepping || (this.HasBreakpoint PC.Value) then
             interactive ()
 
         match instruction with
@@ -79,12 +108,10 @@ type Debugger(cpu: CPU, mmu: MMU, systemClock: Clock) as this =
 
     member this.AddBreakpoint (breakpoint: Breakpoint) = breakpoints <- breakpoints |> Map.add breakpoint.Address breakpoint 
 
-    member this.AddSymbol (symbol: Symbol) = symbols <- symbols |> Map.add symbol.Address symbol
+    member this.HasBreakpoint address = breakpoints |> Map.containsKey address
 
-    member this.SymbolByName name = symbols |> Map.tryPick (fun _ symbol -> if symbol.Name = name then Some symbol else None)
-
-    member this.SymbolByAddress address = symbols |> Map.tryFind address
-
+    member this.Map = mapInfo
+    
     member this.Start () =
         stopWatch.Start ()
         cpu.Start ()

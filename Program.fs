@@ -54,6 +54,14 @@ let main argv =
 
     debugger.Attach ()
 
+    System.Console.CancelKeyPress.AddHandler
+        <| new System.ConsoleCancelEventHandler(fun obj args ->
+            if not <| debugger.IsStepping () then
+                printfn "\n--- Ctrl+C, invoking debugger ---\n"
+                args.Cancel <- true
+                debugger.Step ()
+            ) 
+
     debugger.Start ()
 
     0

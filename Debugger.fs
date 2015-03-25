@@ -140,6 +140,8 @@ type Debugger(cpu: CPU, mmu: MMU, systemClock: Clock, mapInfo: MapInfo) as this 
 
     member this.Step () = stepping <- true
 
+    member this.IsStepping () = stepping
+
     member this.AddBreakpoint (breakpoint: Breakpoint) = breakpoints <- breakpoints |> Map.add breakpoint.Address breakpoint 
 
     member this.HasBreakpoint address = breakpoints |> Map.containsKey address

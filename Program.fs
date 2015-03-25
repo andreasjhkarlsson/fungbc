@@ -56,6 +56,4 @@ let main argv =
 
     debugger.Start ()
 
-    debugger.PrintSummary ()
-
     0

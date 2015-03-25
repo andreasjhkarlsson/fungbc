@@ -15,23 +15,25 @@ let main argv =
     
     if argv.Length <> 1 then raise <| System.Exception("Usage: fgbc <fgbc-file>")
 
-    let rom, mapInfo =
-        let path = argv.[0]
-        let ext = (System.IO.Path.GetExtension path).ToLower ()
-        match ext with
-        | ".fgbc" -> Rom.loadFromFGBC path, MapInfo ()
-        | ".gb" ->
-            let mapPath = System.IO.Path.GetDirectoryName path
-                          + @"\"
-                          + System.IO.Path.GetFileNameWithoutExtension path
-                          + ".map" 
+    let romPath = argv.[0]
 
-             
-            Rom.loadFromCartDump path,
-            match System.IO.File.Exists mapPath with
-            | true -> MapInfo(mapPath)
-            | false -> MapInfo()
+    let rom =
+        
+        let ext = (System.IO.Path.GetExtension romPath).ToLower ()
+        match ext with
+        | ".fgbc" -> Rom.loadFromFGBC romPath
+        | ".gb" ->  Rom.loadFromCartDump romPath
         | _ -> raise <| System.Exception(sprintf "Unsupported file extension: %s" ext)
+
+    let mapInfo = 
+        let mapPath = System.IO.Path.GetDirectoryName romPath
+                        + @"\"
+                        + System.IO.Path.GetFileNameWithoutExtension romPath
+                        + ".map" 
+
+        match System.IO.File.Exists mapPath with
+        | true -> MapInfo(mapPath)
+        | false -> MapInfo()
 
     let ram = GBCRam()
 

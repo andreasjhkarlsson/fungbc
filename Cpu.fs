@@ -63,9 +63,9 @@ type ALU (registers: RegisterSet) =
         result
 
     member this.RotateLeftWithCarry8 a =
-        let highestBit = bitStateOf 7 a
-        let result =  (a <<< 1) ||| (bitStateToValue highestBit)
-        F.ZNHC <- (setIfZero result, CLEAR, CLEAR, highestBit)
+        let carryBit = bitStateOf 7 a
+        let result =  (a <<< 1) ||| (bitStateToValue carryBit)
+        F.ZNHC <- (CLEAR, CLEAR, CLEAR, carryBit)
         result
 
     member this.And8 a b =
@@ -238,8 +238,8 @@ type CPU (mmu, timerInterrupt: TimerInterrupt, clock: MutableClock) as this =
             mmu.Update8 (r16 r).Value alu.SwapNibbles
         | CPL ->
             A.Update alu.BitNot8
-        | RLC_R8 (r) ->
-            (r8 r).Update alu.RotateLeftWithCarry8
+        | RLCA ->
+            A.Update alu.RotateLeftWithCarry8
         | AND_R8_R8 (r1,r2) ->
             (r8 r1).Update (alu.And8 (r8 r2).Value)
         | AND_R8_D8 (r,operand) ->

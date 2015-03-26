@@ -68,6 +68,12 @@ type ALU (registers: RegisterSet) =
         F.ZNHC <- (CLEAR, CLEAR, CLEAR, carryBit)
         result
 
+    member this.RotateLeft8 a =
+        let carryBit = bitStateOf 7 a
+        let result = (a <<< 1) ||| (bitStateToValue F.C)
+        F.ZNHC <- (CLEAR,CLEAR,CLEAR,carryBit)
+        result
+
     member this.And8 a b =
         let result = a &&& b
         F.ZNHC <- (setIfZero result,CLEAR,SET,CLEAR)
@@ -240,6 +246,8 @@ type CPU (mmu, timerInterrupt: TimerInterrupt, clock: MutableClock) as this =
             A.Update alu.BitNot8
         | RLCA ->
             A.Update alu.RotateLeftWithCarry8
+        | RLA ->
+            A.Update alu.RotateLeft8
         | AND_R8_R8 (r1,r2) ->
             (r8 r1).Update (alu.And8 (r8 r2).Value)
         | AND_R8_D8 (r,operand) ->

@@ -56,7 +56,9 @@ type Instruction =
     | SET_AR16       of int*Register16Name                      // Set bit n in address in 16 bit register 
     | CPL                                                       // Bitwise NOT on register A
     | RLCA                                                      // Rotate A left with carry     
-    | RLA                                                       // Rotate A left                                           
+    | RLA                                                       // Rotate A left    
+    | RRCA                                                      // Rotate A right with carry
+    | RRA                                                       // Rotate A right                                       
     | JP_A16         of MemoryAddress                           // Absolute jump to address
     | JP_AR16        of Register16Name                          // Jump to address in address in 16 bit register (erhh)
     | JP_F_A16       of FlagName*MemoryAddress                  // Jump to address if flag is set
@@ -133,6 +135,7 @@ let decodeOpcode (mmu: MMU) address =
     | 0x0C -> INC_R8        (C)
     | 0x0D -> DEC_R8        (C)
     | 0x0E -> LD_R8_D8      (C,int8Operand ())
+    | 0x0F -> RRCA
     | 0x10 -> STOP
     | 0x11 -> LD_R16_D16    (DE,int16Operand ())
     | 0x12 -> LD_AR16_R8    (DE,A)
@@ -148,6 +151,7 @@ let decodeOpcode (mmu: MMU) address =
     | 0x1C -> INC_R8        (E)
     | 0x1D -> DEC_R8        (E)
     | 0x1E -> LD_R8_D8      (E,int8Operand ())
+    | 0x1F -> RRA
     | 0x20 -> JR_NF_A8      (Z, int8Operand () |> int8)
     | 0x21 -> LD_R16_D16    (HL,int16Operand ())
     | 0x22 -> LDI_AR16_R8   (HL,A)
@@ -612,6 +616,8 @@ let sizeOf instruction =
     | PUSH_R16 _
     | RLCA 
     | RLA
+    | RRCA
+    | RRA
     | SBC_R8_AR16 _
     | SBC_R8_R8 _
     | SCF 
@@ -687,6 +693,8 @@ let cycleCount instruction long =
     | OR_R8_R8 _
     | RLCA
     | RLA
+    | RRCA
+    | RRA
     | SBC_R8_R8 _
     | SCF
     | STOP

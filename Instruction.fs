@@ -58,7 +58,15 @@ type Instruction =
     | RLCA                                                      // Rotate A left with carry     
     | RLA                                                       // Rotate A left    
     | RRCA                                                      // Rotate A right with carry
-    | RRA                                                       // Rotate A right                                       
+    | RRA                                                       // Rotate A right  
+    | RLC_R8         of Register8Name                           // Rotate 8 bit register left with carry
+    | RLC_AR16       of Register16Name                          // Rotate value pointed by 16 bit register left with carry
+    | RL_R8          of Register8Name                           // Rotate 8 bit register left
+    | RL_AR16        of Register16Name                          // Rotate value pointed by 16 bit register left
+    | RRC_R8         of Register8Name                           // Rotate 8 bit register right with carry
+    | RRC_AR16       of Register16Name                          // Rotate value pointed by 16 bit register right with carry
+    | RR_R8          of Register8Name                           // Rotate 8 bit register right
+    | RR_AR16        of Register16Name                          // Rotate value pointed by 16 bit register right          
     | JP_A16         of MemoryAddress                           // Absolute jump to address
     | JP_AR16        of Register16Name                          // Jump to address in address in 16 bit register (erhh)
     | JP_F_A16       of FlagName*MemoryAddress                  // Jump to address if flag is set
@@ -325,6 +333,38 @@ let decodeOpcode (mmu: MMU) address =
     | 0xCA -> JP_F_A16      (Z, int16Operand ())
     | 0xCB ->
         match int <| int8Operand() with
+        | 0x00 -> RLC_R8         (B)
+        | 0x01 -> RLC_R8         (C)
+        | 0x02 -> RLC_R8         (D)
+        | 0x03 -> RLC_R8         (E)
+        | 0x04 -> RLC_R8         (H)
+        | 0x05 -> RLC_R8         (L)
+        | 0x06 -> RLC_AR16       (HL)
+        | 0x07 -> RLC_R8         (A)
+        | 0x08 -> RRC_R8         (B)
+        | 0x09 -> RRC_R8         (C)
+        | 0x0A -> RRC_R8         (D)
+        | 0x0B -> RRC_R8         (E)
+        | 0x0C -> RRC_R8         (H)
+        | 0x0D -> RRC_R8         (L)
+        | 0x0E -> RRC_AR16       (HL)
+        | 0x0F -> RRC_R8         (A)
+        | 0x10 -> RL_R8         (B)
+        | 0x11 -> RL_R8         (C)
+        | 0x12 -> RL_R8         (D)
+        | 0x13 -> RL_R8         (E)
+        | 0x14 -> RL_R8         (H)
+        | 0x15 -> RL_R8         (L)
+        | 0x16 -> RL_AR16       (HL)
+        | 0x17 -> RL_R8         (A)
+        | 0x18 -> RR_R8         (B)
+        | 0x19 -> RR_R8         (C)
+        | 0x1A -> RR_R8         (D)
+        | 0x1B -> RR_R8         (E)
+        | 0x1C -> RR_R8         (H)
+        | 0x1D -> RR_R8         (L)
+        | 0x1E -> RR_AR16       (HL)
+        | 0x1F -> RR_R8         (A)
         | 0x30 -> SWAP_R8        (B)
         | 0x31 -> SWAP_R8        (C)
         | 0x32 -> SWAP_R8        (D)
@@ -657,6 +697,14 @@ let sizeOf instruction =
     | SWAP_AR16 _
     | SWAP_R8 _
     | XOR_R8_D8 _
+    | RLC_R8 _
+    | RLC_AR16 _
+    | RL_R8 _
+    | RL_AR16 _
+    | RRC_R8 _
+    | RRC_AR16 _
+    | RR_R8 _
+    | RR_AR16 _
          -> 2
     | LD_R8_A16 _
     | JP_A16 _
@@ -723,6 +771,10 @@ let cycleCount instruction long =
     | OR_R8_AR16 _
     | OR_R8_D8 _
     | RES_R8 _
+    | RRC_R8 _
+    | RR_R8 _
+    | RLC_R8 _
+    | RL_R8 _
     | SBC_R8_AR16 _
     | SBC_R8_D8 _
     | SET_R8 _
@@ -750,6 +802,10 @@ let cycleCount instruction long =
     | RES_AR16 _
     | RET
     | RETI
+    | RLC_AR16 _
+    | RL_AR16 _
+    | RR_AR16 _
+    | RRC_AR16 _
     | SET_AR16 _
     | SWAP_AR16 _
     | RST _

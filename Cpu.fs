@@ -65,25 +65,25 @@ type ALU (registers: RegisterSet) =
     member this.RotateLeftWithCarry8 a =
         let carryBit = bitStateOf 7 a
         let result =  (a <<< 1) ||| (bitStateToValue carryBit)
-        F.ZNHC <- (CLEAR, CLEAR, CLEAR, carryBit)
+        F.ZNHC <- (setIfZero result, CLEAR, CLEAR, carryBit)
         result
 
     member this.RotateLeft8 a =
         let carryBit = bitStateOf 7 a
         let result = (a <<< 1) ||| (bitStateToValue F.C)
-        F.ZNHC <- (CLEAR,CLEAR,CLEAR,carryBit)
+        F.ZNHC <- (setIfZero result,CLEAR,CLEAR,carryBit)
         result
 
     member this.RotateRightWithCarry8 a =
         let carryBit = bitStateOf 0 a
         let result = (a >>> 1) ||| (bitStateToValue carryBit <<< 7)
-        F.ZNHC <- (CLEAR,CLEAR,CLEAR,carryBit)
+        F.ZNHC <- (setIfZero result,CLEAR,CLEAR,carryBit)
         result
 
     member this.RotateRight8 a =
         let carryBit = bitStateOf 0 a
         let result = (a >>> 1) ||| (bitStateToValue F.C <<< 7)
-        F.ZNHC <- (CLEAR,CLEAR,CLEAR,carryBit)
+        F.ZNHC <- (setIfZero result,CLEAR,CLEAR,carryBit)
         result
 
     member this.And8 a b =
@@ -258,12 +258,32 @@ type CPU (mmu, timerInterrupt: TimerInterrupt, clock: MutableClock) as this =
             A.Update alu.BitNot8
         | RLCA ->
             A.Update alu.RotateLeftWithCarry8
+            F.Z <- CLEAR
         | RLA ->
             A.Update alu.RotateLeft8
+            F.Z <- CLEAR
         | RRCA ->
             A.Update alu.RotateRightWithCarry8 
+            F.Z <- CLEAR
         | RRA ->
             A.Update alu.RotateRight8
+            F.Z <- CLEAR
+        | RLC_R8 (r) ->
+            (r8 r).Update alu.RotateLeftWithCarry8
+        | RLC_AR16 (r) ->
+            mmu.Update8 (r16 r).Value alu.RotateLeftWithCarry8
+        | RL_R8 (r) ->
+            (r8 r).Update alu.RotateLeft8
+        | RL_AR16 (r) ->
+            mmu.Update8 (r16 r).Value alu.RotateLeft8
+        | RRC_R8 (r) ->
+            (r8 r).Update alu.RotateRightWithCarry8
+        | RRC_AR16 (r) ->
+            mmu.Update8 (r16 r).Value alu.RotateRightWithCarry8
+        | RR_R8 (r) ->
+            (r8 r).Update alu.RotateRight8
+        | RR_AR16 (r) ->
+            mmu.Update8 (r16 r).Value alu.RotateRight8
         | AND_R8_R8 (r1,r2) ->
             (r8 r1).Update (alu.And8 (r8 r2).Value)
         | AND_R8_D8 (r,operand) ->

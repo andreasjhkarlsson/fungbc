@@ -66,7 +66,13 @@ type Instruction =
     | RRC_R8         of Register8Name                           // Rotate 8 bit register right with carry
     | RRC_AR16       of Register16Name                          // Rotate value pointed by 16 bit register right with carry
     | RR_R8          of Register8Name                           // Rotate 8 bit register right
-    | RR_AR16        of Register16Name                          // Rotate value pointed by 16 bit register right          
+    | RR_AR16        of Register16Name                          // Rotate value pointed by 16 bit register right      
+    | SLA_R8         of Register8Name                           // Shift 8 bit register left, preserving sign
+    | SLA_AR16       of Register16Name                          // Shift value pointed by 16 bit register left, preserving sign
+    | SRA_R8         of Register8Name                           // Shift 8 bit register right, preserving sign
+    | SRA_AR16       of Register16Name                          // Shift value pointed by 16 bit register right, preserving sign
+    | SRL_R8         of Register8Name                           // Shift 8 bit register right
+    | SRL_AR16       of Register16Name                          // Shift value pointed by 16 bit register right
     | JP_A16         of MemoryAddress                           // Absolute jump to address
     | JP_AR16        of Register16Name                          // Jump to address in address in 16 bit register (erhh)
     | JP_F_A16       of FlagName*MemoryAddress                  // Jump to address if flag is set
@@ -365,6 +371,22 @@ let decodeOpcode (mmu: MMU) address =
         | 0x1D -> RR_R8          (L)
         | 0x1E -> RR_AR16        (HL)
         | 0x1F -> RR_R8          (A)
+        | 0x20 -> SLA_R8         (B)
+        | 0x21 -> SLA_R8         (C)
+        | 0x22 -> SLA_R8         (D)
+        | 0x23 -> SLA_R8         (E)
+        | 0x24 -> SLA_R8         (H)
+        | 0x25 -> SLA_R8         (L)
+        | 0x26 -> SLA_AR16       (HL)
+        | 0x27 -> SLA_R8         (A)
+        | 0x28 -> SRA_R8         (B)
+        | 0x29 -> SRA_R8         (C)
+        | 0x2A -> SRA_R8         (D)
+        | 0x2B -> SRA_R8         (E)
+        | 0x2C -> SRA_R8         (H)
+        | 0x2D -> SRA_R8         (L)
+        | 0x2E -> SRA_AR16       (HL)
+        | 0x2F -> SRA_R8         (A)
         | 0x30 -> SWAP_R8        (B)
         | 0x31 -> SWAP_R8        (C)
         | 0x32 -> SWAP_R8        (D)
@@ -373,6 +395,14 @@ let decodeOpcode (mmu: MMU) address =
         | 0x35 -> SWAP_R8        (L)
         | 0x36 -> SWAP_AR16      (HL)
         | 0x37 -> SWAP_R8        (A)
+        | 0x38 -> SRL_R8         (B)
+        | 0x39 -> SRL_R8         (C)
+        | 0x3A -> SRL_R8         (D)
+        | 0x3B -> SRL_R8         (E)
+        | 0x3C -> SRL_R8         (H)
+        | 0x3D -> SRL_R8         (L)
+        | 0x3E -> SRL_AR16       (HL)
+        | 0x3F -> SRL_R8         (A)
         | 0x40 -> BIT_R8         (0,B)
         | 0x41 -> BIT_R8         (0,C)
         | 0x42 -> BIT_R8         (0,D)
@@ -705,6 +735,12 @@ let sizeOf instruction =
     | RRC_AR16 _
     | RR_R8 _
     | RR_AR16 _
+    | SLA_R8 _
+    | SLA_AR16 _
+    | SRA_R8 _
+    | SRA_AR16 _
+    | SRL_R8 _
+    | SRL_AR16 _
          -> 2
     | LD_R8_A16 _
     | JP_A16 _
@@ -775,6 +811,9 @@ let cycleCount instruction long =
     | RR_R8 _
     | RLC_R8 _
     | RL_R8 _
+    | SLA_R8 _
+    | SRA_R8 _
+    | SRL_R8 _
     | SBC_R8_AR16 _
     | SBC_R8_D8 _
     | SET_R8 _
@@ -806,6 +845,9 @@ let cycleCount instruction long =
     | RL_AR16 _
     | RR_AR16 _
     | RRC_AR16 _
+    | SLA_AR16 _
+    | SRA_AR16 _
+    | SRL_AR16 _
     | SET_AR16 _
     | SWAP_AR16 _
     | RST _

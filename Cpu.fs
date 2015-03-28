@@ -86,6 +86,21 @@ type ALU (registers: RegisterSet) =
         F.ZNHC <- (setIfZero result,CLEAR,CLEAR,carryBit)
         result
 
+    member this.ShiftLeftArithmetic8 a =
+        let result = a <<< 1
+        F.ZNHC <- (setIfZero a, CLEAR, CLEAR, bitStateOf 7 a)
+        result
+
+    member this.shiftRightLogical8 a =
+        let result = a >>> 1
+        F.ZNHC <- (setIfZero result, CLEAR, CLEAR, bitStateOf 0 a)
+        result
+
+    member this.shiftRightArithmetic8 a =
+        let result = (a >>> 1) ||| (a &&& 0x80uy)
+        F.ZNHC <- (setIfZero result, CLEAR, CLEAR, bitStateOf 0 a)
+        result
+
     member this.And8 a b =
         let result = a &&& b
         F.ZNHC <- (setIfZero result,CLEAR,SET,CLEAR)
@@ -284,6 +299,18 @@ type CPU (mmu, timerInterrupt: TimerInterrupt, clock: MutableClock) as this =
             (r8 r).Update alu.RotateRight8
         | RR_AR16 (r) ->
             mmu.Update8 (r16 r).Value alu.RotateRight8
+        | SLA_R8 (r) ->
+            (r8 r).Update alu.ShiftLeftArithmetic8
+        | SLA_AR16 (r) ->
+            mmu.Update8 (r16 r).Value alu.ShiftLeftArithmetic8
+        | SRA_R8 (r) ->
+            (r8 r).Update alu.shiftRightArithmetic8
+        | SRA_AR16 (r) ->
+            mmu.Update8 (r16 r).Value alu.shiftRightArithmetic8
+        | SRL_R8 (r) ->
+            (r8 r).Update alu.shiftRightLogical8
+        | SRL_AR16 (r) ->
+            mmu.Update8 (r16 r).Value alu.shiftRightLogical8
         | AND_R8_R8 (r1,r2) ->
             (r8 r1).Update (alu.And8 (r8 r2).Value)
         | AND_R8_D8 (r,operand) ->

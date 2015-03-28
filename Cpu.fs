@@ -142,6 +142,8 @@ type CPU (mmu, timerInterrupt: TimerInterrupt, clock: MutableClock) as this =
 
     let mutable stopped = false
 
+    let mutable waitForInterrupt = false
+
     let push16 value =
         SP.Value <- SP.Value - 2us
         mmu.Write16 SP.Value value
@@ -159,15 +161,21 @@ type CPU (mmu, timerInterrupt: TimerInterrupt, clock: MutableClock) as this =
             ()
 
     let rec execute () = 
+        
+        let instruction =
+            if waitForInterrupt then
+                NOP
+            else
+                let instruction = decodeOpcode PC.Value
 
-        let instruction = decodeOpcode PC.Value
+                // Debugger hook
+                match this.Hook with | Some hook -> hook instruction | None -> ()
 
-        match this.Hook with | Some hook -> hook instruction | None -> ()
+                PC.Value <- PC.Value + (uint16 <| sizeOf instruction)
 
-        let instructionSize = sizeOf instruction
+                instruction
 
-        PC.Value <- PC.Value + (uint16 instructionSize)
-
+  
         // Just one little mutable flag. Sorry purists.
         let mutable longCycle = false
 
@@ -435,6 +443,8 @@ type CPU (mmu, timerInterrupt: TimerInterrupt, clock: MutableClock) as this =
             ()
         | STOP ->
             () // Do nooooothing
+        | HALT ->
+            waitForInterrupt <- true
         | EI ->
             MasterIE.Set
         | DI ->
@@ -488,6 +498,8 @@ type CPU (mmu, timerInterrupt: TimerInterrupt, clock: MutableClock) as this =
     member this.Stop () = stopped <- true
 
     member this.Registers = registers
+
+    member this.WaitingForInterrupt with get () = waitForInterrupt and set value = waitForInterrupt <- value
 
     member val Hook: (Instruction -> unit) option = None with get, set
 

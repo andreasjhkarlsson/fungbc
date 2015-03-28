@@ -83,6 +83,9 @@ type Debugger(cpu: CPU, mmu: MMU, systemClock: Clock, mapInfo: MapInfo) as this 
             
         printfn "continue (c), step (s), print registers (r), print stack (z), print uint8 at address (a8 address), print uint16 at address (a16 address), print summary (x), halt (h)"
 
+        if cpu.WaitingForInterrupt then
+            printfn "NOTE: CPU is currently halted, waiting for an interrupt, enter (f) to force resume"
+
         let cmdline = (System.Console.ReadLine ()).Split([|' '|])
 
         if cmdline.Length > 0 then
@@ -106,7 +109,11 @@ type Debugger(cpu: CPU, mmu: MMU, systemClock: Clock, mapInfo: MapInfo) as this 
                 this.PrintSummary ()
                 interactive ()
             | "h" ->
+                cpu.WaitingForInterrupt <- false
                 cpu.Stop ()
+            | "f" when cpu.WaitingForInterrupt ->
+                cpu.WaitingForInterrupt <- false
+
             | "a8" ->
                 match parameter with
                 | Some address ->
@@ -138,7 +145,10 @@ type Debugger(cpu: CPU, mmu: MMU, systemClock: Clock, mapInfo: MapInfo) as this 
         | _ -> ()  
 
 
-    member this.Step () = stepping <- true
+    member this.Step () =
+        if cpu.WaitingForInterrupt then
+            interactive ()
+        stepping <- true
 
     member this.IsStepping () = stepping
 

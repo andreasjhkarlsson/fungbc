@@ -1,5 +1,6 @@
 ﻿module Debugger
 
+open Misc
 open Mmu
 open Cpu
 open Instruction
@@ -8,8 +9,6 @@ open Register
 open Clock
 open System.IO
 open System.Text.RegularExpressions
-
-let parseAddress str = System.UInt16.Parse(str,System.Globalization.NumberStyles.HexNumber)
 
 type Breakpoint(address) =
     member this.Address = address
@@ -25,6 +24,15 @@ type MapInfo (symbols) =
 
     member this.SymbolByAddress address = symbols |> Map.tryFind address
 
+    member this.Symbols = symbols |> Map.toSeq |> Seq.map snd
+
+    member this.NearestSymbol address =
+        symbols
+        |> Map.toSeq
+        |> Seq.map snd
+        |> Seq.sortBy (fun s -> s.Address |> int |> (~-))
+        |> Seq.tryFind (fun s -> address > s.Address)
+
     new () = MapInfo(Map.empty)
 
     new (path: string) =
@@ -34,7 +42,8 @@ type MapInfo (symbols) =
                 groups |> Seq.cast<Match>
                 |> Seq.map (fun m -> m.Groups.Item(2).Value, m.Groups.Item(3).Value)
                 |> Seq.map (fun (name, address) ->
-                    parseAddress address, Symbol(parseAddress address,name))
+                    let address = parseHex address |> Option.get |> uint16
+                    address, Symbol(address, name))
                 |> Map.ofSeq
        
         MapInfo(symbols)
@@ -74,14 +83,48 @@ type Debugger(cpu: CPU, mmu: MMU, systemClock: Clock, mapInfo: MapInfo) as this 
         | None -> ()
 
     let rec interactive () =
+
+        let printWithColor bg fg str =
+            System.Console.BackgroundColor <- bg
+            System.Console.ForegroundColor <- fg
+            printfn "%s" str
+            System.Console.ResetColor()           
+
+        let setResultFormatting () = 
+            System.Console.BackgroundColor <- System.ConsoleColor.DarkGreen
+            System.Console.ForegroundColor <- System.ConsoleColor.White
+
+        let clearFormatting = System.Console.ResetColor
+
+        let printError = printWithColor System.ConsoleColor.DarkRed System.ConsoleColor.White
+
+        let printResult = printWithColor System.ConsoleColor.DarkGreen System.ConsoleColor.White
+
+        printfn ""
+        printfn "--------------"
         printfn "-- DEBUGGER --"
+        printfn "--------------"
         printfn "CPU paused at instruction 0x%04X = %s" PC.Value (Instruction.decodeOpcode mmu PC.Value |> Instruction.readable) 
 
         match mapInfo.SymbolByAddress PC.Value with
         | Some symbol -> printfn "Symbol: %s" symbol.Name
         | None -> ()
             
-        printfn "continue (c), step (s), print registers (r), print stack (z), print uint8 at address (a8 address), print uint16 at address (a16 address), print summary (x), halt (h)"
+        System.Console.WriteLine(
+            "continue (c), " + 
+            "step (s), " +
+            "print breakpoints (b), " +
+            "add breakpoint (a), " +
+            "remove breakpoint (d), " +
+            "find symbol (y), " +
+            "print symbols (u), " +
+            "guess symbol (g), " +
+            "print registers (r), " +
+            "print stack (z), " +
+            "print uint8 at address (a8 address), " +
+            "print uint16 at address (a16 address), " +
+            "print summary (x), " +
+            "halt (h)")
 
         if cpu.WaitingForInterrupt then
             printfn "NOTE: CPU is currently halted, waiting for an interrupt, enter (f) to force resume"
@@ -94,39 +137,101 @@ type Debugger(cpu: CPU, mmu: MMU, systemClock: Clock, mapInfo: MapInfo) as this 
 
             let parameter = if cmdline.Length > 1 then Some cmdline.[1] else None
 
+            let (|HexParameter|_|) parameter =
+                match parameter with
+                | Some str -> parseHex str
+                | None -> None
+
+            let (|AddressParameter|_|) = (|HexParameter|_|) >> (Option.map uint16)
+
             match command with
             | "c" ->
                 stepping <- false
             | "s" ->
                 stepping <- true
+            | "g" ->
+                match mapInfo.NearestSymbol PC.Value with
+                | Some symbol -> printResult <| sprintf "Best guess for PC: %s" symbol.Name 
+                | None -> printError "No symbol found for PC"
+                interactive ()
+            | "b" ->
+                breakpoints
+                |> Map.toSeq
+                |> Seq.map snd
+                |> Seq.iter (fun b ->
+                    printResult <| sprintf "Breakpoint: address = 0x%04X, symbol = (%s)" b.Address
+                        (match mapInfo.SymbolByAddress b.Address with Some s -> s.Name | None -> ""))
+                interactive ()
+            | "a" ->
+                match parameter with
+                | AddressParameter address ->
+                    this.AddBreakpoint (Breakpoint(address))
+                | Some str ->
+                    match mapInfo.SymbolByName str with
+                    | Some s -> this.AddBreakpoint (Breakpoint(s.Address))
+                    | None -> printResult <| sprintf "No symbol found with name %s" str
+                | None -> printError "Invalid command"
+                interactive ()
+            | "d" ->
+                let deleteAtAddress address =
+                    match breakpoints |> Map.tryFind address with
+                    | Some breakpoint ->
+                        this.RemoveBreakpoint breakpoint
+                        printResult "Breakpoint removed"
+                    | None ->
+                        printError "No breakpoint found at address"
+                match parameter with
+                | AddressParameter address -> deleteAtAddress address
+                | Some str ->
+                    match mapInfo.SymbolByName str with
+                    | Some s ->
+                        deleteAtAddress s.Address
+                        printResult "Breakpoint removed"
+                    | None -> printfn "No symbol found with name %s" str
+                | None ->
+                    printError "Invalid command"
+                interactive ()
+            | "y" ->
+                match parameter with
+                | Some str ->
+                    match mapInfo.SymbolByName str with
+                    | Some s -> printResult <| sprintf "Symbol (%s) @ 0x%04X" s.Name s.Address
+                    | None -> printError <| sprintf "No symbol with name %s" str
+                | None ->
+                    printError "Invalid command"
+                interactive ()
+            | "u" ->
+                printResult <| (mapInfo.Symbols |> Seq.map (fun s -> sprintf "%s @ 0x%04X, " s.Name s.Address) |> Seq.fold (+) "")
+                interactive ()
             | "r" ->
+                setResultFormatting ()
                 this.PrintRegisters ()
+                clearFormatting ()
                 interactive ()
             | "z" ->
+                setResultFormatting ()
                 this.PrintStack 0x20us
+                clearFormatting ()
                 interactive ()
             | "x" ->
+                setResultFormatting ()
                 this.PrintSummary ()
+                clearFormatting ()
                 interactive ()
             | "h" ->
                 cpu.WaitingForInterrupt <- false
                 cpu.Stop ()
             | "f" when cpu.WaitingForInterrupt ->
                 cpu.WaitingForInterrupt <- false
-
             | "a8" ->
                 match parameter with
-                | Some address ->
-                    let address = parseAddress address
-                    printfn "0x%04X = %02X" address (mmu.Read8 address)
-                | None -> ()
+                | AddressParameter address -> printResult <| sprintf "0x%04X = %02X" address (mmu.Read8 address)
+                | _ -> printError "Invalid address format"
                 interactive ()
             | "a16" ->
                 match parameter with
-                | Some address ->
-                    let address = parseAddress address
-                    printfn "0x%04X = %04X" address (mmu.Read16 address)
-                | None -> ()
+                | AddressParameter address -> printResult <| sprintf "0x%04X = %04X" address (mmu.Read16 address)
+                | _ -> printError "Invalid address format"
                 interactive ()
             | _ ->
                 interactive ()
@@ -155,6 +260,8 @@ type Debugger(cpu: CPU, mmu: MMU, systemClock: Clock, mapInfo: MapInfo) as this 
     member this.AddBreakpoint (breakpoint: Breakpoint) = breakpoints <- breakpoints |> Map.add breakpoint.Address breakpoint 
 
     member this.HasBreakpoint address = breakpoints |> Map.containsKey address
+
+    member this.RemoveBreakpoint (breakpoint: Breakpoint) = breakpoints <- breakpoints |> Map.remove breakpoint.Address
 
     member this.Map = mapInfo
     

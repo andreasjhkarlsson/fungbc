@@ -10,3 +10,5 @@ let GetUnionCaseName (x:'a) =
 ///Returns the case names of union type 'ty.
 let GetUnionCaseNames<'ty> () = 
     FSharpType.GetUnionCases(typeof<'ty>) |> Array.map (fun info -> info.Name)
+
+let parseHex str = try Some <| System.Int64.Parse(str, System.Globalization.NumberStyles.HexNumber) with | _ -> None

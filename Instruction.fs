@@ -143,6 +143,7 @@ let decodeOpcode (mmu: MMU) address =
     | 0x05 -> DEC_R8        (B)
     | 0x06 -> LD_R8_D8      (B,int8Operand ())
     | 0x07 -> RLCA
+    | 0x08 -> LD_A16_R16    (int16Operand (), SP)
     | 0x09 -> ADD_R16_R16   (HL,BC)
     | 0x0A -> LD_R8_AR16    (A,BC)
     | 0x0B -> DEC_R16       (BC)
@@ -158,8 +159,8 @@ let decodeOpcode (mmu: MMU) address =
     | 0x15 -> DEC_R8        (D)
     | 0x16 -> LD_R8_D8      (D,int8Operand ())
     | 0x17 -> RLA
-    | 0x19 -> ADD_R16_R16   (HL,DE)
     | 0x18 -> JR_A8         (int8Operand () |> int8)
+    | 0x19 -> ADD_R16_R16   (HL,DE)
     | 0x1A -> LD_R8_AR16    (A,DE)
     | 0x1B -> DEC_R16       (DE)
     | 0x1C -> INC_R8        (E)
@@ -603,6 +604,7 @@ let decodeOpcode (mmu: MMU) address =
     | 0xD0 -> RET_NF        (FlagName.C)
     | 0xD1 -> POP_R16       (DE)
     | 0xD2 -> JP_NF_A16     (FlagName.C, int16Operand ())
+    | 0xD3 -> NOP
     | 0xD4 -> CALL_NF_A16   (FlagName.C, int16Operand ())
     | 0xD5 -> PUSH_R16      (DE)
     | 0xD6 -> SUB_R8_D8     (A, int8Operand ())
@@ -610,23 +612,32 @@ let decodeOpcode (mmu: MMU) address =
     | 0xD8 -> RET_F         (FlagName.C)
     | 0xD9 -> RETI
     | 0xDA -> JP_F_A16      (FlagName.C, int16Operand ())
+    | 0xDB -> NOP
     | 0xDC -> CALL_F_A16    (FlagName.C, int16Operand ())
-    | 0xDF -> RST           (0x0018us)
-    | 0xE1 -> POP_R16       (HL)
+    | 0xDD -> NOP
     | 0xDE -> SBC_R8_D8     (A, int8Operand ())
+    | 0xDF -> RST           (0x0018us)
     | 0xE0 -> LDH_A8_R8     (int8Operand (), A)
+    | 0xE1 -> POP_R16       (HL)
     | 0xE2 -> LDH_AR8_R8    (C, A)
+    | 0xE3 -> NOP
+    | 0xE4 -> NOP
     | 0xE5 -> PUSH_R16      (HL)
     | 0xE6 -> AND_R8_D8     (A, int8Operand ())
     | 0xE7 -> RST           (0x0020us)
     | 0xE8 -> ADD_R16_D8    (SP, int8Operand () |> int8)
     | 0xE9 -> JP_AR16       (HL)
     | 0xEA -> LD_A16_R8     (uint16 <| int16Operand(), A)
+    | 0xEB -> NOP
+    | 0xEC -> NOP
+    | 0xED -> NOP
     | 0xEE -> XOR_R8_D8     (A, int8Operand ())
     | 0xEF -> RST           (0x0028us)
     | 0xF0 -> LDH_R8_A8     (A,int8Operand ())
     | 0xF1 -> POP_R16       (AF)
+    | 0xF2 -> NOP
     | 0xF3 -> DI
+    | 0xF4 -> NOP
     | 0xF5 -> PUSH_R16      (AF)
     | 0xF6 -> OR_R8_D8      (A, int8Operand ())
     | 0xF7 -> RST           (0x0030us)

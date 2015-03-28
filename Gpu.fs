@@ -7,9 +7,21 @@ open MemoryCell
 open Clock
 open Units
 open Constants
-
+open BitLogic
 
 type FrameReceiver = |FrameReceiver of (Bitmap -> unit)
+
+type LCDControl (init) =
+    inherit ValueBackedIORegister(init)
+
+    member this.BGDisplay = this.Value |> isBitSet 0
+    member this.SpriteEnable = this.Value |> isBitSet 1
+    member this.SpriteSize = this.Value |> isBitSet 2
+    member this.BGTilemapSelect = this.Value |> isBitSet 3
+    member this.BGAndWindowTileDataSelect = this.Value |> isBitSet 4
+    member this.WindowEnabled = this.Value |> isBitSet 5
+    member this.WIndowTileMapSelect = this.Value |> isBitSet 6
+    member this.DisplayEnable = this.Value |> isBitSet 7
 
 type VRAM () =
     let memory = readWriteMemoryBlock 8192
@@ -40,7 +52,11 @@ type GPU (systemClock, frameReciver: FrameReceiver) =
     
     let vram = VRAM()
 
+    let lcdc = LCDControl(0uy)
+
     member this.VRAM = vram
+
+    member this.LCDC = lcdc
 
     member this.Update () =
         if vSyncClock.Flipped then

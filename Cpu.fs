@@ -205,6 +205,10 @@ type CPU (mmu, gpu: GPU, timerInterrupt: TimerInterrupt, clock: MutableClock) as
             mmu.Write8 (r16 ar).Value operand
         | LD_R16_D16 (r,value) ->
             (r16 r).Value <- value
+        | LD_A16_R16 (address, r) ->
+            mmu.Write16 address (r16 r).Value
+        | LD_R16_R16 (r1, r2) ->
+            (r16 r1).Value <- (r16 r2).Value
         | LDI_R8_AR16 (r,ar) ->
             (r8 r).Value <- mmu.Read8 (r16 ar).Value
             (r16 ar).Update ((+) 1us)
@@ -270,6 +274,8 @@ type CPU (mmu, gpu: GPU, timerInterrupt: TimerInterrupt, clock: MutableClock) as
             (r16 r).Update alu.Inc16
         | DEC_R16 (r) ->
             (r16 r).Update alu.Dec16
+        | DEC_AR16 (r) ->
+            mmu.Update8 (r16 r).Value alu.Dec8
         | INC_R8 (r) ->
             (r8 r).Update alu.Inc8
         | INC_AR16 (r) ->
@@ -469,7 +475,6 @@ type CPU (mmu, gpu: GPU, timerInterrupt: TimerInterrupt, clock: MutableClock) as
             printf "%d" (r8 r).Value
         | FGBC_PRINTA_R8 (r) ->
             printf "%c" <| char (r8 r).Value 
-        | _ -> raise (System.Exception(sprintf "opcode <%O> not implemented" instruction))
 
         // Update clock
         clock.Tick (cycleCount instruction longCycle |> uint64)

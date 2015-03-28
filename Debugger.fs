@@ -31,7 +31,7 @@ type MapInfo (symbols) =
         |> Map.toSeq
         |> Seq.map snd
         |> Seq.sortBy (fun s -> s.Address |> int |> (~-))
-        |> Seq.tryFind (fun s -> address > s.Address)
+        |> Seq.tryFind (fun s -> address >= s.Address)
 
     new () = MapInfo(Map.empty)
 
@@ -56,6 +56,8 @@ type Debugger(cpu: CPU, mmu: MMU, systemClock: Clock, mapInfo: MapInfo) as this 
     let mutable stepping = false
 
     let mutable previousPC = 0us
+
+    let mutable stepAfterReturn = false
     
     let registers = cpu.Registers
 
@@ -82,6 +84,24 @@ type Debugger(cpu: CPU, mmu: MMU, systemClock: Clock, mapInfo: MapInfo) as this 
         | Some symbol -> breakpoints <- breakpoints |> Map.add symbol.Address (Breakpoint(symbol.Address))
         | None -> ()
 
+    let formatInstruction pc =
+        let instruction = Instruction.decodeOpcode mmu pc
+        let readable = Instruction.readable instruction 
+
+        let formatSymbolAt address =
+            sprintf "(%s) " (match mapInfo.SymbolByAddress address with |Some symbol -> symbol.Name |None -> "<symbol not found>")
+
+        sprintf "%s %s@ 0x%04X " readable
+            (match instruction with
+            | JP_A16 (address)
+            | JP_F_A16 (_,address)
+            | JP_NF_A16 (_,address)
+            | CALL_A16 (address) 
+            | CALL_NF_A16 (_,address)
+            | CALL_F_A16 (_,address) -> formatSymbolAt address
+            | _ -> "")
+            pc
+
     let rec interactive () =
 
         let printWithColor bg fg str =
@@ -104,21 +124,20 @@ type Debugger(cpu: CPU, mmu: MMU, systemClock: Clock, mapInfo: MapInfo) as this 
         printfn "--------------"
         printfn "-- DEBUGGER --"
         printfn "--------------"
-        printfn "CPU paused at instruction 0x%04X = %s" PC.Value (Instruction.decodeOpcode mmu PC.Value |> Instruction.readable) 
-
-        match mapInfo.SymbolByAddress PC.Value with
-        | Some symbol -> printfn "Symbol: %s" symbol.Name
-        | None -> ()
+        printfn "CPU paused in (%s) at instruction 0x%04X = %s"
+            (match mapInfo.NearestSymbol PC.Value with | Some symbol -> symbol.Name | None -> "<symbol not found>")
+            PC.Value (formatInstruction PC.Value) 
             
         System.Console.WriteLine(
             "continue (c), " + 
             "step (s), " +
+            "step return (w), " +
+            "last instruction (i), " +
             "print breakpoints (b), " +
             "add breakpoint (a), " +
             "remove breakpoint (d), " +
             "find symbol (y), " +
             "print symbols (u), " +
-            "guess symbol (g), " +
             "print registers (r), " +
             "print stack (z), " +
             "print uint8 at address (a8 address), " +
@@ -149,11 +168,9 @@ type Debugger(cpu: CPU, mmu: MMU, systemClock: Clock, mapInfo: MapInfo) as this 
                 stepping <- false
             | "s" ->
                 stepping <- true
-            | "g" ->
-                match mapInfo.NearestSymbol PC.Value with
-                | Some symbol -> printResult <| sprintf "Best guess for PC: %s" symbol.Name 
-                | None -> printError "No symbol found for PC"
-                interactive ()
+            | "w" ->
+                stepping <- false
+                stepAfterReturn <- true
             | "b" ->
                 breakpoints
                 |> Map.toSeq
@@ -161,6 +178,9 @@ type Debugger(cpu: CPU, mmu: MMU, systemClock: Clock, mapInfo: MapInfo) as this 
                 |> Seq.iter (fun b ->
                     printResult <| sprintf "Breakpoint: address = 0x%04X, symbol = (%s)" b.Address
                         (match mapInfo.SymbolByAddress b.Address with Some s -> s.Name | None -> ""))
+                interactive ()
+            | "i" ->
+                printResult <| sprintf "Last executed instruction = %s" (formatInstruction previousPC)
                 interactive ()
             | "a" ->
                 match parameter with
@@ -193,6 +213,10 @@ type Debugger(cpu: CPU, mmu: MMU, systemClock: Clock, mapInfo: MapInfo) as this 
                 interactive ()
             | "y" ->
                 match parameter with
+                | AddressParameter address ->
+                    match mapInfo.NearestSymbol address with
+                    | Some s -> printResult <| sprintf "Symbol (%s) @ 0x%04X" s.Name s.Address
+                    | None -> printError <| sprintf "No symbol at address %04X" address                    
                 | Some str ->
                     match mapInfo.SymbolByName str with
                     | Some s -> printResult <| sprintf "Symbol (%s) @ 0x%04X" s.Name s.Address
@@ -239,6 +263,14 @@ type Debugger(cpu: CPU, mmu: MMU, systemClock: Clock, mapInfo: MapInfo) as this 
             interactive ()
 
     let cpuHook instruction = 
+        
+        if stepAfterReturn then
+            match (decodeOpcode mmu previousPC) with
+            |RET |RETI |RET_F _ |RET_NF _ ->
+                stepAfterReturn <- false
+                stepping <- true 
+            | _ ->
+                ()
 
         if stepping || (this.HasBreakpoint PC.Value) then
             interactive ()

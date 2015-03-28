@@ -48,7 +48,7 @@ let main argv =
 
     let mmu = MMU(gpu, rom,ram,interruptRegisters,timers)
 
-    let cpu = CPU(mmu,timerInterrupt,systemClock)
+    let cpu = CPU(mmu,gpu,timerInterrupt,systemClock)
 
     let debugger = Debugger(cpu,mmu, systemClock, mapInfo)
 

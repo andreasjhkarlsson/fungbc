@@ -6,6 +6,7 @@ open Instruction
 open BitLogic
 open Clock
 open Interrupts
+open Gpu
 
 // Alas, how how I wish that F# had inner types so that this type could be
 // contained inside the CPU type. Now it's exposed and dirty and have to take internal
@@ -116,7 +117,7 @@ type ALU (registers: RegisterSet) =
         F.ZNHC <- (setIfZero result,CLEAR,CLEAR,CLEAR)
         result
 
-type CPU (mmu, timerInterrupt: TimerInterrupt, clock: MutableClock) as this =
+type CPU (mmu, gpu: GPU, timerInterrupt: TimerInterrupt, clock: MutableClock) as this =
 
     let registers = RegisterSet()
 
@@ -475,6 +476,8 @@ type CPU (mmu, timerInterrupt: TimerInterrupt, clock: MutableClock) as this =
 
         // Check for interrupts
         checkForTimerInterrupt ()
+
+        gpu.Update ()
         
         if not stopped then execute ()
 

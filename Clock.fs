@@ -6,6 +6,7 @@ open Constants
 // Something that ticks at a certain frequency
 [<AbstractClass>]
 type Clock (frequency: int<Hz>) =
+
     abstract Ticks: uint64 with get
 
     member this.Frequency = frequency
@@ -13,6 +14,8 @@ type Clock (frequency: int<Hz>) =
     member this.Seconds = ((float this.Ticks) / (float frequency) )
 
     member this.MilliSeconds = this.Seconds * 1000.0
+
+
 
 // This clock ticks according to a mutable value that clients manipulate
 type MutableClock (frequency,start) =
@@ -38,6 +41,20 @@ type AbsoluteClock(reference: Clock) =
 
     override this.Ticks with get () = ticks
 
+
+
+// A clock that switch between 1 and 0 according to reference clock
+type FlipClock(reference: Clock) =
+    inherit MutableClock(reference.Frequency, reference.Ticks)
+
+    override this.Ticks with get () = (base.Ticks + reference.Ticks) % (2UL)
+
+    member this.Flipped = this.Ticks = 1UL
+
+    member this.Reset () = if this.Flipped then this.Tick 1UL
+        
+
+
 // Create a new clock from an existing one with specified frequency
 let derive clock frequency = DerivedClock(clock,frequency,clock.Ticks) :> Clock
 
@@ -46,3 +63,4 @@ let freeze clock = AbsoluteClock(clock) :> Clock
 
 // Create a clock that will begin resume ticking according to a reference
 let unfreeze (clock: Clock) reference = DerivedClock(reference,clock.Frequency,reference.Ticks - clock.Ticks) :> Clock
+    

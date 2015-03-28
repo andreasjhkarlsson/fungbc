@@ -3,7 +3,8 @@
 open IORegisters
 open Tile
 open MemoryCell
-
+open Clock
+open Units
 
 type VRAM () =
     let memory = readWriteMemoryBlock 8192
@@ -23,9 +24,18 @@ type VRAM () =
     member this.MemoryBlock = memory
 
 
-type GPU (clock) =
+type GPU (systemClock) =
+    
+    let vSyncClock = FlipClock(Clock.derive systemClock 60<Hz>)
+
+    let startVSync () =
+        vSyncClock.Reset ()
+    
     let vram = VRAM()
 
     member this.VRAM = vram
 
+    member this.Update () =
+        if vSyncClock.Flipped then
+            startVSync ()
 

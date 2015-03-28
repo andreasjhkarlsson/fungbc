@@ -1,10 +1,15 @@
 ﻿module Gpu
 
+open System.Drawing
 open IORegisters
 open Tile
 open MemoryCell
 open Clock
 open Units
+open Constants
+
+
+type FrameReceiver = |FrameReceiver of (Bitmap -> unit)
 
 type VRAM () =
     let memory = readWriteMemoryBlock 8192
@@ -24,9 +29,11 @@ type VRAM () =
     member this.MemoryBlock = memory
 
 
-type GPU (systemClock) =
+type GPU (systemClock, frameReciver: FrameReceiver) =
     
     let vSyncClock = FlipClock(Clock.derive systemClock 60<Hz>)
+
+    let frame = System.Drawing.Bitmap(RESOLUTION.Width,RESOLUTION.Height)
 
     let startVSync () =
         vSyncClock.Reset ()

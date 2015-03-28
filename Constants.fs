@@ -10,7 +10,10 @@ let GBC_SYSTEM_CLOCK_FREQUENCY = 4194000<Hz>
 [<Literal>]
 let ADDRESS_SPACE_SIZE = 65536
 
-// [<Literal>] Tuples cannot be literals (probably because they are heap allocated?)
-let RESOLUTION = (160, 144)
+type Dimension = {Width: int; Height: int}
+
+let RESOLUTION = {Width = 160; Height = 144}
 
 let VBLANK = 59.7<Hz>
+
+let APPLICATION_TITLE = "FunGBC"

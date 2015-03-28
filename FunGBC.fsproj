@@ -72,6 +72,8 @@
     <Compile Include="Instruction.fs" />
     <Compile Include="Cpu.fs" />
     <Compile Include="Debugger.fs" />
+    <Compile Include="Gameboy.fs" />
+    <Compile Include="GameboyWindow.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <PropertyGroup>

@@ -84,6 +84,14 @@ type Debugger(cpu: CPU, mmu: MMU, systemClock: Clock, mapInfo: MapInfo) as this 
         | Some symbol -> breakpoints <- breakpoints |> Map.add symbol.Address (Breakpoint(symbol.Address))
         | None -> ()
 
+        System.Console.CancelKeyPress.AddHandler
+            <| new System.ConsoleCancelEventHandler(fun obj args ->
+                if not <| this.IsStepping () then
+                    printfn "\n--- Ctrl+C, invoking debugger ---\n"
+                    args.Cancel <- true
+                    this.Step ()
+                ) 
+
     let formatInstruction pc =
         let instruction = Instruction.decodeOpcode mmu pc
         let readable = Instruction.readable instruction 

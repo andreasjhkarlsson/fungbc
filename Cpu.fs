@@ -271,6 +271,8 @@ type CPU (mmu, timerInterrupt: TimerInterrupt, clock: MutableClock) as this =
             (r16 r).Update alu.Dec16
         | INC_R8 (r) ->
             (r8 r).Update alu.Inc8
+        | INC_AR16 (r) ->
+            mmu.Update8 (r16 r).Value alu.Inc8
         | DEC_R8 (r) ->
             (r8 r).Update alu.Dec8
         | SWAP_R8 (r) ->

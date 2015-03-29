@@ -64,6 +64,12 @@ type LCDStatus (init) =
                         |SearchingOAMRAM -> 2uy
                         |LCDDriverDataTransfer -> 3uy)
 
+type LY(init) =
+    inherit ValueBackedIORegister(init)
+
+    // Writing from memory resets the register
+    override this.MemoryValue with set value = base.MemoryValue <- 0x0uy
+
 
 type BGPalette(init) =
     inherit ValueBackedIORegister(init)
@@ -102,7 +108,7 @@ type RenderStage = |ScanOAM of int |ScanVRAM of int |HBlank of int |VBlank
 
 type RenderAction = |Wait |RenderLine of int |RenderScreen
 
-type RenderTimer (systemClock: Clock,lcds: LCDStatus) =
+type RenderTimer (systemClock: Clock,lcds: LCDStatus, ly: LY) =
 
     let stopWatch = System.Diagnostics.Stopwatch.StartNew()
     
@@ -139,6 +145,11 @@ type RenderTimer (systemClock: Clock,lcds: LCDStatus) =
     member this.Action =
         let stage = stage systemClock.Ticks
         if stage <> lastStage then
+            
+            // Reset ly when moving from vblank to drawing lines again.
+            if lastStage = VBlank then
+                ly.Value <- 0uy
+
             lastStage <- stage
             match stage with
             | HBlank line ->
@@ -149,9 +160,11 @@ type RenderTimer (systemClock: Clock,lcds: LCDStatus) =
                 printfn "FPS: %.2f" fps
                 stopWatch.Restart()
                 lcds.Mode <- Mode.VBlank
+                ly.Value <- 153uy // Should increment between 143 & 153 during vblank. TODO.
                 RenderScreen
             | ScanOAM _ ->
                 lcds.Mode <- Mode.SearchingOAMRAM // Correct?
+                ly.Value <- ly.Value + 1uy
                 Wait
             | ScanVRAM _ ->
                 lcds.Mode <- Mode.LCDDriverDataTransfer // Correct?
@@ -165,12 +178,14 @@ type GPURegisters () =
     let scx = ValueBackedIORegister(0uy)
     let scy = ValueBackedIORegister(0uy)
     let bgp = BGPalette(0uy)
+    let ly = LY(0uy)
 
     member this.LCDC = lcdc
     member this.LCDS = lcds
     member this.SCX = scx
     member this.SCY = scy
     member this.BGP = bgp
+    member this.LY = ly
 
 
 type GPU (systemClock, frameReceiver: FrameReceiver) =
@@ -179,7 +194,7 @@ type GPU (systemClock, frameReceiver: FrameReceiver) =
 
     let registers = GPURegisters()
     
-    let renderTimer = RenderTimer(systemClock, registers.LCDS)
+    let renderTimer = RenderTimer(systemClock, registers.LCDS, registers.LY)
 
     let screenBuffer = new System.Drawing.Bitmap(RESOLUTION.Width,RESOLUTION.Height)
 

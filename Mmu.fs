@@ -25,8 +25,8 @@ type MMU (gpu: GPU, rom: ROM, ram: GBCRam, interruptRegisters: InterruptRegister
         {start..stop} |> Seq.iter (fun address -> 
             let cell = Array.get block (address - start |> int)
             mapAddress address cell
-        )
-    
+        )        
+
     // Map memory!!!
     do
         // Map ROM
@@ -49,6 +49,7 @@ type MMU (gpu: GPU, rom: ROM, ram: GBCRam, interruptRegisters: InterruptRegister
         mapAddress 0xFF41us gpu.Registers.LCDS.MemoryCell
         mapAddress 0xFF42us gpu.Registers.SCY.MemoryCell
         mapAddress 0xFF43us gpu.Registers.SCX.MemoryCell
+        mapAddress 0xFF44us gpu.Registers.LY.MemoryCell
         mapAddress 0xFF47us gpu.Registers.BGP.MemoryCell
 
         mapAddress 0xFF0Fus interruptRegisters.IF.MemoryCell

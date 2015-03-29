@@ -9,7 +9,9 @@ open Units
 open Constants
 open BitLogic
 
-type FrameReceiver = |FrameReceiver of (Bitmap -> unit)
+type FrameReceiver =
+    |FrameReceiver of (Bitmap -> unit)
+    member x.Value = let (FrameReceiver v) = x in v // How does this syntax work??
 
 type LCDControl (init) =
     inherit ValueBackedIORegister(init)
@@ -41,24 +43,81 @@ type VRAM () =
     member this.MemoryBlock = memory
 
 
-type GPU (systemClock, frameReciver: FrameReceiver) =
+type RenderStage = |ScanOAM of int |ScanVRAM of int |HBlank of int |VBlank
+
+type RenderAction = |Wait |RenderLine of int |RenderScreen
+
+type RenderTimer (systemClock: Clock) =
     
+    let oamLineCycles = 80UL
+
+    let vramLineCycles = 172UL
+
+    let hBlankCycles = 204UL
+
+    let lineCycles = oamLineCycles + vramLineCycles + hBlankCycles
+
+    let allLinesCycles = lineCycles * uint64 RESOLUTION.Height 
+
+    let vBlankCycles = 4560UL
+
+    let frameCycles = allLinesCycles + vBlankCycles
+
     let vSyncClock = FlipClock(Clock.derive systemClock 60<Hz>)
 
-    let frame = System.Drawing.Bitmap(RESOLUTION.Width,RESOLUTION.Height)
+    let stage time =
+        match time % frameCycles with
+        | cycles when cycles <= allLinesCycles ->
+            let line = cycles / lineCycles |> int
+            match cycles % lineCycles with
+            | cycles when cycles > (oamLineCycles + vramLineCycles) ->
+                HBlank(line)
+            | cycles when cycles > oamLineCycles ->
+                ScanVRAM(line)
+            | cycles ->
+                ScanOAM(line)
+        | _ ->
+            VBlank
 
-    let startVSync () =
-        vSyncClock.Reset ()
-    
+    let mutable lastStage = VBlank
+
+    member this.Action =
+        let stage = stage systemClock.Ticks
+        if stage <> lastStage then
+            lastStage <- stage
+            match stage with
+            | HBlank line -> RenderLine(line)
+            | VBlank -> RenderScreen
+            | _ -> Wait
+        else
+            Wait
+        
+
+
+type GPU (systemClock, frameReceiver: FrameReceiver) =
+
     let vram = VRAM()
 
     let lcdc = LCDControl(0uy)
+    
+    let renderTimer = RenderTimer(systemClock)
+
+    let screenBuffer = new System.Drawing.Bitmap(RESOLUTION.Width,RESOLUTION.Height)
+
+    let drawLine n = ()
+
+    let drawScreen (FrameReceiver receiver) = receiver screenBuffer
 
     member this.VRAM = vram
 
     member this.LCDC = lcdc
 
     member this.Update () =
-        if vSyncClock.Flipped then
-            startVSync ()
+        match renderTimer.Action with
+        | RenderLine line -> drawLine line
+        | RenderScreen -> drawScreen frameReceiver
+        | Wait -> ()
+
+
+
 

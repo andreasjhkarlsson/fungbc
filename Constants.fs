@@ -14,6 +14,4 @@ type Dimension = {Width: int; Height: int}
 
 let RESOLUTION = {Width = 160; Height = 144}
 
-let VBLANK = 59.7<Hz>
-
 let APPLICATION_TITLE = "FunGBC"

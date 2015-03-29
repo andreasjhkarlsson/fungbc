@@ -67,6 +67,8 @@ type RenderStage = |ScanOAM of int |ScanVRAM of int |HBlank of int |VBlank
 type RenderAction = |Wait |RenderLine of int |RenderScreen
 
 type RenderTimer (systemClock: Clock) =
+
+    let stopWatch = System.Diagnostics.Stopwatch.StartNew()
     
     let oamLineCycles = 80UL
 
@@ -81,8 +83,6 @@ type RenderTimer (systemClock: Clock) =
     let vBlankCycles = 4560UL
 
     let frameCycles = allLinesCycles + vBlankCycles
-
-    let vSyncClock = FlipClock(Clock.derive systemClock 60<Hz>)
 
     let stage time =
         match time % frameCycles with
@@ -105,9 +105,15 @@ type RenderTimer (systemClock: Clock) =
         if stage <> lastStage then
             lastStage <- stage
             match stage with
-            | HBlank line -> RenderLine(line)
-            | VBlank -> RenderScreen
-            | _ -> Wait
+            | HBlank line ->
+                RenderLine(line)
+            | VBlank ->
+                let fps = 1000.0 / float stopWatch.ElapsedMilliseconds
+                printfn "FPS: %.2f" fps
+                stopWatch.Restart()
+                RenderScreen
+            | _ ->
+                Wait
         else
             Wait
         

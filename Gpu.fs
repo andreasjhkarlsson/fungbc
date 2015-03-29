@@ -104,7 +104,7 @@ type GPU (systemClock, frameReceiver: FrameReceiver) =
 
     let screenBuffer = new System.Drawing.Bitmap(RESOLUTION.Width,RESOLUTION.Height)
 
-    let drawLine n = ()
+    let drawLine n = {1..(RESOLUTION.Width)} |> Seq.iter (fun x -> screenBuffer.SetPixel(x-1,n,Color.GreenYellow))
 
     let drawScreen (FrameReceiver receiver) = receiver screenBuffer
 

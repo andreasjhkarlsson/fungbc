@@ -6,6 +6,8 @@ let inline bitStateToValue state: ^T = match state with |SET -> LanguagePrimitiv
 
 let inline isBitSet bit value = ((value >>> bit) &&& LanguagePrimitives.GenericOne) = LanguagePrimitives.GenericOne
 
+let inline isSet state = state = SET
+
 let inline bitStateOf bit value = if isBitSet bit value then SET else CLEAR
 
 let inline bitChanged bit oldValue newValue = oldValue ^^^ newValue |> isBitSet bit
@@ -27,6 +29,8 @@ let inline bitStateInvert state = match state with |SET -> CLEAR |CLEAR -> SET
 let inline setBit bit value = value ||| (LanguagePrimitives.GenericOne <<< bit)
 
 let inline clearBit bit value = value &&& (~~~(LanguagePrimitives.GenericOne <<< bit))
+
+let inline controlBit bit state = if state = SET then setBit bit else clearBit bit
 
 let inline setIfZero value = if value = LanguagePrimitives.GenericZero then SET else CLEAR
 

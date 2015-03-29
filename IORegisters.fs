@@ -1,6 +1,7 @@
 ﻿module IORegisters
 
 open MemoryCell
+open BitLogic
 
 // IORegister = Memory register
 [<AbstractClass>]
@@ -20,6 +21,11 @@ type ValueBackedIORegister(init) =
         with get () = this.Value
         and set newValue = this.Value <- newValue 
 
+    member this.Update fn = this.Value <- fn this.Value
+
+    member this.GetBit bit = this.Value |> bitStateOf bit
+
+    member this.SetBit bit state = this.Value <- controlBit bit state this.Value
 
 
     

@@ -29,6 +29,42 @@ type LCDControl (init) =
     member this.WIndowTileMapSelect = this.Value |> isBitSet 6
     member this.DisplayEnable = this.Value |> isBitSet 7
 
+type Coincidence = |LYC_NE_LY |LYC_E_LY
+
+type Mode = |HBlank |VBlank |SearchingOAMRAM |LCDDriverDataTransfer
+
+type LCDStatus (init) =
+    inherit ValueBackedIORegister(init)
+    member this.LYCLYCoincidenceInterrupt
+        with get () = this.GetBit 6 |> isSet
+        and set value = setIfTrue value |> this.SetBit 6 
+    member this.OAMInterrupt 
+        with get () = this.GetBit 5 |> isSet
+        and set value = setIfTrue value |> this.SetBit 5
+    member this.VBlankInterrupt
+        with get () = this.GetBit 4 |> isSet
+        and set value = setIfTrue value |> this.SetBit 4
+    member this.HBlankInterrupt
+        with get () = this.GetBit 3 |> isSet
+        and set value = setIfTrue value |> this.SetBit 3
+    member this.Coincidence
+        with get () = match this.GetBit 2 with |SET -> LYC_E_LY |CLEAR -> LYC_NE_LY
+        and set value = this.SetBit 2 <| match value with |LYC_E_LY -> SET |LYC_NE_LY -> CLEAR
+    member this.Mode
+        with get () = match this.Value &&& 0x3uy with 
+                        |0uy -> HBlank
+                        |1uy -> VBlank
+                        |2uy -> SearchingOAMRAM
+                        |3uy -> LCDDriverDataTransfer
+                        |_ -> raise <| System.Exception("Cannot happen (uint8&0x3 <= 3)")
+        and set value = this.Value <- (this.Value &&& (~~~0x3uy)) |||
+                        (match value with
+                        |HBlank -> 0uy
+                        |VBlank -> 1uy
+                        |SearchingOAMRAM -> 2uy
+                        |LCDDriverDataTransfer -> 3uy)
+
+
 type BGPalette(init) =
     inherit ValueBackedIORegister(init)
 
@@ -66,7 +102,7 @@ type RenderStage = |ScanOAM of int |ScanVRAM of int |HBlank of int |VBlank
 
 type RenderAction = |Wait |RenderLine of int |RenderScreen
 
-type RenderTimer (systemClock: Clock) =
+type RenderTimer (systemClock: Clock,lcds: LCDStatus) =
 
     let stopWatch = System.Diagnostics.Stopwatch.StartNew()
     
@@ -106,24 +142,32 @@ type RenderTimer (systemClock: Clock) =
             lastStage <- stage
             match stage with
             | HBlank line ->
+                lcds.Mode <- Mode.HBlank
                 RenderLine(line)
             | VBlank ->
                 let fps = 1000.0 / float stopWatch.ElapsedMilliseconds
                 printfn "FPS: %.2f" fps
                 stopWatch.Restart()
+                lcds.Mode <- Mode.VBlank
                 RenderScreen
-            | _ ->
+            | ScanOAM _ ->
+                lcds.Mode <- Mode.SearchingOAMRAM // Correct?
+                Wait
+            | ScanVRAM _ ->
+                lcds.Mode <- Mode.LCDDriverDataTransfer // Correct?
                 Wait
         else
             Wait
         
 type GPURegisters () =
     let lcdc = LCDControl(0uy)
+    let lcds = LCDStatus(0uy)
     let scx = ValueBackedIORegister(0uy)
     let scy = ValueBackedIORegister(0uy)
     let bgp = BGPalette(0uy)
 
     member this.LCDC = lcdc
+    member this.LCDS = lcds
     member this.SCX = scx
     member this.SCY = scy
     member this.BGP = bgp
@@ -135,7 +179,7 @@ type GPU (systemClock, frameReceiver: FrameReceiver) =
 
     let registers = GPURegisters()
     
-    let renderTimer = RenderTimer(systemClock)
+    let renderTimer = RenderTimer(systemClock, registers.LCDS)
 
     let screenBuffer = new System.Drawing.Bitmap(RESOLUTION.Width,RESOLUTION.Height)
 

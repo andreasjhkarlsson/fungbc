@@ -13,14 +13,18 @@ type FrameReceiver =
     |FrameReceiver of (Bitmap -> unit)
     member x.Value = let (FrameReceiver v) = x in v // How does this syntax work??
 
+type BGTileMapSelect = |Map1 |Map0
+
+type TileDataSelect = |Tiles0 |Tiles1
+
 type LCDControl (init) =
     inherit ValueBackedIORegister(init)
 
     member this.BGDisplay = this.Value |> isBitSet 0
     member this.SpriteEnable = this.Value |> isBitSet 1
     member this.SpriteSize = this.Value |> isBitSet 2
-    member this.BGTilemapSelect = this.Value |> isBitSet 3
-    member this.BGAndWindowTileDataSelect = this.Value |> isBitSet 4
+    member this.BGTilemapSelect = if this.Value |> isBitSet 3 then Map1 else Map0
+    member this.BGAndWindowTileDataSelect = if this.Value |> isBitSet 4 then Tiles1 else Tiles0
     member this.WindowEnabled = this.Value |> isBitSet 5
     member this.WIndowTileMapSelect = this.Value |> isBitSet 6
     member this.DisplayEnable = this.Value |> isBitSet 7
@@ -30,16 +34,23 @@ type VRAM () =
 
     let mapTiles offset count =
         let createTile index = Tile8x8(Array.sub memory (offset + index * 16) 16)
-        Array.init 255 createTile
+        Array.init 256 createTile
 
-    let tiles1 = mapTiles 0 255
-    let tiles0 = mapTiles 2048 255
+    let tiles1 = mapTiles 0 256
+    let tiles0 = mapTiles 2048 256
+
+    let tileMap0 = Array.sub memory 0x1800 1024
+    let tileMap1 = Array.sub memory  0x1C00 1024
 
     // Use useless constraints on the index to clarify that
     // tiles1 are indexes as 0 - 255 and tiles0 as -128 - 127
-    let tile1 (index: uint8) = tiles1.[index |> int]
-    let tile0 (index: int8) = tiles0.[index |> uint8 |> int]
+    member this.Tile1 (index: uint8) =
+        tiles1.[index |> int]
+    member this.Tile0 (index: int8) =
+        tiles0.[index |> uint8 |> int]
 
+    member this.TileMap0 x y = (Array.get tileMap0 (x + y * 32)).Value
+    member this.TileMap1 x y = (Array.get tileMap1 (x + y * 32)).Value
     member this.MemoryBlock = memory
 
 
@@ -67,7 +78,7 @@ type RenderTimer (systemClock: Clock) =
 
     let stage time =
         match time % frameCycles with
-        | cycles when cycles <= allLinesCycles ->
+        | cycles when cycles < allLinesCycles ->
             let line = cycles / lineCycles |> int
             match cycles % lineCycles with
             | cycles when cycles > (oamLineCycles + vramLineCycles) ->
@@ -92,31 +103,65 @@ type RenderTimer (systemClock: Clock) =
         else
             Wait
         
+type GPURegisters () =
+    let lcdc = LCDControl(0uy)
+    let scx = ValueBackedIORegister(0uy)
+    let scy = ValueBackedIORegister(0uy)
+
+    member this.LCDC = lcdc
+    member this.SCX = scx
+    member this.SCY = scy
 
 
 type GPU (systemClock, frameReceiver: FrameReceiver) =
 
     let vram = VRAM()
 
-    let lcdc = LCDControl(0uy)
+    let registers = GPURegisters()
     
     let renderTimer = RenderTimer(systemClock)
 
     let screenBuffer = new System.Drawing.Bitmap(RESOLUTION.Width,RESOLUTION.Height)
 
-    let drawLine n = {1..(RESOLUTION.Width)} |> Seq.iter (fun x -> screenBuffer.SetPixel(x-1,n,Color.GreenYellow))
+    let drawLine y =
+
+        let bgMap = match registers.LCDC.BGTilemapSelect with |Map0 -> vram.TileMap0 |Map1 -> vram.TileMap1
+
+        let tileData = match registers.LCDC.BGAndWindowTileDataSelect with |Tiles0 -> int8 >> vram.Tile0|Tiles1 -> vram.Tile1
+
+        let palette value =
+            match value with
+            | 0 -> Color.White
+            | 1 -> Color.LightGray
+            | 2 -> Color.DarkGray
+            | 3 -> Color.Black
+            | _ -> Color.Red // Error
+
+        let cy = int registers.SCY.Value + y
+
+        let drawPixel x =
+            let cx = int registers.SCX.Value + x
+            let tileIndex = bgMap ((cx % 256) / 8) ((cy % 256) / 8)
+            let tile = tileData tileIndex
+            let color = tile.[cx % 8, cy % 8] |> palette
+            screenBuffer.SetPixel(x,y,color)
+
+        {0..(RESOLUTION.Width - 1)} |> Seq.iter drawPixel
 
     let drawScreen (FrameReceiver receiver) = receiver screenBuffer
 
     member this.VRAM = vram
 
-    member this.LCDC = lcdc
+    member this.Registers = registers
 
     member this.Update () =
         match renderTimer.Action with
-        | RenderLine line -> drawLine line
-        | RenderScreen -> drawScreen frameReceiver
-        | Wait -> ()
+        | RenderLine line ->
+            drawLine line
+        | RenderScreen ->
+            drawScreen frameReceiver
+        | Wait -> 
+            ()
 
 
 

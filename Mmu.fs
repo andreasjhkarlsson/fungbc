@@ -45,7 +45,9 @@ type MMU (gpu: GPU, rom: ROM, ram: GBCRam, interruptRegisters: InterruptRegister
         mapAddress 0xFF05us timers.TIMA.MemoryCell
         mapAddress 0xFF06us timers.TMA.MemoryCell
         mapAddress 0xFF07us timers.TAC.MemoryCell
-        mapAddress 0xFF40us gpu.LCDC.MemoryCell
+        mapAddress 0xFF40us gpu.Registers.LCDC.MemoryCell
+        mapAddress 0xFF42us gpu.Registers.SCY.MemoryCell
+        mapAddress 0xFF43us gpu.Registers.SCX.MemoryCell
 
         mapAddress 0xFF0Fus interruptRegisters.IF.MemoryCell
         mapAddress 0xFFFFus interruptRegisters.IE.MemoryCell

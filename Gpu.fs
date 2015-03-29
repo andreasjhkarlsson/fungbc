@@ -29,6 +29,14 @@ type LCDControl (init) =
     member this.WIndowTileMapSelect = this.Value |> isBitSet 6
     member this.DisplayEnable = this.Value |> isBitSet 7
 
+type BGPalette(init) =
+    inherit ValueBackedIORegister(init)
+
+    let colors = [|Color.White; Color.LightGray; Color.DarkGray; Color.Black|]
+
+    member this.Color index = colors.[(int this.Value >>> (index * 2)) &&& 0x3]
+
+
 type VRAM () =
     let memory = readWriteMemoryBlock 8192
 
@@ -107,10 +115,12 @@ type GPURegisters () =
     let lcdc = LCDControl(0uy)
     let scx = ValueBackedIORegister(0uy)
     let scy = ValueBackedIORegister(0uy)
+    let bgp = BGPalette(0uy)
 
     member this.LCDC = lcdc
     member this.SCX = scx
     member this.SCY = scy
+    member this.BGP = bgp
 
 
 type GPU (systemClock, frameReceiver: FrameReceiver) =
@@ -129,21 +139,13 @@ type GPU (systemClock, frameReceiver: FrameReceiver) =
 
         let tileData = match registers.LCDC.BGAndWindowTileDataSelect with |Tiles0 -> int8 >> vram.Tile0|Tiles1 -> vram.Tile1
 
-        let palette value =
-            match value with
-            | 0 -> Color.White
-            | 1 -> Color.LightGray
-            | 2 -> Color.DarkGray
-            | 3 -> Color.Black
-            | _ -> Color.Red // Error
-
         let cy = int registers.SCY.Value + y
 
         let drawPixel x =
             let cx = int registers.SCX.Value + x
             let tileIndex = bgMap ((cx % 256) / 8) ((cy % 256) / 8)
             let tile = tileData tileIndex
-            let color = tile.[cx % 8, cy % 8] |> palette
+            let color = tile.[cx % 8, cy % 8] |> registers.BGP.Color
             screenBuffer.SetPixel(x,y,color)
 
         {0..(RESOLUTION.Width - 1)} |> Seq.iter drawPixel

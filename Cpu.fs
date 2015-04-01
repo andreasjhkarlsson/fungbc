@@ -369,7 +369,7 @@ type CPU (mmu, gpu: GPU, timerInterrupt: TimerInterrupt, clock: MutableClock) as
         | JP_A16 (address) ->
             PC.Value <- address // Easiest instruction ever!
         | JP_AR16 (r) ->
-            PC.Value <- mmu.Read16 (r16 r).Value
+            PC.Value <- (r16 r).Value
         | JP_F_A16 (f,address) ->
             match (F.FlagFromName f) with
             | SET ->

@@ -4,6 +4,7 @@ open IORegisters
 open Clock
 open BitLogic
 open Units
+open Interrupts
 
 // Divider register. Simply increments 16384 times per second
 type DIVRegister(clock: Clock) =
@@ -84,7 +85,7 @@ type TACRegister (tima: TIMARegister,init) =
 // Timer modulo register. Is loaded into TIMA when TIMA overflows.
 type TMARegister (init) = inherit ValueBackedIORegister(init)
 
-type Timers (systemClock) =
+type Timers (systemClock, interrupts: InterruptManager) =
     let div = DIVRegister(systemClock)
     let tima = TIMARegister(systemClock,4096<Hz>)
     let tma = TMARegister(0uy)
@@ -95,3 +96,7 @@ type Timers (systemClock) =
     member this.TMA = tma
     member this.TAC = tac
     
+    member this.Update () =
+        if tima.Overflowed () then
+            tima.MemoryValue <- tma.Value
+            interrupts.Interrupt.Current <- Some TimerOverflow

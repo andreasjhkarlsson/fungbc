@@ -3,55 +3,80 @@
 open BitLogic
 open MemoryCell
 open IORegisters
-open Timer
+
+type InterruptHandler = |InterruptHandler of uint16
+
+type Interrupt =
+    | TimerOverflow
+    | VBlank
+    | LCDC
+    | SerialIO
+    | P10P13Flip
+
+
+let address =
+    function
+    |TimerOverflow -> 0x0050us
+    | _ -> raise <| System.Exception("Not implemented")
+
 
 // Interrupt enabled register. Controls if specific interrupts are enabled.
 type InterruptEnableRegister (init) =
     inherit ValueBackedIORegister(init)
-    
-    member this.VBlank           =  isBitSet 0 this.MemoryValue 
-    member this.LCDC             =  isBitSet 1 this.MemoryValue
-    member this.TimerOverflow    =  isBitSet 2 this.MemoryValue 
-    member this.SerialIOTransfer =  isBitSet 3 this.MemoryValue
-    member this.P10P13Flip       =  isBitSet 4 this.MemoryValue
 
-// Interrupt flag register. I set according to the current interrupt
-type IFRegister(init) as this =
+    member this.Enabled interrupt =
+        let bit =
+            match interrupt with
+            | VBlank -> 0
+            | LCDC -> 1
+            | TimerOverflow -> 2
+            | SerialIO -> 3
+            | P10P13Flip -> 4
+        this.Value |> isBitSet bit 
+
+
+// Interrupt flag register. Set according to the current interrupt
+type IFRegister(init) =
     inherit ValueBackedIORegister(init)
 
-    let setBit bit = this.Value <- 0uy |> BitLogic.setBit bit
-    
-    member this.SetVBlank ()            = setBit 0
-    member this.SetLCDC ()              = setBit 1
-    member this.SetTimerOverflow ()     = setBit 2
-    member this.SetSerialIOTransfer ()  = setBit 3
-    member this.P10P13Flip ()           = setBit 4
+    member this.Current
+        with get () =
+            match this.Value with
+            | BitSet 0 _ -> Some VBlank
+            | BitSet 1 _ -> Some LCDC
+            | BitSet 2 _ -> Some TimerOverflow
+            | BitSet 3 _ -> Some SerialIO
+            | BitSet 4 _ -> Some P10P13Flip
+            | _ -> None
 
-    member this.Clear = this.Value <- 0uy
-
-type InterruptRegisters () =
-    let ie = InterruptEnableRegister(0x00uy)   
-    let _if = IFRegister(0uy)
-    
-    member this.IE = ie
-    member this.IF = _if    
-
-type InterruptHandler = |InterruptHandler of uint16
-
-[<AbstractClass>]
-type Interrupt () =
-    abstract Execute: unit -> InterruptHandler
-
-
-type TimerInterrupt (timers: Timers, interruptRegisters: InterruptRegisters) =
-    inherit Interrupt()
-
-    override this.Execute () =
-        timers.TIMA.MemoryValue <- timers.TMA.MemoryValue
-        interruptRegisters.IF.SetTimerOverflow ()
-        InterruptHandler 0x0050us
-
-    member this.Check () =
-        interruptRegisters.IE.TimerOverflow && timers.TIMA.Overflowed ()
+        and set interrupt =
+            this.Value <- 
+                match interrupt with
+                | Some interrupt ->
+                    let bit =
+                        match interrupt with
+                        | VBlank -> 0
+                        | LCDC -> 1
+                        | TimerOverflow -> 2
+                        | SerialIO -> 3
+                        | P10P13Flip -> 4
+                    0uy |> setBit bit
+                | None ->
+                    0uy
 
 
+type InterruptManager() =
+
+    member val Enable = true with get, set
+
+    member val Interrupt = IFRegister(0uy)
+
+    member val InterruptEnable = InterruptEnableRegister(0uy)
+
+    member this.Handle fn =
+        if this.Enable then
+            match this.Interrupt.Current with
+            | Some interrupt ->
+                if this.InterruptEnable.Enabled interrupt then
+                    fn interrupt
+            | None -> ()

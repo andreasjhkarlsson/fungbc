@@ -19,17 +19,15 @@ type Gameboy(rom: ROM, frameReceiver: FrameReceiver) =
 
     let systemClock = MutableClock(GBC_SYSTEM_CLOCK_FREQUENCY,0UL)
 
-    let interruptRegisters = InterruptRegisters()
+    let interrupts = InterruptManager()
 
-    let timers = Timers(systemClock)
-
-    let timerInterrupt = TimerInterrupt(timers,interruptRegisters)
+    let timers = Timers(systemClock,interrupts)
 
     let gpu = GPU(systemClock, frameReceiver)
 
-    let mmu = MMU(gpu, rom,ram,interruptRegisters,timers)
+    let mmu = MMU(gpu, rom,ram,interrupts,timers)
 
-    let cpu = CPU(mmu,gpu,timerInterrupt,systemClock)
+    let cpu = CPU(mmu,gpu,interrupts,timers,systemClock)
 
     member this.Start = cpu.Start 
 

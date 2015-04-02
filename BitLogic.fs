@@ -24,6 +24,8 @@ let inline (|BitsChanged|_|) bitPattern (oldValue, newValue) =
     | true -> Some (newValue &&& bitPattern)
     | false -> None
 
+let inline (|BitSet|_|) bit value = if isBitSet bit value then Some () else None
+
 let inline bitStateInvert state = match state with |SET -> CLEAR |CLEAR -> SET
 
 let inline setBit bit value = value ||| (LanguagePrimitives.GenericOne <<< bit)

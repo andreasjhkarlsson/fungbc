@@ -38,7 +38,8 @@ let main argv =
     async {
         let gb = Gameboy(rom, FrameReceiver gbWindow.PresentFrame)
         
-        gb.StartWithDebugger mapInfo
+        gb.StartWithDebugger mapInfo false
+        //gb.Start()
 
     } |> Async.Start
 

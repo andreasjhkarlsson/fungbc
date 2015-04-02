@@ -1,3 +1,6 @@
+.title "FGBCDebugging"
+.module FGBCDebugging
+
 ; This symbol is hardcoded into debugger to break
 .globl _fgbc_debugger_break
 _fgbc_debugger_break:

@@ -8,15 +8,18 @@ open BitLogic
 open Register
 open Clock
 open System.IO
+open Gpu
+open Tile
 open System.Text.RegularExpressions
 
 type Breakpoint(address) =
     member this.Address = address
     member val Active = true with get, set
 
-type Symbol(address: uint16,name) =
+type Symbol(address: uint16,name, _module) =
     member this.Address = address
     member this.Name = name
+    member this.Module = _module
 
 type MapInfo (symbols) =
 
@@ -36,20 +39,23 @@ type MapInfo (symbols) =
     new () = MapInfo(Map.empty)
 
     new (path: string) =
-        let groups = Regex.Matches(File.ReadAllText path ,@"((\S+)\s+([0-9A-F]+))",RegexOptions.Multiline)
+        let groups = Regex.Matches(File.ReadAllText path ,@"^\s+([0-9A-F]+)\s+(\S+)\s+(\w*)\s*$",RegexOptions.Multiline)
 
         let symbols = 
                 groups |> Seq.cast<Match>
-                |> Seq.map (fun m -> m.Groups.Item(2).Value, m.Groups.Item(3).Value)
-                |> Seq.map (fun (name, address) ->
+                |> Seq.map (fun m ->
+                    m.Groups.Item(1).Value, m.Groups.Item(2).Value, m.Groups.Item(3).Value)
+                |> Seq.filter (fun (_,name,_module) ->
+                    (name.EndsWith("_end") || name.EndsWith("_start") || _module = "") |> not)
+                |> Seq.map (fun (address, name, _module) ->
                     let address = parseHex address |> Option.get |> uint16
-                    address, Symbol(address, name))
+                    address, Symbol(address, name, _module))
                 |> Map.ofSeq
        
         MapInfo(symbols)
     
 
-type Debugger(cpu: CPU, mmu: MMU, systemClock: Clock, mapInfo: MapInfo) as this =
+type Debugger(cpu: CPU,gpu: GPU, mmu: MMU, systemClock: Clock, mapInfo: MapInfo) as this =
 
     let mutable breakpoints = Map.empty<uint16,Breakpoint>
 
@@ -133,7 +139,7 @@ type Debugger(cpu: CPU, mmu: MMU, systemClock: Clock, mapInfo: MapInfo) as this 
         printfn "-- DEBUGGER --"
         printfn "--------------"
         printfn "CPU paused in (%s) at instruction 0x%04X = %s"
-            (match mapInfo.NearestSymbol PC.Value with | Some symbol -> symbol.Name | None -> "<symbol not found>")
+            (match mapInfo.NearestSymbol PC.Value with | Some symbol -> sprintf "module: %s, symbol: %s" symbol.Module symbol.Name | None -> "<symbol not found>")
             PC.Value (formatInstruction PC.Value) 
             
         System.Console.WriteLine(
@@ -223,17 +229,17 @@ type Debugger(cpu: CPU, mmu: MMU, systemClock: Clock, mapInfo: MapInfo) as this 
                 match parameter with
                 | AddressParameter address ->
                     match mapInfo.NearestSymbol address with
-                    | Some s -> printResult <| sprintf "Symbol (%s) @ 0x%04X" s.Name s.Address
+                    | Some s -> printResult <| sprintf "Symbol (%s) in module (%s) @ 0x%04X" s.Name s.Module s.Address
                     | None -> printError <| sprintf "No symbol at address %04X" address                    
                 | Some str ->
                     match mapInfo.SymbolByName str with
-                    | Some s -> printResult <| sprintf "Symbol (%s) @ 0x%04X" s.Name s.Address
+                    | Some s -> printResult <| sprintf "Symbol (%s) in module (%s) @ 0x%04X" s.Name s.Module s.Address
                     | None -> printError <| sprintf "No symbol with name %s" str
                 | None ->
                     printError "Invalid command"
                 interactive ()
             | "u" ->
-                printResult <| (mapInfo.Symbols |> Seq.map (fun s -> sprintf "%s @ 0x%04X, " s.Name s.Address) |> Seq.fold (+) "")
+                printResult <| (mapInfo.Symbols |> Seq.map (fun s -> sprintf "%s @ 0x%04X in module %s, " s.Name s.Address s.Module) |> Seq.fold (+) "")
                 interactive ()
             | "r" ->
                 setResultFormatting ()

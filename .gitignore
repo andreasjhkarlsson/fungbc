@@ -5,3 +5,13 @@ bin/*
 FunGBC-Test/bin/*
 FunGBC-Test/obj/*
 packages/*
+programs/*.lst
+programs/*.rel
+programs/*.sym
+programs/*.lk
+programs/*.map
+programs/*.ihx
+programs/*.noi
+docs/Thumbs.db
+*.psess
+*.vsp

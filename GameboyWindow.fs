@@ -5,7 +5,10 @@ open System.Drawing
 open Constants
 
 type GameboyWindow () as this =
+
     inherit Form()
+
+    let scale = 3
 
     let width = RESOLUTION.Width
 
@@ -13,11 +16,9 @@ type GameboyWindow () as this =
 
     let framebuffer = new Bitmap(width, height)
 
-    
-
     do
-        this.Width <- width
-        this.Height <- height
+        this.Width <- width*scale
+        this.Height <- height*scale
 
         this.Text <- APPLICATION_TITLE
 
@@ -31,7 +32,7 @@ type GameboyWindow () as this =
 
     override this.OnPaint args =
         base.OnPaint args
-        lock framebuffer (fun () -> args.Graphics.DrawImage(framebuffer,0,0,width,height))
+        lock framebuffer (fun () -> args.Graphics.DrawImage(framebuffer,0,0,width*scale,height*scale))
         
 
 

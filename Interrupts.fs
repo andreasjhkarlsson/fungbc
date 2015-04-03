@@ -4,8 +4,6 @@ open BitLogic
 open MemoryCell
 open IORegisters
 
-type InterruptHandler = |InterruptHandler of uint16
-
 type Interrupt =
     | TimerOverflow
     | VBlank
@@ -13,11 +11,13 @@ type Interrupt =
     | SerialIO
     | P10P13Flip
 
-
 let address =
     function
-    |TimerOverflow -> 0x0050us
-    | _ -> raise <| System.Exception("Not implemented")
+    | VBlank ->         0x0040us
+    | LCDC ->           0x0048us
+    | TimerOverflow ->  0x0050us
+    | SerialIO ->       0x0058us
+    | P10P13Flip ->     0x0060us
 
 
 // Interrupt enabled register. Controls if specific interrupts are enabled.
@@ -27,11 +27,11 @@ type InterruptEnableRegister (init) =
     member this.Enabled interrupt =
         let bit =
             match interrupt with
-            | VBlank -> 0
-            | LCDC -> 1
-            | TimerOverflow -> 2
-            | SerialIO -> 3
-            | P10P13Flip -> 4
+            | VBlank ->         0
+            | LCDC ->           1
+            | TimerOverflow ->  2
+            | SerialIO ->       3
+            | P10P13Flip ->     4
         this.Value |> isBitSet bit 
 
 
@@ -55,24 +55,27 @@ type IFRegister(init) =
                 | Some interrupt ->
                     let bit =
                         match interrupt with
-                        | VBlank -> 0
-                        | LCDC -> 1
-                        | TimerOverflow -> 2
-                        | SerialIO -> 3
-                        | P10P13Flip -> 4
+                        | VBlank ->         0
+                        | LCDC ->           1
+                        | TimerOverflow ->  2
+                        | SerialIO ->       3
+                        | P10P13Flip ->     4
                     0uy |> setBit bit
                 | None ->
                     0uy
 
-
 type InterruptManager() =
-
+    
+    // Global enable flag (controlled by EI/DI instructions)
     member val Enable = true with get, set
 
+    // The current requested interrupt
     member val Interrupt = IFRegister(0uy)
 
+    // Enables/disables specific interrupts
     member val InterruptEnable = InterruptEnableRegister(0uy)
 
+    // Calls handler function if an interrupt is set.
     member this.Handle fn =
         if this.Enable then
             match this.Interrupt.Current with

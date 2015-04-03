@@ -159,6 +159,7 @@ type CPU (mmu, gpu: GPU, interrupts: InterruptManager,timers: Timers, clock: Mut
         push16 PC.Value
         PC.Value <- Interrupts.address interrupt
         interrupts.Enable <- false
+        interrupts.Interrupt.Current <- None
 
     let rec execute () = 
         

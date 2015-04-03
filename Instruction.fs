@@ -3,7 +3,7 @@
 open Register
 open Mmu
 open Misc
-
+open Units
 
 // "Syntax" for instruction name:
 // NAME_OPERAND1TYPE_OPERAND2TYPE
@@ -711,7 +711,7 @@ let sizeOf instruction =
     | RET_F _
     | RET_NF _
     | RST _
-        -> 1
+        -> 1<byte>
     | BIT_AR16 _
     | BIT_R8 _
     | LD_R8_D8 _ 
@@ -752,7 +752,7 @@ let sizeOf instruction =
     | SRA_AR16 _
     | SRL_R8 _
     | SRL_AR16 _
-         -> 2
+         -> 2<byte>
     | LD_R8_A16 _
     | JP_A16 _
     | JP_F_A16 _
@@ -763,7 +763,7 @@ let sizeOf instruction =
     | CALL_A16 _
     | CALL_F_A16 _
     | CALL_NF_A16 _
-        -> 3
+        -> 3<byte>
     
 // How many cycles does it take to execute this instruction?
 let cycleCount instruction long =

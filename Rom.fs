@@ -3,14 +3,15 @@
 open System.IO
 open MemoryCell
 open BitLogic
+open Units
 
 [<AbstractClass>]
 type ROM () =
     
-    let ram = readWriteMemoryBlock 8192
+    let ram = 8*kB |> readWriteMemoryBlock
 
     abstract getCell: int -> MemoryCell
-    member this.MemoryBlock = Array.init (pown 2 15) this.getCell
+    member this.MemoryBlock = initMemoryBlock (32*kB) this.getCell
 
     member this.Ram = ram
 

@@ -80,7 +80,7 @@ type BGPalette(init) =
 
 
 type VRAM () =
-    let memory = readWriteMemoryBlock 8192
+    let memory = 8*kB |> readWriteMemoryBlock
 
     let mapTiles offset count =
         let createTile index = Tile8x8(Array.sub memory (offset + index * 16) 16)

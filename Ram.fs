@@ -1,7 +1,8 @@
 ﻿module Ram
 
 open MemoryCell
+open Units
 
 type GBCRam () =
-    member val Working = readWriteMemoryBlock 8192
-    member val Stack = readWriteMemoryBlock 127
+    member val Working = 8*kB |> readWriteMemoryBlock
+    member val Stack = 127<byte> |> readWriteMemoryBlock 

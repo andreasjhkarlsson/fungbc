@@ -1,5 +1,7 @@
 ﻿module MemoryCell
 
+open Units
+
 [<AbstractClass>]
 type MemoryCell () =
     abstract Value: uint8 with get, set
@@ -36,9 +38,11 @@ let readWriteCell value = ReadWriteCell(value) :> MemoryCell
 
 let blankCell = readOnlyCell 0uy
 
-let blankMemoryBlock size: MemoryBlock = Array.create size blankCell
+let blankMemoryBlock (size: int<byte>): MemoryBlock = Array.create (size |> int) blankCell
 
-let readWriteMemoryBlock size: MemoryBlock = Array.init size (fun _ -> ReadWriteCell(0uy) :> MemoryCell)
+let readWriteMemoryBlock (size: int<byte>): MemoryBlock = Array.init (size |> int) (fun _ -> ReadWriteCell(0uy) :> MemoryCell)
+
+let initMemoryBlock (size: int<byte>) fn: MemoryBlock = Array.init (size |> int) fn 
 
 let hookReadWrite (cell: MemoryCell) read write =
     let get () = read cell.Value

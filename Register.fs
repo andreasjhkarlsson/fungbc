@@ -16,7 +16,7 @@ type Register<'a>() =
 
     member this.Update fn = this.Value <- fn this.Value
 
-// A regulat read/write register
+// A regular read/write register
 type DataRegister<'a>(init: 'a) =
     inherit Register<'a>()
 

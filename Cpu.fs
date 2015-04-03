@@ -154,7 +154,6 @@ type CPU (mmu, gpu: GPU, interrupts: InterruptManager,timers: Timers, clock: Mut
         SP.Value <- SP.Value + 2us
         result
 
-
     let handleInterrupt interrupt =
         push16 PC.Value
         PC.Value <- Interrupts.address interrupt
@@ -176,7 +175,6 @@ type CPU (mmu, gpu: GPU, interrupts: InterruptManager,timers: Timers, clock: Mut
 
                 instruction
 
-  
         // Just one little mutable flag. Sorry purists.
         let mutable longCycle = false
 

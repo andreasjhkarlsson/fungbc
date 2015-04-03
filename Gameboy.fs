@@ -32,7 +32,7 @@ type Gameboy(rom: ROM, frameReceiver: FrameReceiver) =
     member this.Start = cpu.Start 
 
     member this.StartWithDebugger mapInfo stepOnStart =
-        let debugger = Debugger(cpu,gpu,mmu,systemClock,mapInfo)
+        let debugger = Debugger(cpu,gpu,mmu,interrupts,systemClock,mapInfo)
         debugger.Attach ()
         if stepOnStart then debugger.Step ()
         debugger.Start ()

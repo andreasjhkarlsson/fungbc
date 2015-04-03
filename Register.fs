@@ -26,14 +26,6 @@ type DataRegister<'a>(init: 'a) =
         with get () = data
         and set (newValue) = data <- newValue
 
-// Register consisting of a single bit
-type BitRegister(init) =
-    inherit DataRegister<BitState>(init)
-
-    member this.Clear = this.Value <- CLEAR
-    member this.Set = this.Value <- SET
-    member this.Flip = this.Update bitStateInvert
-
 // A regular 8 bit register!
 type DataRegister8(init: uint8) =
     inherit DataRegister<uint8>(init)
@@ -122,9 +114,6 @@ type RegisterSet () =
     let sp = StackPointer(0us) 
     let pc = ProgramCounter(0us) 
 
-    let masterIE = BitRegister(CLEAR)
-
-
     member val A = a
     member val B = b
     member val C = c
@@ -141,10 +130,7 @@ type RegisterSet () =
 
     member val SP = sp
     member val PC = pc
-
-    member val MasterIE = masterIE
-
-
+    
     member this.From8Name (name: Register8Name) =
         match name with
         | A -> a :> Register<uint8>

@@ -138,7 +138,6 @@ type CPU (mmu, gpu: GPU, interrupts: InterruptManager,timers: Timers, clock: Mut
     let HL = registers.HL
     let SP = registers.SP
     let PC = registers.PC
-    let MasterIE = registers.MasterIE
 
     let decodeOpcode = decodeOpcode mmu
 
@@ -423,7 +422,7 @@ type CPU (mmu, gpu: GPU, interrupts: InterruptManager,timers: Timers, clock: Mut
             PC.Value <- pop16 ()
         | RETI ->
             PC.Value <- pop16 ()
-            MasterIE.Set
+            interrupts.Enable <- true
         | RET_F (flag) ->
             match (F.FlagFromName flag) with
             | SET ->
@@ -455,9 +454,9 @@ type CPU (mmu, gpu: GPU, interrupts: InterruptManager,timers: Timers, clock: Mut
         | HALT ->
             waitForInterrupt <- true
         | EI ->
-            MasterIE.Set
+            interrupts.Enable <- true
         | DI ->
-            MasterIE.Clear
+            interrupts.Enable <- false
         | DAA_R8 (r) ->
             let value = (r8 r).Value
             
@@ -495,7 +494,7 @@ type CPU (mmu, gpu: GPU, interrupts: InterruptManager,timers: Timers, clock: Mut
         registers.HL.Value <- 0x014Dus
         registers.SP.Value <- 0xFFFEus
         registers.PC.Value <- 0x100us
-        registers.MasterIE.Set
+        interrupts.Enable <- true
 
     member this.Start () =
         this.Reset()

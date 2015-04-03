@@ -10,6 +10,7 @@ open Clock
 open System.IO
 open Gpu
 open Tile
+open Interrupts
 open System.Text.RegularExpressions
 
 type Breakpoint(address) =
@@ -55,7 +56,7 @@ type MapInfo (symbols) =
         MapInfo(symbols)
     
 
-type Debugger(cpu: CPU,gpu: GPU, mmu: MMU, systemClock: Clock, mapInfo: MapInfo) as this =
+type Debugger(cpu: CPU,gpu: GPU, mmu: MMU,interrupts: InterruptManager, systemClock: Clock, mapInfo: MapInfo) as this =
 
     let mutable breakpoints = Map.empty<uint16,Breakpoint>
 
@@ -83,7 +84,6 @@ type Debugger(cpu: CPU,gpu: GPU, mmu: MMU, systemClock: Clock, mapInfo: MapInfo)
     let HL = registers.HL
     let SP = registers.SP
     let PC = registers.PC
-    let MasterIE = registers.MasterIE
 
     do
         match mapInfo.SymbolByName "_fgbc_debugger_break" with
@@ -362,7 +362,7 @@ type Debugger(cpu: CPU,gpu: GPU, mmu: MMU, systemClock: Clock, mapInfo: MapInfo)
             F.Value (bitStateToValue F.Z) (bitStateToValue F.N) (bitStateToValue F.H) (bitStateToValue F.C)
             H.Value L.Value AF.Value BC.Value
             DE.Value HL.Value PC.Value SP.Value
-            (bitStateToValue MasterIE.Value)
+            (if interrupts.Enable then 1 else 0)
 
     member this.PrintStack depth = 
         printfn "Stack (0x%04X):" SP.Value 

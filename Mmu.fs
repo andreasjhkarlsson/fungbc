@@ -12,7 +12,7 @@ open Interrupts
 type MemoryAddress = uint16
 
 // Maps the address space of the GBC into different parts (rom, ram, ioregisters, etc.)
-type MMU (gpu: GPU, rom: ROM, ram: GBCRam, interrupts: InterruptManager, timers: Timers) =
+type MMU (gpu: GPU, rom: ROM, ram: GBCRam, interrupts: InterruptManager, timers: Timers) as this =
     
     // Initially make all memory blank.
     let memory = blankMemoryBlock ADDRESS_SPACE_SIZE
@@ -26,6 +26,17 @@ type MMU (gpu: GPU, rom: ROM, ram: GBCRam, interrupts: InterruptManager, timers:
             let cell = Array.get block (address - start |> int)
             mapAddress address cell
         )        
+    
+    let copyMemory fromAddress toAddress size =
+        {0us..(size - 1us)} |> Seq.iter (fun offset ->
+            this.Read8 (fromAddress + offset) |> this.Write8 (toAddress + offset) 
+        )
+
+    let oamDMACell =
+        let onWrite source =
+            copyMemory ((uint16 source) * 0x100us) 0xFE00us 160us
+            source
+        readWriteCell 0uy |> hookWrite onWrite
 
     // Map memory!!!
     do
@@ -51,6 +62,7 @@ type MMU (gpu: GPU, rom: ROM, ram: GBCRam, interrupts: InterruptManager, timers:
         mapAddress 0xFF43us gpu.Registers.SCX.MemoryCell
         mapAddress 0xFF44us gpu.Registers.LY.MemoryCell
         mapAddress 0xFF45us gpu.Registers.LYC.MemoryCell
+        mapAddress 0xFF46us oamDMACell
         mapAddress 0xFF47us gpu.Registers.BGP.MemoryCell
 
         mapAddress 0xFF0Fus interrupts.Current.MemoryCell

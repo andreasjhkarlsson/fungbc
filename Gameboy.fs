@@ -23,7 +23,7 @@ type Gameboy(rom: ROM, frameReceiver: FrameReceiver) =
 
     let timers = Timers(systemClock,interrupts)
 
-    let gpu = GPU(systemClock, frameReceiver)
+    let gpu = GPU(systemClock, interrupts, frameReceiver)
 
     let mmu = MMU(gpu, rom,ram,interrupts,timers)
 

@@ -8,6 +8,7 @@ open Clock
 open Units
 open Constants
 open BitLogic
+open Interrupts
 
 type FrameReceiver =
     |FrameReceiver of (Bitmap -> unit)
@@ -102,75 +103,6 @@ type VRAM () =
     member this.TileMap0 x y = (Array.get tileMap0 (x + y * 32)).Value
     member this.TileMap1 x y = (Array.get tileMap1 (x + y * 32)).Value
     member this.MemoryBlock = memory
-
-
-type RenderStage = |ScanOAM of int |ScanVRAM of int |HBlank of int |VBlank
-
-type RenderAction = |Wait |RenderLine of int |RenderScreen
-
-type RenderTimer (systemClock: Clock,lcds: LCDStatus, ly: LY) =
-
-    let stopWatch = System.Diagnostics.Stopwatch.StartNew()
-    
-    let oamLineCycles = 80UL
-
-    let vramLineCycles = 172UL
-
-    let hBlankCycles = 204UL
-
-    let lineCycles = oamLineCycles + vramLineCycles + hBlankCycles
-
-    let allLinesCycles = lineCycles * uint64 RESOLUTION.Height 
-
-    let vBlankCycles = 4560UL
-
-    let frameCycles = allLinesCycles + vBlankCycles
-
-    let stage time =
-        match time % frameCycles with
-        | cycles when cycles < allLinesCycles ->
-            let line = cycles / lineCycles |> int
-            match cycles % lineCycles with
-            | cycles when cycles > (oamLineCycles + vramLineCycles) ->
-                HBlank(line)
-            | cycles when cycles > oamLineCycles ->
-                ScanVRAM(line)
-            | cycles ->
-                ScanOAM(line)
-        | _ ->
-            VBlank
-
-    let mutable lastStage = VBlank
-
-    member this.Action =
-        let stage = stage systemClock.Ticks
-        if stage <> lastStage then
-            
-            // Reset ly when moving from vblank to drawing lines again.
-            if lastStage = VBlank then
-                ly.Value <- 0uy
-
-            lastStage <- stage
-            match stage with
-            | HBlank line ->
-                lcds.Mode <- Mode.HBlank
-                RenderLine(line)
-            | VBlank ->
-                let fps = 1000.0 / float stopWatch.ElapsedMilliseconds
-                //printfn "FPS: %.2f" fps
-                stopWatch.Restart()
-                lcds.Mode <- Mode.VBlank
-                ly.Value <- 153uy // Should increment between 143 & 153 during vblank. TODO.
-                RenderScreen
-            | ScanOAM _ ->
-                lcds.Mode <- Mode.SearchingOAMRAM // Correct?
-                ly.Value <- ly.Value + 1uy
-                Wait
-            | ScanVRAM _ ->
-                lcds.Mode <- Mode.LCDDriverDataTransfer // Correct?
-                Wait
-        else
-            Wait
         
 type GPURegisters () =
     let lcdc = LCDControl(0uy)
@@ -188,13 +120,15 @@ type GPURegisters () =
     member this.LY = ly
 
 
-type GPU (systemClock, frameReceiver: FrameReceiver) =
+type RenderStage = |ScanOAM of int |ScanVRAM of int |HBlank of int |VBlank
+
+type GPU (systemClock: Clock,interrupts: InterruptManager,frameReceiver: FrameReceiver) =
 
     let vram = VRAM()
 
     let registers = GPURegisters()
-    
-    let renderTimer = RenderTimer(systemClock, registers.LCDS, registers.LY)
+
+    let stopWatch = System.Diagnostics.Stopwatch.StartNew()
 
     let screenBuffer = new System.Drawing.Bitmap(RESOLUTION.Width,RESOLUTION.Height)
 
@@ -217,18 +151,61 @@ type GPU (systemClock, frameReceiver: FrameReceiver) =
 
     let drawScreen (FrameReceiver receiver) = receiver screenBuffer
 
+    let stageAt time =
+        // Timing constants
+        let oamLineCycles = 80UL
+        let vramLineCycles = 172UL
+        let hBlankCycles = 204UL
+        let lineCycles = oamLineCycles + vramLineCycles + hBlankCycles
+        let allLinesCycles = lineCycles * uint64 RESOLUTION.Height 
+        let vBlankCycles = 4560UL
+        let frameCycles = allLinesCycles + vBlankCycles
+
+        match time % frameCycles with
+        | cycles when cycles < allLinesCycles ->
+            let line = cycles / lineCycles |> int
+            match cycles % lineCycles with
+            | cycles when cycles > (oamLineCycles + vramLineCycles) ->
+                HBlank(line)
+            | cycles when cycles > oamLineCycles ->
+                ScanVRAM(line)
+            | cycles ->
+                ScanOAM(line)
+        | _ ->
+            VBlank       
+            
+    let mutable lastStage = VBlank 
+
     member this.VRAM = vram
 
     member this.Registers = registers
 
     member this.Update () =
-        match renderTimer.Action with
-        | RenderLine line ->
-            drawLine line
-        | RenderScreen ->
-            drawScreen frameReceiver
-        | Wait -> 
-            ()
+        let stage = stageAt systemClock.Ticks
+        if stage <> lastStage then
+            
+            // Reset ly when moving from vblank to drawing lines again.
+            if lastStage = VBlank then
+                registers.LY.Value <- 0uy
+
+            match stage with
+            | HBlank line ->
+                registers.LCDS.Mode <- Mode.HBlank
+                drawLine line
+            | VBlank ->
+                let fps = 1000.0 / float stopWatch.ElapsedMilliseconds
+                //printfn "FPS: %.2f" fps
+                stopWatch.Restart()
+                registers.LCDS.Mode <- Mode.VBlank
+                registers.LY.Value <- 153uy // Should increment between 143 & 153 during vblank. TODO.
+                drawScreen frameReceiver
+            | ScanOAM _ ->
+                registers.LCDS.Mode <- Mode.SearchingOAMRAM // Correct?
+                registers.LY.Value <- registers.LY.Value + 1uy
+            | ScanVRAM _ ->
+                registers.LCDS.Mode <- Mode.LCDDriverDataTransfer // Correct?
+
+        lastStage <- stage
 
 
 

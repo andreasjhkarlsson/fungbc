@@ -486,14 +486,14 @@ type CPU (mmu, gpu: GPU, interrupts: InterruptManager,timers: Timers, clock: Mut
         if not stopped then execute ()
     
     member this.Reset () =
-        registers.A.Value <- 0x00uy
-        registers.B.Value <- 0x00uy
-        registers.C.Value <- 0x13uy
+        registers.AF.Value <- 0x01B0us
+        registers.BC.Value <- 0x0013us
         registers.DE.Value <- 0x00D8us
         registers.HL.Value <- 0x014Dus
         registers.SP.Value <- 0xFFFEus
         registers.PC.Value <- 0x100us
         interrupts.Enable <- true
+        mmu.InitDefaults ()
 
     member this.Start () =
         this.Reset()

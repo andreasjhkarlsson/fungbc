@@ -92,4 +92,42 @@ type MMU (gpu: GPU, rom: ROM, ram: GBCRam, interrupts: InterruptManager, timers:
         this.Write8 address (uint8 value)
         this.Write8 (address + 1us) (value >>> 8 |> uint8)
 
+    member this.InitDefaults () =
+        let setDefault address value = this.Write8 (uint16 address) value
+
+        setDefault 0xFF05 0x00uy
+        setDefault 0xFF06 0x00uy
+        setDefault 0xFF07 0x00uy
+
+        setDefault 0xFF10 0x80uy
+        setDefault 0xFF11 0xBFuy
+        setDefault 0xFF12 0xF3uy
+        setDefault 0xFF14 0xBFuy
+        setDefault 0xFF16 0x3Fuy
+        setDefault 0xFF17 0x00uy
+        setDefault 0xFF19 0xBFuy
+        setDefault 0xFF1A 0x7Fuy
+        setDefault 0xFF1B 0xFFuy
+        setDefault 0xFF1C 0x9Fuy
+        setDefault 0xFF1E 0xBFuy
+        setDefault 0xFF20 0xFFuy
+        setDefault 0xFF21 0x00uy
+        setDefault 0xFF22 0x00uy
+        setDefault 0xFF23 0xBFuy
+        setDefault 0xFF24 0x77uy
+        setDefault 0xFF25 0xF3uy
+        setDefault 0xFF26 0xF1uy
+
+        setDefault 0xFF40 0x91uy
+        setDefault 0xFF42 0x00uy
+        setDefault 0xFF43 0x00uy
+        setDefault 0xFF45 0x00uy
+        setDefault 0xFF47 0xFCuy
+        setDefault 0xFF48 0xFFuy
+        setDefault 0xFF49 0xFFuy
+        setDefault 0xFF4A 0x00uy
+        setDefault 0xFF4B 0x00uy
+        setDefault 0xFFFF 0x00uy
+        
+        
     

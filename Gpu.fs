@@ -10,6 +10,22 @@ open Constants
 open BitLogic
 open Interrupts
 
+type OBJBGPriority = |Above |Behind
+type TileFlip = |Normal |Flipped
+type SpritePalette = |Palette0 |Palette1
+
+type SpriteAttribute (c0: MemoryCell,c1: MemoryCell,c2: MemoryCell,c3: MemoryCell) =
+    member this.Y = c0.Value
+    member this.X = c1.Value
+    member this.Tile = c2.Value
+
+    // Flags
+    member this.Priority = match c3.Value |> bitStateOf 7 with |CLEAR -> Above |SET -> Behind
+    member this.YFlip = match c3.Value |> bitStateOf 6 with |CLEAR -> Normal |SET -> Flipped
+    member this.XFlip = match c3.Value |> bitStateOf 5 with |CLEAR -> Normal |SET -> Flipped
+    member this.Palette = match c3.Value |> bitStateOf 4 with |CLEAR -> Palette0 |SET -> Palette1
+
+
 type FrameReceiver =
     |FrameReceiver of (Bitmap -> unit)
     member x.Value = let (FrameReceiver v) = x in v // How does this syntax work??
@@ -83,6 +99,15 @@ type BGPalette(init) =
 type VRAM () =
     let memory = 8*kB |> readWriteMemoryBlock
 
+    let oam = 160<byte> |> readWriteMemoryBlock
+
+    let objectAttributeTable = [|0..39|] |> Array.map (fun index ->
+            SpriteAttribute(oam.[4*index],
+                            oam.[4*index+1],
+                            oam.[4*index+2],
+                            oam.[4*index+3])
+        )
+
     let mapTiles offset count =
         let createTile index = Tile8x8(Array.sub memory (offset + index * 16) 16)
         Array.init 256 createTile
@@ -102,7 +127,12 @@ type VRAM () =
 
     member this.TileMap0 x y = (Array.get tileMap0 (x + y * 32)).Value
     member this.TileMap1 x y = (Array.get tileMap1 (x + y * 32)).Value
+
+    member this.ObjectAttribute index = objectAttributeTable.[index]
+
     member this.MemoryBlock = memory
+
+    member this.OAM = oam
         
 type GPURegisters () =
     let lcdc = LCDControl(0uy)

@@ -49,6 +49,11 @@ type MMU (gpu: GPU, rom: ROM, ram: GBCRam, interrupts: InterruptManager, timers:
         // Map RAM
         mapBlock 0xC000us 0xDFFFus ram.Working
         mapBlock 0xE000us 0xFDFFus ram.Working 
+
+        // Map OAM
+        mapBlock 0xFE00us 0xFE9Fus gpu.VRAM.OAM
+
+        // Map default stack
         mapBlock 0xFF80us 0xFFFEus ram.Stack
 
         // Map I/O Registers

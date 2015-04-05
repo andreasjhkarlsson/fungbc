@@ -27,7 +27,7 @@ type LCDControl (init) =
     member this.BGTilemapSelect = if this.Value |> isBitSet 3 then Map1 else Map0
     member this.BGAndWindowTileDataSelect = if this.Value |> isBitSet 4 then Tiles1 else Tiles0
     member this.WindowEnabled = this.Value |> isBitSet 5
-    member this.WIndowTileMapSelect = this.Value |> isBitSet 6
+    member this.WindowTileMapSelect = this.Value |> isBitSet 6
     member this.DisplayEnable = this.Value |> isBitSet 7
 
 type Coincidence = |LYC_NE_LY |LYC_E_LY
@@ -111,6 +111,7 @@ type GPURegisters () =
     let scy = ValueBackedIORegister(0uy)
     let bgp = BGPalette(0uy)
     let ly = LY(0uy)
+    let lyc = ValueBackedIORegister(0uy)
 
     member this.LCDC = lcdc
     member this.LCDS = lcds
@@ -118,6 +119,7 @@ type GPURegisters () =
     member this.SCY = scy
     member this.BGP = bgp
     member this.LY = ly
+    member this.LYC = lyc
 
 
 type RenderStage = |ScanOAM of int |ScanVRAM of int |HBlank of int |VBlank
@@ -181,29 +183,61 @@ type GPU (systemClock: Clock,interrupts: InterruptManager,frameReceiver: FrameRe
     member this.Registers = registers
 
     member this.Update () =
+        // Extract some registers
+        let lcds = registers.LCDS
+        let lcdc = registers.LCDC
+        let ly = registers.LY
+        let lyc = registers.LYC
+
         let stage = stageAt systemClock.Ticks
-        if stage <> lastStage then
+
+        if stage <> lastStage && lcdc.DisplayEnable then
             
             // Reset ly when moving from vblank to drawing lines again.
             if lastStage = VBlank then
-                registers.LY.Value <- 0uy
+                ly.Value <- 0uy
 
             match stage with
             | HBlank line ->
-                registers.LCDS.Mode <- Mode.HBlank
+                lcds.Mode <- Mode.HBlank
+
+                // Generate LCDC interrupt from HBlank?
+                if lcds.HBlankInterrupt then
+                    interrupts.Current.Set <- LCDC
+
                 drawLine line
             | VBlank ->
                 let fps = 1000.0 / float stopWatch.ElapsedMilliseconds
                 //printfn "FPS: %.2f" fps
                 stopWatch.Restart()
-                registers.LCDS.Mode <- Mode.VBlank
-                registers.LY.Value <- 153uy // Should increment between 143 & 153 during vblank. TODO.
+                lcds.Mode <- Mode.VBlank
+                ly.Value <- 153uy // Should increment between 143 & 153 during vblank. TODO.
+
+                // Should VBlank generate LCDC interrupt?
+                if lcds.VBlankInterrupt then
+                    interrupts.Current.Set <- LCDC
+
+                // Generate VBlank interrupt regardless of the above
+                interrupts.Current.Set <- Interrupts.VBlank
+
                 drawScreen frameReceiver
             | ScanOAM _ ->
-                registers.LCDS.Mode <- Mode.SearchingOAMRAM // Correct?
-                registers.LY.Value <- registers.LY.Value + 1uy
+                lcds.Mode <- Mode.SearchingOAMRAM // Correct?
+                ly.Value <- ly.Value + 1uy
+
+                // Generate LCDC interrupt from OAM?
+                if lcds.OAMInterrupt then
+                    interrupts.Current.Set <- LCDC
+
             | ScanVRAM _ ->
-                registers.LCDS.Mode <- Mode.LCDDriverDataTransfer // Correct?
+                lcds.Mode <- Mode.LCDDriverDataTransfer // Correct?
+
+        if lcds.LYCLYCoincidenceInterrupt then
+            if ly.Value = lyc.Value then
+                interrupts.Current.Set <- LCDC
+                lcds.Coincidence <- LYC_E_LY
+            else
+                lcds.Coincidence <- LYC_NE_LY
 
         lastStage <- stage
 

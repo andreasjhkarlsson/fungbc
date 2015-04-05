@@ -143,7 +143,6 @@ type CPU (mmu, gpu: GPU, interrupts: InterruptManager,timers: Timers, clock: Mut
 
     let mutable stopped = false
 
-    let mutable waitForInterrupt = false
 
     let push16 value =
         SP.Value <- SP.Value - 2us
@@ -157,13 +156,14 @@ type CPU (mmu, gpu: GPU, interrupts: InterruptManager,timers: Timers, clock: Mut
     let handleInterrupt interrupt =
         push16 PC.Value
         PC.Value <- Interrupts.address interrupt
+        this.WaitingForInterrupt <- false
         interrupts.Enable <- false
-        interrupts.Interrupt.Current <- None
+        interrupts.Current.Clear <- interrupt
 
     let rec execute () = 
         
         let instruction =
-            if waitForInterrupt then
+            if this.WaitingForInterrupt then
                 NOP
             else
                 let instruction = decodeOpcode PC.Value
@@ -451,7 +451,7 @@ type CPU (mmu, gpu: GPU, interrupts: InterruptManager,timers: Timers, clock: Mut
         | STOP ->
             () // Do nooooothing
         | HALT ->
-            waitForInterrupt <- true
+            this.WaitingForInterrupt <- true
         | EI ->
             interrupts.Enable <- true
         | DI ->
@@ -503,8 +503,8 @@ type CPU (mmu, gpu: GPU, interrupts: InterruptManager,timers: Timers, clock: Mut
 
     member this.Registers = registers
 
-    member this.WaitingForInterrupt with get () = waitForInterrupt and set value = waitForInterrupt <- value
-
     member val Hook: (Instruction -> unit) option = None with get, set
+
+    member val WaitingForInterrupt = false with get, set
 
 

@@ -36,33 +36,24 @@ type InterruptEnableRegister (init) =
 
 
 // Interrupt flag register. Set according to the current interrupt
-type IFRegister(init) =
+type InterruptFlagRegister(init) =
     inherit ValueBackedIORegister(init)
 
-    member this.Current
-        with get () =
-            match this.Value with
-            | BitSet 0 _ -> Some VBlank
-            | BitSet 1 _ -> Some LCDC
-            | BitSet 2 _ -> Some TimerOverflow
-            | BitSet 3 _ -> Some SerialIO
-            | BitSet 4 _ -> Some P10P13Flip
-            | _ -> None
+    let bitOf = function
+                | VBlank ->         0
+                | LCDC ->           1
+                | TimerOverflow ->  2
+                | SerialIO ->       3
+                | P10P13Flip ->     4
 
-        and set interrupt =
-            this.Value <- 
-                match interrupt with
-                | Some interrupt ->
-                    let bit =
-                        match interrupt with
-                        | VBlank ->         0
-                        | LCDC ->           1
-                        | TimerOverflow ->  2
-                        | SerialIO ->       3
-                        | P10P13Flip ->     4
-                    0uy |> setBit bit
-                | None ->
-                    0uy
+    member this.Item
+        with get interrupt = this.Value |> isBitSet (bitOf interrupt)
+        and set interrupt state = this.Value <- this.Value |> controlBit (bitOf interrupt) (setIfTrue state)
+
+    member this.Set with set interrupt = this.[interrupt] <- true
+
+    member this.Clear with set interrupt = this.[interrupt] <- false
+            
 
 type InterruptManager() =
     
@@ -70,16 +61,31 @@ type InterruptManager() =
     member val Enable = true with get, set
 
     // The current requested interrupt
-    member val Interrupt = IFRegister(0uy)
+    member val Current = InterruptFlagRegister(0uy)
 
     // Enables/disables specific interrupts
     member val InterruptEnable = InterruptEnableRegister(0uy)
 
     // Calls handler function if an interrupt is set.
     member this.Handle fn =
+        // Global enable
         if this.Enable then
-            match this.Interrupt.Current with
-            | Some interrupt ->
-                if this.InterruptEnable.Enabled interrupt then
+            
+            // Active pattern for detecting if specific interrupt is set
+            let (|InterruptRaised|_|) interrupt (interruptRegister: InterruptFlagRegister) =
+                if interruptRegister.[interrupt] then Some interrupt else None
+
+            let enabled = this.InterruptEnable.Enabled
+
+            // Match cases sorted by priority
+            match this.Current with
+            | InterruptRaised VBlank interrupt
+            | InterruptRaised LCDC interrupt
+            | InterruptRaised TimerOverflow interrupt
+            | InterruptRaised SerialIO interrupt
+            | InterruptRaised P10P13Flip interrupt
+                // Match any of the above as long as it's enabled in IE register
+                when enabled interrupt ->
                     fn interrupt
-            | None -> ()
+            | _ -> () // No interrupt happened
+

@@ -99,4 +99,4 @@ type Timers (systemClock, interrupts: InterruptManager) =
     member this.Update () =
         if tima.Overflowed () then
             tima.MemoryValue <- tma.Value
-            interrupts.Interrupt.Current <- Some TimerOverflow
+            interrupts.Current.Set <- TimerOverflow

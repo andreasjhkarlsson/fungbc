@@ -157,7 +157,7 @@ type RenderTimer (systemClock: Clock,lcds: LCDStatus, ly: LY) =
                 RenderLine(line)
             | VBlank ->
                 let fps = 1000.0 / float stopWatch.ElapsedMilliseconds
-                printfn "FPS: %.2f" fps
+                //printfn "FPS: %.2f" fps
                 stopWatch.Restart()
                 lcds.Mode <- Mode.VBlank
                 ly.Value <- 153uy // Should increment between 143 & 153 during vblank. TODO.

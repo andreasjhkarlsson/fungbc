@@ -52,7 +52,7 @@ type MMU (gpu: GPU, rom: ROM, ram: GBCRam, interrupts: InterruptManager, timers:
         mapAddress 0xFF44us gpu.Registers.LY.MemoryCell
         mapAddress 0xFF47us gpu.Registers.BGP.MemoryCell
 
-        mapAddress 0xFF0Fus interrupts.Interrupt.MemoryCell
+        mapAddress 0xFF0Fus interrupts.Current.MemoryCell
         mapAddress 0xFFFFus interrupts.InterruptEnable.MemoryCell
 
     // Read mapped byte

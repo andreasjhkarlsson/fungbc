@@ -109,7 +109,7 @@ type VRAM () =
         )
 
     let mapTiles offset count =
-        let createTile index = Tile8x8(Array.sub memory (offset + index * 16) 16)
+        let createTile index = Array.sub memory (offset + index * 16) 16 |> TileData
         Array.init 256 createTile
 
     let tiles1 = mapTiles 0 256
@@ -176,7 +176,7 @@ type GPU (systemClock: Clock,interrupts: InterruptManager,frameReceiver: FrameRe
             let cx = int registers.SCX.Value + x
             let tileIndex = bgMap ((cx % 256) / 8) ((cy % 256) / 8)
             let tile = tileData tileIndex
-            let color = tile.[cx % 8, cy % 8] |> registers.BGP.Color
+            let color = Tile.decode8x8 tile (cx % 8) (cy % 8) |> registers.BGP.Color
             screenBuffer.SetPixel(x,y,color)
 
         {0..(RESOLUTION.Width - 1)} |> Seq.iter drawPixel

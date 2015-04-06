@@ -150,6 +150,7 @@ type Debugger(cpu: CPU,gpu: GPU, mmu: MMU,interrupts: InterruptManager, systemCl
             "print breakpoints (b), " +
             "add breakpoint (a), " +
             "remove breakpoint (d), " +
+            "print interrupt status (q), "+
             "find symbol (y), " +
             "print symbols (u), " +
             "print registers (r), " +
@@ -261,6 +262,35 @@ type Debugger(cpu: CPU,gpu: GPU, mmu: MMU,interrupts: InterruptManager, systemCl
                 cpu.Stop ()
             | "f" when cpu.WaitingForInterrupt ->
                 cpu.WaitingForInterrupt <- false
+            | "q" ->
+                printResult <| sprintf "Master interrupt enable = %b" (interrupts.Enable)
+                printResult ""
+                printResult <|
+                    sprintf
+                        "Interrupt enable register (0xFFFF):\n\tTimer: %b\n\tVBlank: %b\n\tLCDC: %b\n\tSerialIO: %b\n\tP10P13Flip: %b"
+                        (interrupts.InterruptEnable.Enabled TimerOverflow)
+                        (interrupts.InterruptEnable.Enabled VBlank)
+                        (interrupts.InterruptEnable.Enabled LCDC)
+                        (interrupts.InterruptEnable.Enabled SerialIO)
+                        (interrupts.InterruptEnable.Enabled P10P13Flip)
+                printResult ""
+                printResult <|
+                    sprintf
+                        "GPU Interrupts:\n\tLYCLYCoincidence: %b\n\tOAM: %b\n\tVBlank: %b\n\tHBlank: %b"
+                        (gpu.Registers.LCDS.LYCLYCoincidenceInterrupt)
+                        (gpu.Registers.LCDS.OAMInterrupt)
+                        (gpu.Registers.LCDS.VBlankInterrupt)
+                        (gpu.Registers.LCDS.HBlankInterrupt)
+
+                printResult <|
+                    sprintf
+                        "Interrupt vectors:\n\tTimer: 0x%04X\n\tVBlank: 0x%04X\n\tLCDC: 0x%04X\n\tSerialIO: 0x%04X\n\tP10P13Flip: 0x%04X"
+                        (Interrupts.address TimerOverflow)
+                        (Interrupts.address VBlank)
+                        (Interrupts.address LCDC)
+                        (Interrupts.address SerialIO)
+                        (Interrupts.address P10P13Flip)
+
             | "a8" ->
                 match parameter with
                 | AddressParameter address -> printResult <| sprintf "0x%04X = %02X" address (mmu.Read8 address)

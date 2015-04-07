@@ -152,7 +152,7 @@ type GPURegisters () =
     member this.LYC = lyc
 
 
-type RenderStage = |ScanOAM of int |ScanVRAM of int |HBlank of int |VBlank
+type RenderStage = |ScanOAM of int |ScanVRAM of int |HBlank of int |VBlank of int
 
 type GPU (systemClock: Clock,interrupts: InterruptManager,frameReceiver: FrameReceiver) =
 
@@ -183,6 +183,8 @@ type GPU (systemClock: Clock,interrupts: InterruptManager,frameReceiver: FrameRe
 
     let drawScreen (FrameReceiver receiver) = receiver screenBuffer
 
+    let isVBlank = function |VBlank _ -> true |_ -> false
+
     let stageAt time =
         // Timing constants
         let oamLineCycles = 80UL
@@ -203,10 +205,10 @@ type GPU (systemClock: Clock,interrupts: InterruptManager,frameReceiver: FrameRe
                 ScanVRAM(line)
             | cycles ->
                 ScanOAM(line)
-        | _ ->
-            VBlank       
+        | cycles ->
+            VBlank ((cycles - allLinesCycles) / (vBlankCycles / 10UL) |> int)  
             
-    let mutable lastStage = VBlank 
+    let mutable lastStage = VBlank 0 
 
     member this.VRAM = vram
 
@@ -223,10 +225,6 @@ type GPU (systemClock: Clock,interrupts: InterruptManager,frameReceiver: FrameRe
 
         if stage <> lastStage && lcdc.DisplayEnable then
             
-            // Reset ly when moving from vblank to drawing lines again.
-            if lastStage = VBlank then
-                ly.Value <- 0uy
-
             match stage with
             | HBlank line ->
                 lcds.Mode <- Mode.HBlank
@@ -236,24 +234,26 @@ type GPU (systemClock: Clock,interrupts: InterruptManager,frameReceiver: FrameRe
                     interrupts.Current.Set <- LCDC
 
                 drawLine line
-            | VBlank ->
-                let fps = 1000.0 / float stopWatch.ElapsedMilliseconds
-                //printfn "FPS: %.2f" fps
-                stopWatch.Restart()
-                lcds.Mode <- Mode.VBlank
-                ly.Value <- 153uy // Should increment between 143 & 153 during vblank. TODO.
+            | VBlank t  ->
+                if not (lastStage |> isVBlank) then
+                    let fps = 1000.0 / float stopWatch.ElapsedMilliseconds
+                    //printfn "FPS: %.2f" fps
+                    stopWatch.Restart()
+                    lcds.Mode <- Mode.VBlank
 
-                // Should VBlank generate LCDC interrupt?
-                if lcds.VBlankInterrupt then
-                    interrupts.Current.Set <- LCDC
+                    // Should VBlank generate LCDC interrupt?
+                    if lcds.VBlankInterrupt then
+                        interrupts.Current.Set <- LCDC
 
-                // Generate VBlank interrupt regardless of the above
-                interrupts.Current.Set <- Interrupts.VBlank
+                    // Generate VBlank interrupt regardless of the above
+                    interrupts.Current.Set <- Interrupts.VBlank
 
-                drawScreen frameReceiver
-            | ScanOAM _ ->
+                    drawScreen frameReceiver
+
+                ly.Value <- uint8 <| RESOLUTION.Height + t
+            | ScanOAM line ->
                 lcds.Mode <- Mode.SearchingOAMRAM // Correct?
-                ly.Value <- ly.Value + 1uy
+                ly.Value <- uint8 <| line 
 
                 // Generate LCDC interrupt from OAM?
                 if lcds.OAMInterrupt then

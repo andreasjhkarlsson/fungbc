@@ -5,6 +5,7 @@ open Debugger
 open Rom
 open Gameboy
 open GameboyWindow
+open Constants
 
 [<EntryPoint>]
 let main argv = 
@@ -33,7 +34,7 @@ let main argv =
     Application.EnableVisualStyles()
     Application.SetCompatibleTextRenderingDefault false
 
-    use gbWindow = new GameboyWindow()
+    use gbWindow = new GameboyWindow(APPLICATION_TITLE + " - " + rom.Header.Title)
     
     async {
         let gb = Gameboy(rom, FrameReceiver gbWindow.PresentFrame)

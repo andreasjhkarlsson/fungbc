@@ -4,7 +4,7 @@ open System.Windows.Forms
 open System.Drawing
 open Constants
 
-type GameboyWindow () as this =
+type GameboyWindow (title) as this =
 
     inherit Form()
 
@@ -20,7 +20,7 @@ type GameboyWindow () as this =
         this.Width <- width*scale
         this.Height <- height*scale
 
-        this.Text <- APPLICATION_TITLE
+        this.Text <- title
 
         this.DoubleBuffered <- true
 

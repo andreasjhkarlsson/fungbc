@@ -281,7 +281,16 @@ type Debugger(cpu: CPU,gpu: GPU, mmu: MMU,interrupts: InterruptManager, systemCl
                         (gpu.Registers.LCDS.OAMInterrupt)
                         (gpu.Registers.LCDS.VBlankInterrupt)
                         (gpu.Registers.LCDS.HBlankInterrupt)
-
+                printResult ""
+                printResult <|
+                    sprintf
+                        "Current active interrupts (0xFF0F):\n\tTimer: %b\n\tVBlank: %b\n\tLCDC: %b\n\tSerialIO: %b\n\tP10P13Flip: %b"
+                        (interrupts.Current.[TimerOverflow])
+                        (interrupts.Current.[VBlank])
+                        (interrupts.Current.[LCDC])
+                        (interrupts.Current.[SerialIO])
+                        (interrupts.Current.[P10P13Flip])
+                printResult ""
                 printResult <|
                     sprintf
                         "Interrupt vectors:\n\tTimer: 0x%04X\n\tVBlank: 0x%04X\n\tLCDC: 0x%04X\n\tSerialIO: 0x%04X\n\tP10P13Flip: 0x%04X"
@@ -290,6 +299,7 @@ type Debugger(cpu: CPU,gpu: GPU, mmu: MMU,interrupts: InterruptManager, systemCl
                         (Interrupts.address LCDC)
                         (Interrupts.address SerialIO)
                         (Interrupts.address P10P13Flip)
+                interactive ()
 
             | "a8" ->
                 match parameter with

@@ -7,13 +7,8 @@ open Units
 
 [<AbstractClass>]
 type ROM () =
-    
-    let ram = 8*kB |> readWriteMemoryBlock
-
-    abstract getCell: int -> MemoryCell
-    member this.MemoryBlock = initMemoryBlock (32*kB) this.getCell
-
-    member this.Ram = ram
+    abstract ROMBlock: array<MemoryCell>
+    abstract RAMBlock: array<MemoryCell> option
 
 type GBCFlag = |GB |GBC |GBC_ONLY
 
@@ -41,6 +36,17 @@ type CartridgeType =
     | HuC3
     | HuC1 of Ram*Battery
     | Unknown
+    with
+        member this.Ram =
+            match this with
+                |ROM (Some ram, _)
+                |MBC1 (Some ram, _)
+                |MBC3 (_,Some ram, _)
+                |MBC4 (Some ram, _) 
+                |MBC5 (Some ram, _, _) ->
+                    Some ram
+                |_ ->
+                    None
 
 type Region = |Japan |NotJapan |Unknown
 
@@ -120,16 +126,32 @@ type CartHeader(bytes: array<uint8>) =
 
         member this.GlobalChecksum = (bytes.[0x4E] <<< 8) ||| (bytes.[0x4F]) // Big endian
 
-
-type CartROM (data) =
+[<AbstractClass>]
+type CartROM (header,data) =
     inherit ROM ()
 
     let header = CartHeader(Array.sub data 0x100 0x50)
-    
-    override this.getCell index =
-        match index with
-        | bank0Index when index <= 0x3FFF ->
-            readOnlyCell (data.[index])
-        | _ -> blankCell
 
-let loadFromCartDump path = CartROM(File.ReadAllBytes path) :> ROM
+    member this.Header = header
+
+    override this.RAMBlock =
+        match header.CartridgeType.Ram with
+        | Some ram -> Some <| readWriteMemoryBlock (8*kB) // TODO: use correct size from header
+        | None -> None
+
+
+type StaticCartROM(header,data) =
+    inherit CartROM(header,data)
+
+    override this.ROMBlock =
+        initMemoryBlock (32*kB) (fun index -> data.[index] |> readOnlyCell)
+
+let loadFromCartDump path =
+    let data = File.ReadAllBytes path
+    let header = CartHeader(Array.sub data 0x100 0x50)
+
+    match header.CartridgeType with
+    | CartridgeType.ROM (ram, battery) ->
+        StaticCartROM(header,data) :> CartROM
+    | _ ->
+        raise <| System.Exception("Cart type unsupported")

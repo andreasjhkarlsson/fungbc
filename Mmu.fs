@@ -41,10 +41,15 @@ type MMU (gpu: GPU, rom: ROM, ram: GBCRam, interrupts: InterruptManager, timers:
     // Map memory!!!
     do
         // Map ROM
-        mapBlock 0x0000us 0x07FFFus rom.MemoryBlock
+        mapBlock 0x0000us 0x07FFFus rom.ROMBlock
 
         // Map VRAM
         mapBlock 0x8000us 0x9FFFus gpu.VRAM.MemoryBlock
+
+        // Map external RAM (if any)
+        match rom.RAMBlock with
+        | Some ram -> mapBlock 0xA000us 0xBFFFus ram
+        | _ -> ()
 
         // Map RAM
         mapBlock 0xC000us 0xDFFFus ram.Working

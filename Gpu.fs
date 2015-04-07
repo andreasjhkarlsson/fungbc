@@ -30,7 +30,7 @@ type FrameReceiver =
     |FrameReceiver of (Bitmap -> unit)
     member x.Value = let (FrameReceiver v) = x in v // How does this syntax work??
 
-type BGTileMapSelect = |Map1 |Map0
+type TileMapSelect = |Map1 |Map0
 
 type TileDataSelect = |Tiles0 |Tiles1
 
@@ -39,11 +39,11 @@ type LCDControl (init) =
 
     member this.BGDisplay = this.Value |> isBitSet 0
     member this.SpriteEnable = this.Value |> isBitSet 1
-    member this.SpriteSize = this.Value |> isBitSet 2
+    member this.SpriteSize = if this.Value |> isBitSet 2 then (8,16) else (8,8)
     member this.BGTilemapSelect = if this.Value |> isBitSet 3 then Map1 else Map0
     member this.BGAndWindowTileDataSelect = if this.Value |> isBitSet 4 then Tiles1 else Tiles0
     member this.WindowEnabled = this.Value |> isBitSet 5
-    member this.WindowTileMapSelect = this.Value |> isBitSet 6
+    member this.WindowTileMapSelect = if this.Value |> isBitSet 6 then Map1 else Map0
     member this.DisplayEnable = this.Value |> isBitSet 7
 
 type Coincidence = |LYC_NE_LY |LYC_E_LY
@@ -123,7 +123,7 @@ type VRAM () =
     member this.Tile1 (index: uint8) =
         tiles1.[index |> int]
     member this.Tile0 (index: int8) =
-        tiles0.[index |> uint8 |> int]
+        tiles0.[int index + 128]
 
     member this.TileMap0 x y = (Array.get tileMap0 (x + y * 32)).Value
     member this.TileMap1 x y = (Array.get tileMap1 (x + y * 32)).Value
@@ -223,7 +223,7 @@ type GPU (systemClock: Clock,interrupts: InterruptManager,frameReceiver: FrameRe
 
         let stage = stageAt systemClock.Ticks
 
-        if stage <> lastStage && lcdc.DisplayEnable then
+        if stage <> lastStage then
             
             match stage with
             | HBlank line ->

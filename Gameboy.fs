@@ -22,7 +22,7 @@ type Gameboy(rom: ROM, frameReceiver: FrameReceiver) =
 
     let interrupts = InterruptManager()
 
-    let keypad = Keypad()
+    let keypad = Keypad(interrupts)
 
     let timers = Timers(systemClock,interrupts)
 

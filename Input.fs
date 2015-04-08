@@ -3,6 +3,7 @@
 open BitLogic
 open MemoryCell
 open IORegisters
+open Interrupts
 
 type Key =
     |Left
@@ -20,7 +21,7 @@ type KeyState =
 
 type PinColumn = |First |Second
 
-type Keypad () =
+type Keypad (interrupts: InterruptManager) =
     inherit ValueBackedIORegister(0uy)
 
     let mutable keyStates = 
@@ -39,7 +40,11 @@ type Keypad () =
     
     member this.Item
         with get key = keyStates |> Map.find key
-        and set key state = keyStates <- keyStates |> Map.add key state
+        and set key state =
+            if state = Pressed && this.Released key then
+                interrupts.Current.Set <- P10P13Flip
+            keyStates <- keyStates |> Map.add key state
+
 
     member this.Pressed key = this.[key] = Pressed
 

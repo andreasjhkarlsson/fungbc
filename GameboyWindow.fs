@@ -17,8 +17,8 @@ type GameboyWindow (title) as this =
     let framebuffer = new Bitmap(width, height)
 
     do
-        this.Width <- width*scale
-        this.Height <- height*scale
+
+        this.ClientSize <- Size(width*scale, height*scale)
 
         this.Text <- title
 

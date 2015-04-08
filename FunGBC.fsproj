@@ -67,6 +67,7 @@
     <Compile Include="Interrupts.fs" />
     <Compile Include="Timer.fs" />
     <Compile Include="Gpu.fs" />
+    <Compile Include="Input.fs" />
     <Compile Include="Mmu.fs" />
     <Compile Include="Register.fs" />
     <Compile Include="Instruction.fs" />

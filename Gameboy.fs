@@ -11,6 +11,7 @@ open Cpu
 open Debugger
 open Clock
 open Constants
+open Input
 
 
 type Gameboy(rom: ROM, frameReceiver: FrameReceiver) =
@@ -21,11 +22,13 @@ type Gameboy(rom: ROM, frameReceiver: FrameReceiver) =
 
     let interrupts = InterruptManager()
 
+    let keypad = Keypad()
+
     let timers = Timers(systemClock,interrupts)
 
     let gpu = GPU(systemClock, interrupts, frameReceiver)
 
-    let mmu = MMU(gpu, rom,ram,interrupts,timers)
+    let mmu = MMU(gpu, rom,ram,keypad,interrupts,timers)
 
     let cpu = CPU(mmu,gpu,interrupts,timers,systemClock)
 

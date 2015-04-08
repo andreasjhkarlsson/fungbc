@@ -24,7 +24,7 @@ let inline (|BitsChanged|_|) bitPattern (oldValue, newValue) =
     | true -> Some (newValue &&& bitPattern)
     | false -> None
 
-let inline (|BitSet|_|) bit value = if isBitSet bit value then Some () else None
+let inline (|BitSet|_|) bit value = if isBitSet bit value then Some value else None
 
 let inline bitStateInvert state = match state with |SET -> CLEAR |CLEAR -> SET
 
@@ -33,6 +33,8 @@ let inline setBit bit value = value ||| (LanguagePrimitives.GenericOne <<< bit)
 let inline clearBit bit value = value &&& (~~~(LanguagePrimitives.GenericOne <<< bit))
 
 let inline controlBit bit state = if state = SET then setBit bit else clearBit bit
+
+let inline mapByte fn = [0..7] |> List.rev |> List.fold (fun value bit -> (value <<< 1) ||| (bit |> fn |> bitStateToValue)) 0uy
 
 let inline setIfZero value = if value = LanguagePrimitives.GenericZero then SET else CLEAR
 

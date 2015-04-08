@@ -8,11 +8,12 @@ open IORegisters
 open Gpu
 open Timer
 open Interrupts
+open Input
 
 type MemoryAddress = uint16
 
 // Maps the address space of the GBC into different parts (rom, ram, ioregisters, etc.)
-type MMU (gpu: GPU, rom: ROM, ram: GBCRam, interrupts: InterruptManager, timers: Timers) as this =
+type MMU (gpu: GPU, rom: ROM, ram: GBCRam,keypad: Keypad, interrupts: InterruptManager, timers: Timers) as this =
     
     // Initially make all memory blank.
     let memory = blankMemoryBlock ADDRESS_SPACE_SIZE
@@ -62,6 +63,7 @@ type MMU (gpu: GPU, rom: ROM, ram: GBCRam, interrupts: InterruptManager, timers:
         mapBlock 0xFF80us 0xFFFEus ram.Stack
 
         // Map I/O Registers
+        mapAddress 0xFF00us keypad.MemoryCell
         mapAddress 0xFF04us timers.DIV.MemoryCell
         mapAddress 0xFF05us timers.TIMA.MemoryCell
         mapAddress 0xFF06us timers.TMA.MemoryCell

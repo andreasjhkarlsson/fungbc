@@ -156,6 +156,8 @@ type RenderStage = |ScanOAM of int |ScanVRAM of int |HBlank of int |VBlank of in
 
 type GPU (systemClock: Clock,interrupts: InterruptManager,frameReceiver: FrameReceiver) =
 
+    let clock = Clock.derive systemClock systemClock.Frequency :?> DerivedClock
+
     let vram = VRAM()
 
     let registers = GPURegisters()
@@ -221,55 +223,62 @@ type GPU (systemClock: Clock,interrupts: InterruptManager,frameReceiver: FrameRe
         let ly = registers.LY
         let lyc = registers.LYC
 
-        let stage = stageAt systemClock.Ticks
+        if lcdc.DisplayEnable then
 
-        if stage <> lastStage then
+            let stage = stageAt clock.Ticks
+
+            if stage <> lastStage then
             
-            match stage with
-            | HBlank line ->
-                lcds.Mode <- Mode.HBlank
+                match stage with
+                | HBlank line ->
+                    lcds.Mode <- Mode.HBlank
 
-                // Generate LCDC interrupt from HBlank?
-                if lcds.HBlankInterrupt then
-                    interrupts.Current.Set <- LCDC
-
-                drawLine line
-            | VBlank t  ->
-                if not (lastStage |> isVBlank) then
-                    let fps = 1000.0 / float stopWatch.ElapsedMilliseconds
-                    //printfn "FPS: %.2f" fps
-                    stopWatch.Restart()
-                    lcds.Mode <- Mode.VBlank
-
-                    // Should VBlank generate LCDC interrupt?
-                    if lcds.VBlankInterrupt then
+                    // Generate LCDC interrupt from HBlank?
+                    if lcds.HBlankInterrupt then
                         interrupts.Current.Set <- LCDC
 
-                    // Generate VBlank interrupt regardless of the above
-                    interrupts.Current.Set <- Interrupts.VBlank
+                    drawLine line
+                | VBlank t  ->
+                    if not (lastStage |> isVBlank) then
+                        let fps = 1000.0 / float stopWatch.ElapsedMilliseconds
+                        //printfn "FPS: %.2f" fps
+                        stopWatch.Restart()
+                        lcds.Mode <- Mode.VBlank
 
-                    drawScreen frameReceiver
+                        // Should VBlank generate LCDC interrupt?
+                        if lcds.VBlankInterrupt then
+                            interrupts.Current.Set <- LCDC
 
-                ly.Value <- uint8 <| RESOLUTION.Height + t
-            | ScanOAM line ->
-                lcds.Mode <- Mode.SearchingOAMRAM // Correct?
-                ly.Value <- uint8 <| line 
+                        // Generate VBlank interrupt regardless of the above
+                        if interrupts.Enable then
+                            interrupts.Current.Set <- Interrupts.VBlank
 
-                // Generate LCDC interrupt from OAM?
-                if lcds.OAMInterrupt then
+                        drawScreen frameReceiver
+
+                    ly.Value <- uint8 <| RESOLUTION.Height + t
+                | ScanOAM line ->
+                    lcds.Mode <- Mode.SearchingOAMRAM // Correct?
+                    ly.Value <- uint8 <| line 
+
+                    // Generate LCDC interrupt from OAM?
+                    if lcds.OAMInterrupt then
+                        interrupts.Current.Set <- LCDC
+
+                | ScanVRAM _ ->
+                    lcds.Mode <- Mode.LCDDriverDataTransfer // Correct?
+
+            if lcds.LYCLYCoincidenceInterrupt then
+                if ly.Value = lyc.Value then
                     interrupts.Current.Set <- LCDC
+                    lcds.Coincidence <- LYC_E_LY
+                else
+                    lcds.Coincidence <- LYC_NE_LY
 
-            | ScanVRAM _ ->
-                lcds.Mode <- Mode.LCDDriverDataTransfer // Correct?
-
-        if lcds.LYCLYCoincidenceInterrupt then
-            if ly.Value = lyc.Value then
-                interrupts.Current.Set <- LCDC
-                lcds.Coincidence <- LYC_E_LY
-            else
-                lcds.Coincidence <- LYC_NE_LY
-
-        lastStage <- stage
+            lastStage <- stage
+        else
+            clock.Reset ()
+            ly.Value <- 0uy
+            lcds.Mode <- Mode.HBlank
 
 
 

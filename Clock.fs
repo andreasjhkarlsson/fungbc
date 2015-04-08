@@ -29,9 +29,13 @@ type MutableClock (frequency,start) =
 type DerivedClock(reference: Clock, frequency, start) =
     inherit Clock(frequency)
 
+    let mutable offset = start
+
     let factor = uint64 <| reference.Frequency / frequency
 
-    override this.Ticks with get () = (reference.Ticks - start) / factor
+    member this.Reset () = offset <- reference.Ticks
+
+    override this.Ticks with get () = (reference.Ticks - offset) / factor
 
 // This clock doesn't tick at all.
 type AbsoluteClock(reference: Clock) =

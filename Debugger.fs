@@ -153,6 +153,7 @@ type Debugger(cpu: CPU,gpu: GPU, mmu: MMU,interrupts: InterruptManager, systemCl
             "print interrupt status (q), "+
             "find symbol (y), " +
             "print gpu info (g), "+
+            "force screen redraw (*), "+
             "print tile map0 (m0), "+
             "print tile map1 (m1), "+
             "print tile data 0 (t0), "+
@@ -379,6 +380,9 @@ type Debugger(cpu: CPU,gpu: GPU, mmu: MMU,interrupts: InterruptManager, systemCl
                 match parameter with
                 | AddressParameter address -> printResult <| sprintf "0x%04X = %04X" address (mmu.Read16 address)
                 | _ -> printError "Invalid address format"
+                interactive ()
+            | "*" ->
+                gpu.ForceRedraw ()
                 interactive ()
             | _ ->
                 interactive ()

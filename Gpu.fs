@@ -216,6 +216,10 @@ type GPU (systemClock: Clock,interrupts: InterruptManager,frameReceiver: FrameRe
 
     member this.Registers = registers
 
+    member this.ForceRedraw () =
+        {0..143} |> Seq.iter drawLine   
+        drawScreen frameReceiver 
+
     member this.Update () =
         // Extract some registers
         let lcds = registers.LCDS

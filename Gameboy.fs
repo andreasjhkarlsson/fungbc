@@ -12,9 +12,23 @@ open Clock
 open Constants
 open Input
 
-type Message = |Kill of AsyncReplyChannel<unit> |Run |Step |Input of Input.Key*Input.KeyState
+type Message = |Kill of AsyncReplyChannel<unit> |Run |Step of AsyncReplyChannel<unit> |Input of Input.Key*Input.KeyState
 
 type GameboyAgent = MailboxProcessor<Message>
+
+type GameboyComponents = {
+        Ram: GBCRam
+        Clock: Clock
+        Interrupts: InterruptManager
+        Keypad: Keypad
+        Timers: Timers
+        Gpu: GPU
+        Mmu: MMU
+        Cpu: CPU
+    }
+
+
+type Gameboy = |Gameboy of GameboyAgent*GameboyComponents
 
 let create (rom: ROM) (frameReceiver: FrameReceiver) =
     let ram = GBCRam()
@@ -32,9 +46,13 @@ let create (rom: ROM) (frameReceiver: FrameReceiver) =
     let mmu = MMU(gpu, rom,ram,keypad,interrupts,timers)
 
     let cpu = CPU(mmu,interrupts,systemClock)
+
+    cpu.Reset ()
     
-    
-    GameboyAgent.Start(fun mailbox ->
+    let components = {Ram = ram; Clock = systemClock; Interrupts = interrupts;
+                      Keypad = keypad; Timers = timers; Gpu = gpu; Mmu = mmu; Cpu = cpu}
+
+    let agent = GameboyAgent.Start(fun mailbox ->
             // Run the emulator for a number of iterations
             let rec runEmulation iters =
                 if iters > 0 then
@@ -58,8 +76,9 @@ let create (rom: ROM) (frameReceiver: FrameReceiver) =
                     // we let the emulator execute several times before processing next message.
                     runEmulation 10
                     mailbox.Post Run
-                | Step ->
+                | Step reply ->
                     runEmulation 1
+                    reply.Reply ()
                 | Input (key,state) ->
                     keypad.[key] <- state
                 | _ ->
@@ -78,10 +97,14 @@ let create (rom: ROM) (frameReceiver: FrameReceiver) =
 
         )  
 
-let run (agent: GameboyAgent) = agent.Post Run
+    Gameboy (agent, components)
 
-let step (agent: GameboyAgent) = agent.Post Step
+let run (Gameboy (agent,_)) = agent.Post Run
 
-let kill (agent: GameboyAgent) = agent.PostAndReply (fun r -> Kill r)
+let step (Gameboy (agent,_)) = agent.PostAndReply (fun r -> Step r)
 
-let postInput (agent: GameboyAgent) key state = Input(key,state) |> agent.Post
+let kill (Gameboy (agent,_)) = agent.PostAndReply (fun r -> Kill r)
+
+let postInput (Gameboy (agent,_)) key state = Input(key,state) |> agent.Post
+
+let components (Gameboy (_,components)) = components

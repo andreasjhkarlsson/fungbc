@@ -53,7 +53,12 @@ type GameboyWindow () as this =
 
         let gb = Gameboy.create rom (FrameReceiver this.PresentFrame)
 
-        Gameboy.run gb
+        let debugger = Debugger.attach gb mapInfo
+
+        Debugger.breakExecution debugger
+        Debugger.start debugger
+
+        //Gameboy.run gb
 
         gameboy <- Some gb
 

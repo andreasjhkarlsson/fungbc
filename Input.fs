@@ -66,4 +66,4 @@ type Keypad (interrupts: InterruptManager) =
                 value ||| (column pins4)
             | BitSet 5 value ->
                 value ||| (column pins5)
-            | value -> value
+            | _ as value -> value

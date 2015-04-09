@@ -1,6 +1,7 @@
 ﻿module Gpu
 
 open System.Drawing
+open System.Drawing.Imaging
 open IORegisters
 open Tile
 open MemoryCell
@@ -9,6 +10,7 @@ open Units
 open Constants
 open BitLogic
 open Interrupts
+open System.Runtime.InteropServices
 
 type OBJBGPriority = |Above |Behind
 type TileFlip = |Normal |Flipped
@@ -28,7 +30,6 @@ type SpriteAttribute (c0: MemoryCell,c1: MemoryCell,c2: MemoryCell,c3: MemoryCel
 
 type FrameReceiver =
     |FrameReceiver of (Bitmap -> unit)
-    member x.Value = let (FrameReceiver v) = x in v // How does this syntax work??
 
 type TileMapSelect = |Map1 |Map0
 
@@ -154,7 +155,33 @@ type GPURegisters () =
 
 type RenderStage = |ScanOAM of int |ScanVRAM of int |HBlank of int |VBlank of int
 
-type GPU (systemClock: Clock,interrupts: InterruptManager,frameReceiver: FrameReceiver) =
+
+type FrameBuffer(width: int, height: int) =
+    let bitmap = new Bitmap(width, height, PixelFormat.Format32bppArgb)
+
+    let lockBitmap () =
+        bitmap.LockBits(Rectangle(0,0,width,height),ImageLockMode.ReadWrite,bitmap.PixelFormat)
+
+    let unlockBitmap bitmapData = bitmap.UnlockBits bitmapData
+
+    let mutable bitmapData = lockBitmap ()
+
+    let buffer = Array.create (((abs bitmapData.Stride) * height) / 4) 0
+
+    do
+        unlockBitmap bitmapData
+    
+    member this.SetPixel x y color = buffer.[(y * bitmapData.Stride + (x * 4)) / 4] <- color
+
+    member this.BeginDraw () = bitmapData <- lockBitmap ()
+
+    member this.EndDraw () =
+        Marshal.Copy(buffer,0,bitmapData.Scan0,buffer.Length)
+        unlockBitmap bitmapData
+
+    member this.Bitmap = bitmap
+
+type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
 
     let clock = Clock.derive systemClock systemClock.Frequency :?> DerivedClock
 
@@ -164,7 +191,7 @@ type GPU (systemClock: Clock,interrupts: InterruptManager,frameReceiver: FrameRe
 
     let stopWatch = System.Diagnostics.Stopwatch.StartNew()
 
-    let screenBuffer = new System.Drawing.Bitmap(RESOLUTION.Width,RESOLUTION.Height)
+    let frame = FrameBuffer(RESOLUTION.Width, RESOLUTION.Height)
 
     let drawLine y =
 
@@ -179,11 +206,15 @@ type GPU (systemClock: Clock,interrupts: InterruptManager,frameReceiver: FrameRe
             let tileIndex = bgMap ((cx % 256) / 8) ((cy % 256) / 8)
             let tile = tileData tileIndex
             let color = Tile.decode8x8 tile (cx % 8) (cy % 8) |> registers.BGP.Color
-            screenBuffer.SetPixel(x,y,color)
+            frame.SetPixel x y (color.ToArgb())
 
         {0..(RESOLUTION.Width - 1)} |> Seq.iter drawPixel
 
-    let drawScreen (FrameReceiver receiver) = receiver screenBuffer
+    let drawScreen (FrameReceiver receiver) =
+        frame.EndDraw ()
+        receiver frame.Bitmap
+        frame.BeginDraw ()
+
 
     let isVBlank = function |VBlank _ -> true |_ -> false
 
@@ -211,6 +242,9 @@ type GPU (systemClock: Clock,interrupts: InterruptManager,frameReceiver: FrameRe
             VBlank ((cycles - allLinesCycles) / (vBlankCycles / 10UL) |> int)  
             
     let mutable lastStage = VBlank 0 
+
+    do
+        frame.BeginDraw ()
 
     member this.VRAM = vram
 

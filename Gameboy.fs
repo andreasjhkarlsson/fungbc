@@ -74,7 +74,7 @@ let create (rom: ROM) (frameReceiver: FrameReceiver) =
                 | Run ->
                     // Since agent posting / receiving incurs an overhead
                     // we let the emulator execute several times before processing next message.
-                    runEmulation 10
+                    runEmulation 20
                     mailbox.Post Run
                 | Step reply ->
                     runEmulation 1

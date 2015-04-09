@@ -22,6 +22,18 @@ type GameboyWindow () as this =
 
     let mutable gameboy = None
 
+    let keycodeToKeypad =
+        function
+        | Keys.Up -> Some Input.Up
+        | Keys.Down -> Some Input.Down
+        | Keys.Left -> Some Input.Left
+        | Keys.Right -> Some Input.Right
+        | Keys.X -> Some Input.A
+        | Keys.Z -> Some Input.B
+        | Keys.Return -> Some Input.Start
+        | Keys.Space -> Some Input.Select
+        | _ -> None 
+
     do
 
         this.ClientSize <- Size(width*scale, height*scale)
@@ -80,6 +92,25 @@ type GameboyWindow () as this =
         base.OnFormClosing args
 
         
+    override this.OnKeyDown args =
+        match gameboy with
+        | Some gameboy ->
+            match keycodeToKeypad args.KeyCode with
+            | Some key ->
+                (Gameboy.keypad gameboy).[key] <- Input.Pressed
+            | None ->
+                ()
+        | None -> 
+            ()
 
-
+    override this.OnKeyUp args =
+        match gameboy with
+        | Some gameboy ->
+            match keycodeToKeypad args.KeyCode with
+            | Some key ->
+                (Gameboy.keypad gameboy).[key] <- Input.Released
+            | None ->
+                ()
+        | None -> 
+            ()
     

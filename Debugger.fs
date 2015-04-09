@@ -486,3 +486,5 @@ let attach gameboy (mapInfo: MapInfo) =
 let start (debugger: DebuggerAgent) = debugger.Post Run
 
 let breakExecution (debugger: DebuggerAgent) = debugger.PostAndReply (fun r -> Break r)
+
+let kill (debugger: DebuggerAgent) = debugger.PostAndReply (fun r -> Kill r)

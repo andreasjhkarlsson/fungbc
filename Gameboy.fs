@@ -108,3 +108,5 @@ let kill (Gameboy (agent,_)) = agent.PostAndReply (fun r -> Kill r)
 let postInput (Gameboy (agent,_)) key state = Input(key,state) |> agent.Post
 
 let components (Gameboy (_,components)) = components
+
+let keypad gameboy = (components gameboy).Keypad

@@ -118,7 +118,7 @@ type ALU (registers: RegisterSet) =
         F.ZNHC <- (setIfZero result,CLEAR,CLEAR,CLEAR)
         result
 
-type CPU (mmu, gpu: GPU, interrupts: InterruptManager,timers: Timers, clock: MutableClock) as this =
+type CPU (mmu, interrupts: InterruptManager, clock: MutableClock) as this =
 
     let registers = RegisterSet()
 
@@ -160,16 +160,13 @@ type CPU (mmu, gpu: GPU, interrupts: InterruptManager,timers: Timers, clock: Mut
         interrupts.Enable <- false
         interrupts.Current.Clear <- interrupt
 
-    let rec execute () = 
+    member this.Execute () = 
         
         let instruction =
             if this.WaitingForInterrupt then
                 NOP
             else
                 let instruction = decodeOpcode PC.Value
-
-                // Debugger hook
-                match this.Hook with | Some hook -> hook instruction | None -> ()
 
                 PC.Value <- PC.Value + (uint16 <| sizeOf instruction)
 
@@ -477,13 +474,8 @@ type CPU (mmu, gpu: GPU, interrupts: InterruptManager,timers: Timers, clock: Mut
         // Update clock
         clock.Tick (cycleCount instruction longCycle |> uint64)
 
-        gpu.Update ()
-
-        timers.Update ()
-
         interrupts.Handle handleInterrupt
-        
-        if not stopped then execute ()
+
     
     member this.Reset () =
         registers.AF.Value <- 0x01B0us
@@ -495,15 +487,7 @@ type CPU (mmu, gpu: GPU, interrupts: InterruptManager,timers: Timers, clock: Mut
         interrupts.Enable <- true
         mmu.InitDefaults ()
 
-    member this.Start () =
-        this.Reset()
-        execute ()
-
-    member this.Stop () = stopped <- true
-
     member this.Registers = registers
-
-    member val Hook: (Instruction -> unit) option = None with get, set
 
     member val WaitingForInterrupt = false with get, set
 

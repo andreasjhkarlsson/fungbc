@@ -126,8 +126,6 @@ type Instruction =
 
 // Parse opcode at address and extract operands.
 let decodeOpcode (mmu: MMU) address =
-    
-    let mutable consumed = 0
 
     let int8Operand () = mmu.Read8 (address + 1us)
     let int16Operand () = mmu.Read16 (address + 1us)

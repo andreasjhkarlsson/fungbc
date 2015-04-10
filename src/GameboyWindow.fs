@@ -27,8 +27,7 @@ type GameboyScreen (scale) as this =
         lock framebuffer (fun () -> Graphics.FromImage(framebuffer).DrawImage(bitmap,0,0,framebuffer.Width,framebuffer.Height))
         this.BeginInvoke(new System.Action(fun _ -> this.Invalidate ())) |> ignore
 
-    member this.SaveToFile (filename: string) =
-        lock framebuffer (fun () -> framebuffer.Save(filename,ImageFormat.Png))
+    member this.Capture () = lock framebuffer (fun () -> framebuffer.Clone () :?> Bitmap)
 
     override this.OnPaint args =
         base.OnPaint args
@@ -48,9 +47,19 @@ type GameboyWindow () as this =
 
     let contextMenu = new ContextMenuStrip()
 
+    let executionMenu = new ToolStripMenuItem("Control execution...")
+
     let screenCapMenuItem = new ToolStripMenuItem("Save screen capture...") 
 
     let resetMenuItem = new ToolStripMenuItem("Reset")
+
+    let resumeMenuItem = new ToolStripMenuItem("Resume")
+
+    let pauseMenuItem = new ToolStripMenuItem("Pause")
+
+    let stopMenuItem = new ToolStripMenuItem("Stop")
+
+    let loadRomItem = new ToolStripMenuItem("Load ROM")
 
     let mutable gameboy = None
 
@@ -76,13 +85,32 @@ type GameboyWindow () as this =
        
         this.ClientSize <- Size(screen.Width,screen.Height + statusStrip.Height)
 
-        resetMenuItem.Click.Add this.Reset
-        contextMenu.Items.Add(resetMenuItem) |> ignore
+        // Setup context menu
+        do 
 
-        screenCapMenuItem.Click.Add this.ScreenCap
-        contextMenu.Items.Add(screenCapMenuItem) |> ignore
+            loadRomItem.Click.Add this.OpenROM
+            contextMenu.Items.Add(loadRomItem) |> ignore
+
+            resumeMenuItem.Click.Add this.Resume
+            executionMenu.DropDownItems.Add(resumeMenuItem) |> ignore
+
+            pauseMenuItem.Click.Add this.Pause
+            executionMenu.DropDownItems.Add(pauseMenuItem) |> ignore
+
+            stopMenuItem.Click.Add this.Stop
+            executionMenu.DropDownItems.Add(stopMenuItem) |> ignore
+
+            resetMenuItem.Click.Add this.Reset
+            executionMenu.DropDownItems.Add(resetMenuItem) |> ignore
+
+            contextMenu.Items.Add(executionMenu) |> ignore
         
-        this.ContextMenuStrip <- contextMenu
+            screenCapMenuItem.Click.Add this.ScreenCap
+            contextMenu.Items.Add(screenCapMenuItem) |> ignore
+        
+            this.ContextMenuStrip <- contextMenu
+
+            contextMenu.Opening.Add this.UpdateContextMenu 
 
         screen.Dock <- DockStyle.Top
         this.Controls.Add(screen)
@@ -97,17 +125,14 @@ type GameboyWindow () as this =
     member this.Reset _ = gameboy |> Option.iter Gameboy.reset
     
     member this.ScreenCap args =
-        
-        gameboy |> Option.iter Gameboy.pause
-
+        let screenCap = screen.Capture ()
         let saveDialog = new SaveFileDialog()
         saveDialog.AddExtension <- true
         saveDialog.Title <- "Select destination"
         saveDialog.Filter <- "Image file (*.png)|*.png"
         if saveDialog.ShowDialog () = DialogResult.OK then
-            screen.SaveToFile saveDialog.FileName
+            screenCap.Save(saveDialog.FileName,ImageFormat.Png) 
 
-        gameboy |> Option.iter Gameboy.start
 
     member this.UpdateStatus args =
         
@@ -124,7 +149,20 @@ type GameboyWindow () as this =
             )
         | None -> ()
 
-        
+    member this.OpenROM _ =
+        let dialog = new OpenFileDialog()
+        dialog.Title <- "Select ROM"
+        dialog.Filter <- "Gameboy ROMs (*.gb)|*.gb"
+        if dialog.ShowDialog () = DialogResult.OK then
+            try
+                this.LoadROM dialog.FileName
+            with
+            | error ->
+                MessageBox.Show(this,
+                                error.Message,
+                                "Error loading ROM",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Error) |> ignore
 
     member this.LoadROM path =
         let rom =
@@ -143,14 +181,15 @@ type GameboyWindow () as this =
             match System.IO.File.Exists mapPath with
             | true -> MapInfo(mapPath)
             | false -> MapInfo()   
-
+        
+        // Is there an gameboy already loaded? Kill!
+        match gameboy with
+        | Some gameboy ->
+            Gameboy.kill gameboy
+        | None ->
+            ()
 
         let gb = Gameboy.create rom (FrameReceiver screen.PresentFrame)
-
-        //let debugger = Debugger.attach gb mapInfo
-
-        //Debugger.breakExecution debugger
-        //Debugger.start debugger
 
         Gameboy.start gb
 
@@ -187,4 +226,42 @@ type GameboyWindow () as this =
                 ()
         | None -> 
             ()
+
+    member this.Resume _ =
+        match gameboy with
+        | Some gameboy ->
+            Gameboy.start gameboy
+        | None ->
+            ()
     
+    member this.Pause _ =
+        match gameboy with
+        | Some gameboy ->
+            Gameboy.pause gameboy
+        | None ->
+            ()
+
+    member this.Stop _ =
+        match gameboy with
+        | Some instance ->
+            Gameboy.kill instance
+            gameboy <- None
+        | None ->
+            ()
+
+    member this.UpdateContextMenu _ =
+        match gameboy with
+        | Some gameboy ->
+            executionMenu.Enabled <- true
+            screenCapMenuItem.Enabled <- true
+            let executionState = Gameboy.state gameboy
+            match executionState with
+            | Running ->
+                resumeMenuItem.Enabled <- false
+                pauseMenuItem.Enabled <- true
+            | Paused ->
+                resumeMenuItem.Enabled <- true
+                pauseMenuItem.Enabled <- false
+        | None ->
+            executionMenu.Enabled <- false
+            screenCapMenuItem.Enabled <- false

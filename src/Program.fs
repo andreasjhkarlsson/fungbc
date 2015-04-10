@@ -12,16 +12,16 @@ open Constants
 [<STAThread>]
 let main argv = 
 
-    if argv.Length <> 1 then raise <| System.Exception("Usage: fgbc <fgbc-file>")
-
-    let romPath = argv.[0]
+    
 
     Application.EnableVisualStyles()
     Application.SetCompatibleTextRenderingDefault false
 
     use gbWindow = new GameboyWindow()
     
-    gbWindow.LoadROM romPath
+    if argv.Length > 0 then
+        let romPath = argv.[0] 
+        gbWindow.LoadROM romPath
 
     Application.Run(gbWindow)
 

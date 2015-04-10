@@ -12,7 +12,12 @@ open Clock
 open Constants
 open Input
 
-type Message = |Kill of AsyncReplyChannel<unit> |Run |Step of AsyncReplyChannel<unit> |Input of Input.Key*Input.KeyState
+type Message = 
+    |Kill of AsyncReplyChannel<unit>
+    |Run
+    |Step of AsyncReplyChannel<unit>
+    |Input of Input.Key*Input.KeyState
+    |FPS of AsyncReplyChannel<float>
 
 type GameboyAgent = MailboxProcessor<Message>
 
@@ -78,9 +83,11 @@ let create (rom: ROM) (frameReceiver: FrameReceiver) =
                     mailbox.Post Run
                 | Step reply ->
                     runEmulation 1
-                    reply.Reply ()
+                    reply.Reply () 
                 | Input (key,state) ->
                     keypad.[key] <- state
+                | FPS (reply) ->
+                    reply.Reply gpu.FPS
                 | _ ->
                     ()
 
@@ -101,12 +108,14 @@ let create (rom: ROM) (frameReceiver: FrameReceiver) =
 
 let run (Gameboy (agent,_)) = agent.Post Run
 
-let step (Gameboy (agent,_)) = agent.PostAndReply (fun r -> Step r)
+let step (Gameboy (agent,_)) = agent.PostAndReply Step
 
-let kill (Gameboy (agent,_)) = agent.PostAndReply (fun r -> Kill r)
+let kill (Gameboy (agent,_)) = agent.PostAndReply Kill
 
 let postInput (Gameboy (agent,_)) key state = Input(key,state) |> agent.Post
 
 let components (Gameboy (_,components)) = components
 
 let keypad gameboy = (components gameboy).Keypad
+
+let fps (Gameboy (agent, _)) = agent.PostAndReply FPS

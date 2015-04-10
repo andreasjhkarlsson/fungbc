@@ -2,23 +2,45 @@
 
 open System.Windows.Forms
 open System.Drawing
+open System.Timers
 open Constants
 open Gameboy
 open Rom
 open Debugger
 open Gpu
 
+type GameboyScreen (scale) as this =
+    inherit Panel()
+
+    let width = RESOLUTION.Width * scale
+
+    let height = RESOLUTION.Height * scale
+
+    let framebuffer = new Bitmap(RESOLUTION.Width, RESOLUTION.Height)
+
+    do
+        this.DoubleBuffered <- true
+        this.ClientSize <- Size(width,height)
+
+    member this.PresentFrame bitmap =
+        lock framebuffer (fun () -> Graphics.FromImage(framebuffer).DrawImage(bitmap,0,0,framebuffer.Width,framebuffer.Height))
+        this.BeginInvoke(new System.Action(fun _ -> this.Invalidate ())) |> ignore
+
+    override this.OnPaint args =
+        base.OnPaint args
+        lock framebuffer (fun () -> args.Graphics.DrawImage(framebuffer,0,0,width,height))
+
 type GameboyWindow () as this =
 
     inherit Form()
 
-    let scale = 3
+    let statusStrip = new StatusStrip()
 
-    let width = RESOLUTION.Width
+    let statusFPS = new ToolStripStatusLabel()
 
-    let height = RESOLUTION.Height
+    let screen = new GameboyScreen(3)   
 
-    let framebuffer = new Bitmap(width, height)
+    let statusUpdater = new System.Timers.Timer(250.0)
 
     let mutable gameboy = None
 
@@ -36,13 +58,32 @@ type GameboyWindow () as this =
 
     do
 
-        this.ClientSize <- Size(width*scale, height*scale)
-
         this.Text <- APPLICATION_TITLE
 
-        this.DoubleBuffered <- true
-
         this.FormBorderStyle <- FormBorderStyle.FixedSingle
+
+        this.ClientSize <- Size(screen.Width,screen.Height + statusStrip.Height)
+
+        screen.Dock <- DockStyle.Top
+        this.Controls.Add(screen)
+
+        statusStrip.Items.Add(statusFPS :> ToolStripItem) |> ignore
+        statusStrip.BackColor <- Color.Honeydew
+        statusStrip.Dock <- DockStyle.Bottom
+        this.Controls.Add(statusStrip)
+
+        statusUpdater.Elapsed.Add this.UpdateStatus
+
+
+    member this.UpdateStatus args =
+        
+        match gameboy with
+        | Some gameboy ->
+            let fps = Gameboy.fps gameboy
+            statusFPS.Text <- sprintf "%.2f fps" fps
+        | None -> ()
+
+        statusStrip.Refresh ()
 
     member this.LoadROM path =
         let rom =
@@ -63,26 +104,16 @@ type GameboyWindow () as this =
             | false -> MapInfo()   
 
 
-        let gb = Gameboy.create rom (FrameReceiver this.PresentFrame)
+        let gb = Gameboy.create rom (FrameReceiver screen.PresentFrame)
 
-        let debugger = Debugger.attach gb mapInfo
+        //let debugger = Debugger.attach gb mapInfo
 
-        Debugger.breakExecution debugger
-        Debugger.start debugger
+        //Debugger.breakExecution debugger
+        //Debugger.start debugger
 
-        //Gameboy.run gb
+        Gameboy.run gb
 
-        gameboy <- Some gb
-
-   
-
-    member this.PresentFrame bitmap =
-        lock framebuffer (fun () -> Graphics.FromImage(framebuffer).DrawImage(bitmap,0,0,width,height))
-        this.BeginInvoke(new System.Action(fun _ -> this.Invalidate ())) |> ignore
-
-    override this.OnPaint args =
-        base.OnPaint args
-        lock framebuffer (fun () -> args.Graphics.DrawImage(framebuffer,0,0,width*scale,height*scale))
+        gameboy <- Some gb        
 
     override this.OnFormClosing args =
         match gameboy with
@@ -90,6 +121,9 @@ type GameboyWindow () as this =
             Gameboy.kill gameboy
         | None -> ()
         base.OnFormClosing args
+
+    override this.OnShown args =
+        statusUpdater.Enabled <- true
 
         
     override this.OnKeyDown args =

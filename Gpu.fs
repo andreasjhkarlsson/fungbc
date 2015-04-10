@@ -243,6 +243,8 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
             
     let mutable lastStage = VBlank 0 
 
+    let mutable fps = 0.0
+
     do
         frame.BeginDraw ()
 
@@ -253,6 +255,8 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
     member this.ForceRedraw () =
         {0..143} |> Seq.iter drawLine   
         drawScreen frameReceiver 
+
+    member this.FPS = fps
 
     member this.Update () =
         // Extract some registers
@@ -278,8 +282,7 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
                     drawLine line
                 | VBlank t  ->
                     if not (lastStage |> isVBlank) then
-                        let fps = 1000.0 / float stopWatch.ElapsedMilliseconds
-                        //printfn "FPS: %.2f" fps
+                        fps <- 1000.0 / float stopWatch.ElapsedMilliseconds
                         stopWatch.Restart()
                         lcds.Mode <- Mode.VBlank
 

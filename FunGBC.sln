@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
 VisualStudioVersion = 12.0.31101.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunGBC", "FunGBC.fsproj", "{B65B2C68-63B9-485F-AA89-DAA1E3014234}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunGBC", "src\FunGBC.fsproj", "{B65B2C68-63B9-485F-AA89-DAA1E3014234}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunGBC-Test", "FunGBC-Test\FunGBC-Test.fsproj", "{61D8092F-158D-46D5-A7A0-8288E8CE27D0}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunGBC-Test", "test\FunGBC-Test.fsproj", "{61D8092F-158D-46D5-A7A0-8288E8CE27D0}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{BF4D1F13-5E8B-4201-8C8D-1F99EE82F57E}"
 	ProjectSection(SolutionItems) = preProject

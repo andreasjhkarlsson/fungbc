@@ -86,8 +86,13 @@ let create (rom: ROM) (frameReceiver: FrameReceiver) =
                 | Run when state = Running ->
                     // Since agent posting / receiving incurs an overhead
                     // we let the emulator execute several times before processing next message.
-                    runEmulation 20
-                    mailbox.Post Run
+                    try
+                        runEmulation 20
+                        mailbox.Post Run
+                    with
+                    | error ->
+                        printfn "Runtime errror!\n%s" error.StackTrace
+                        mailbox.PostAndReply Kill
                 | Reset ->
                     cpu.Reset ()
                 | Step reply ->

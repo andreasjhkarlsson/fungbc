@@ -39,7 +39,7 @@ type GameboyWindow () as this =
 
     let statusStrip = new StatusStrip()
 
-    let statusFPS = new ToolStripStatusLabel()
+    let statusLabel = new ToolStripStatusLabel()
 
     let screen = new GameboyScreen(3)   
 
@@ -115,7 +115,7 @@ type GameboyWindow () as this =
         screen.Dock <- DockStyle.Top
         this.Controls.Add(screen)
 
-        statusStrip.Items.Add(statusFPS :> ToolStripItem) |> ignore
+        statusStrip.Items.Add(statusLabel :> ToolStripItem) |> ignore
         statusStrip.BackColor <- Color.Honeydew
         statusStrip.Dock <- DockStyle.Bottom
         this.Controls.Add(statusStrip)
@@ -136,18 +136,20 @@ type GameboyWindow () as this =
 
     member this.UpdateStatus args =
         
-        match gameboy with
-        | Some gameboy ->
-            let fps = Gameboy.fps gameboy
-            let state = Gameboy.state gameboy
-            runInUIContext (fun _ ->
-                statusFPS.Text <-
-                    sprintf "%s | %.2f fps"
-                        (match state with |Running -> "Running" |Paused -> "Paused")
-                        fps   
-                statusStrip.Refresh () 
-            )
-        | None -> ()
+        let text =
+            match gameboy with
+            | Some gameboy ->
+                let fps = Gameboy.fps gameboy
+                let state = Gameboy.state gameboy
+                sprintf "%s | %.2f fps"
+                    (match state with |Running -> "Running" |Paused -> "Paused")
+                    fps   
+            | None ->
+                "Idle"
+        runInUIContext (fun _ ->
+            statusLabel.Text <- text
+            statusStrip.Refresh ()
+        )
 
     member this.OpenROM _ =
         let dialog = new OpenFileDialog()

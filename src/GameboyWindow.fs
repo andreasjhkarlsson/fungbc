@@ -61,6 +61,8 @@ type GameboyWindow () as this =
 
     let loadRomItem = new ToolStripMenuItem("Load ROM")
 
+    let helpAndAboutMenuItem = new ToolStripMenuItem("Help && About")
+
     let mutable gameboy = None
 
     let keycodeToKeypad =
@@ -107,6 +109,9 @@ type GameboyWindow () as this =
         
             screenCapMenuItem.Click.Add this.ScreenCap
             contextMenu.Items.Add(screenCapMenuItem) |> ignore
+
+            helpAndAboutMenuItem.Click.Add this.HelpAndAbout
+            contextMenu.Items.Add(helpAndAboutMenuItem) |> ignore
         
             this.ContextMenuStrip <- contextMenu
 
@@ -267,3 +272,15 @@ type GameboyWindow () as this =
         | None ->
             executionMenu.Enabled <- false
             screenCapMenuItem.Enabled <- false
+
+    member this.HelpAndAbout _ =
+        MessageBox.Show(
+            @"A massive thanks for everyone making this emulator possible. Including accatyyc & cliffords.
+            Controls:
+                Joypad: arrow keys
+                A button: x
+                B button: z
+                Start: enter
+                Select: space
+            "
+        ) |> ignore

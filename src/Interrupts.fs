@@ -69,7 +69,7 @@ type InterruptManager() =
     // Calls handler function if an interrupt is set.
     member this.Handle fn =
         // Global enable
-        if this.Enable then
+        if this.Enable && this.Current.Value > 0uy then
             
             // Active pattern for detecting if specific interrupt is set
             let (|InterruptRaised|_|) interrupt (interruptRegister: InterruptFlagRegister) =

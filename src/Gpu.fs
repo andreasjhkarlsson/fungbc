@@ -201,14 +201,18 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
 
         let cy = int registers.SCY.Value + y
 
-        let drawPixel x =
+        let getBackgroundColor x =
             let cx = int registers.SCX.Value + x
             let tileIndex = bgMap ((cx % 256) / 8) ((cy % 256) / 8)
             let tile = tileData tileIndex
-            let color = Tile.decode8x8 tile (cx % 8) (cy % 8) |> registers.BGP.Color
-            frame.SetPixel x y (color.ToArgb())
+            Tile.decode8x8 tile (cx % 8) (cy % 8) |> registers.BGP.Color
 
-        {0..(RESOLUTION.Width - 1)} |> Seq.iter drawPixel
+        let rec draw x =
+            if x > 0 then
+                let bgPixel = getBackgroundColor x
+                frame.SetPixel x y (bgPixel.ToArgb())
+                draw (x-1)
+        draw (RESOLUTION.Width - 1)
 
     let drawScreen (FrameReceiver receiver) =
         frame.EndDraw ()

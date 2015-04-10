@@ -76,6 +76,8 @@ type MMU (gpu: GPU, rom: ROM, ram: GBCRam,keypad: Keypad, interrupts: InterruptM
         mapAddress 0xFF45us gpu.Registers.LYC.MemoryCell
         mapAddress 0xFF46us oamDMACell
         mapAddress 0xFF47us gpu.Registers.BGP.MemoryCell
+        mapAddress 0xFF48us gpu.Registers.OBP0.MemoryCell
+        mapAddress 0xFF49us gpu.Registers.OBP1.MemoryCell
 
         mapAddress 0xFF0Fus interrupts.Current.MemoryCell
         mapAddress 0xFFFFus interrupts.InterruptEnable.MemoryCell

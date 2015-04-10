@@ -13,18 +13,22 @@ open Interrupts
 open System.Runtime.InteropServices
 
 type OBJBGPriority = |Above |Behind
-type TileFlip = |Normal |Flipped
 type SpritePalette = |Palette0 |Palette1
 
 type SpriteAttribute (c0: MemoryCell,c1: MemoryCell,c2: MemoryCell,c3: MemoryCell) =
     member this.Y = c0.Value
     member this.X = c1.Value
+
+    // Normalize coordinates (not sure why 1 & 9 instead of 0 & 8)
+    member this.TX = c1.Value - 1uy
+    member this.TY = c0.Value - 9uy
+
     member this.Tile = c2.Value
 
     // Flags
     member this.Priority = match c3.Value |> bitStateOf 7 with |CLEAR -> Above |SET -> Behind
-    member this.YFlip = match c3.Value |> bitStateOf 6 with |CLEAR -> Normal |SET -> Flipped
-    member this.XFlip = match c3.Value |> bitStateOf 5 with |CLEAR -> Normal |SET -> Flipped
+    member this.YFlip = c3.Value |> isBitSet 6 |> not
+    member this.XFlip = c3.Value |> isBitSet 5 |> not
     member this.Palette = match c3.Value |> bitStateOf 4 with |CLEAR -> Palette0 |SET -> Palette1
 
 
@@ -88,13 +92,16 @@ type LY(init) =
     // Writing from memory resets the register
     override this.MemoryValue with set value = base.MemoryValue <- 0x0uy
 
-
-type BGPalette(init) =
-    inherit ValueBackedIORegister(init)
-
+let inline Palette (data: uint8) value =
     let colors = [|Color.White; Color.LightGray; Color.DarkGray; Color.Black|]
+    colors.[(int data >>> (value * 2)) &&& 0x3]
 
-    member this.Color index = colors.[(int this.Value >>> (index * 2)) &&& 0x3]
+
+type Palette(init) =
+    inherit ValueBackedIORegister(init)
+    let colors = [|Color.White; Color.LightGray; Color.DarkGray; Color.Black|]
+    member this.Color index =  
+        colors.[(int this.Value >>> (index * 2)) &&& 0x3]
 
 
 type VRAM () =
@@ -131,6 +138,8 @@ type VRAM () =
 
     member this.ObjectAttribute index = objectAttributeTable.[index]
 
+    member this.ObjectAttributes = objectAttributeTable
+
     member this.MemoryBlock = memory
 
     member this.OAM = oam
@@ -140,7 +149,9 @@ type GPURegisters () =
     let lcds = LCDStatus(0uy)
     let scx = ValueBackedIORegister(0uy)
     let scy = ValueBackedIORegister(0uy)
-    let bgp = BGPalette(0uy)
+    let bgp = Palette(0uy)
+    let obp0 = Palette(0uy)
+    let obp1 = Palette(0uy)
     let ly = LY(0uy)
     let lyc = ValueBackedIORegister(0uy)
 
@@ -149,6 +160,8 @@ type GPURegisters () =
     member this.SCX = scx
     member this.SCY = scy
     member this.BGP = bgp
+    member this.OBP0 = obp0
+    member this.OBP1 = obp1
     member this.LY = ly
     member this.LYC = lyc
 
@@ -201,16 +214,36 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
 
         let cy = int registers.SCY.Value + y
 
-        let getBackgroundColor x =
+        // Find visible sprites for this line
+        let activeSprites =
+            vram.ObjectAttributes
+            |> Array.filter (fun attribute ->
+                (int attribute.TY) >= y && (int attribute.TY) <= (y + 7 )
+            )
+
+        let drawBackground x =
             let cx = int registers.SCX.Value + x
             let tileIndex = bgMap ((cx % 256) / 8) ((cy % 256) / 8)
             let tile = tileData tileIndex
-            Tile.decode8x8 tile (cx % 8) (cy % 8) |> registers.BGP.Color
+            let color = Tile.decode8x8 tile (cx % 8) (cy % 8) |> registers.BGP.Color
+            frame.SetPixel x y (color.ToArgb())
+
+        let drawSprites x =
+            activeSprites |> Array.iter (fun sprite ->
+                if ((int sprite.TX) >= x) && ((int sprite.TX) <= (x + 7)) then
+                    let pallete = match sprite.Palette with |Palette0 -> registers.OBP0 |Palette1 -> registers.OBP1
+                    let tile = vram.Tile1 sprite.Tile
+                    let tx = if sprite.XFlip then 7 - (int sprite.TX - x) else int sprite.TX - x
+                    let ty = if sprite.YFlip then 7 - (int sprite.TY - y) else int sprite.TY - y
+                    let color = Tile.decode8x8 tile tx ty|> pallete.Color
+                    frame.SetPixel x y (color.ToArgb ())
+            )
+            ()
 
         let rec draw x =
             if x > 0 then
-                let bgPixel = getBackgroundColor x
-                frame.SetPixel x y (bgPixel.ToArgb())
+                drawBackground x
+                drawSprites x
                 draw (x-1)
         draw (RESOLUTION.Width - 1)
 

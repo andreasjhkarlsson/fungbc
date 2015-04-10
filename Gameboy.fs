@@ -12,12 +12,19 @@ open Clock
 open Constants
 open Input
 
+type State = |Running |Paused 
+
 type Message = 
     |Kill of AsyncReplyChannel<unit>
     |Run
     |Step of AsyncReplyChannel<unit>
     |Input of Input.Key*Input.KeyState
     |FPS of AsyncReplyChannel<float>
+    |Pause of AsyncReplyChannel<unit>
+    |Start
+    |State of AsyncReplyChannel<State>
+    |Reset
+
 
 type GameboyAgent = MailboxProcessor<Message>
 
@@ -71,23 +78,27 @@ let create (rom: ROM) (frameReceiver: FrameReceiver) =
                 else
                     ()
                                     
-            let rec handleMessage () = async {
-                
+            let rec handleMessage state = async {
+
                 let! message = mailbox.Receive ()
 
                 match message with
-                | Run ->
+                | Run when state = Running ->
                     // Since agent posting / receiving incurs an overhead
                     // we let the emulator execute several times before processing next message.
                     runEmulation 20
                     mailbox.Post Run
+                | Reset ->
+                    cpu.Reset ()
                 | Step reply ->
                     runEmulation 1
                     reply.Reply () 
-                | Input (key,state) ->
+                | Input (key,state)->
                     keypad.[key] <- state
                 | FPS (reply) ->
                     reply.Reply gpu.FPS
+                | State reply ->
+                    reply.Reply state
                 | _ ->
                     ()
 
@@ -95,18 +106,30 @@ let create (rom: ROM) (frameReceiver: FrameReceiver) =
                 | Kill reply ->
                     // Stop processing messages and signal back that we have ack'ed the kill
                     reply.Reply ()
+                | Pause reply ->
+                    reply.Reply ()
+                    return! handleMessage Paused
+                | Start ->
+                    mailbox.Post Run
+                    return! handleMessage Running
                 | _ ->
-                    return! handleMessage () 
+                    return! handleMessage state 
 
             }
 
-            handleMessage ()
+            handleMessage Paused
 
         )  
 
     Gameboy (agent, components)
 
-let run (Gameboy (agent,_)) = agent.Post Run
+let start (Gameboy (agent,_)) = agent.Post Start
+
+let pause (Gameboy (agent,_)) = agent.PostAndReply Pause
+
+let reset (Gameboy (agent,_)) = agent.Post Reset
+
+let state (Gameboy (agent,_)) = agent.PostAndReply State
 
 let step (Gameboy (agent,_)) = agent.PostAndReply Step
 

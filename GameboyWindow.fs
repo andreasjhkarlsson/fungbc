@@ -48,7 +48,9 @@ type GameboyWindow () as this =
 
     let contextMenu = new ContextMenuStrip()
 
-    let screenCapMenuItem = new ToolStripMenuItem("Screen capture") 
+    let screenCapMenuItem = new ToolStripMenuItem("Save screen capture...") 
+
+    let resetMenuItem = new ToolStripMenuItem("Reset")
 
     let mutable gameboy = None
 
@@ -71,11 +73,15 @@ type GameboyWindow () as this =
         this.Text <- APPLICATION_TITLE
 
         this.FormBorderStyle <- FormBorderStyle.FixedSingle
-
+       
         this.ClientSize <- Size(screen.Width,screen.Height + statusStrip.Height)
+
+        resetMenuItem.Click.Add this.Reset
+        contextMenu.Items.Add(resetMenuItem) |> ignore
 
         screenCapMenuItem.Click.Add this.ScreenCap
         contextMenu.Items.Add(screenCapMenuItem) |> ignore
+        
         this.ContextMenuStrip <- contextMenu
 
         screen.Dock <- DockStyle.Top
@@ -88,8 +94,12 @@ type GameboyWindow () as this =
 
         statusUpdater.Elapsed.Add this.UpdateStatus
 
-
+    member this.Reset _ = gameboy |> Option.iter Gameboy.reset
+    
     member this.ScreenCap args =
+        
+        gameboy |> Option.iter Gameboy.pause
+
         let saveDialog = new SaveFileDialog()
         saveDialog.AddExtension <- true
         saveDialog.Title <- "Select destination"
@@ -97,13 +107,19 @@ type GameboyWindow () as this =
         if saveDialog.ShowDialog () = DialogResult.OK then
             screen.SaveToFile saveDialog.FileName
 
+        gameboy |> Option.iter Gameboy.start
+
     member this.UpdateStatus args =
         
         match gameboy with
         | Some gameboy ->
             let fps = Gameboy.fps gameboy
+            let state = Gameboy.state gameboy
             runInUIContext (fun _ ->
-                statusFPS.Text <- sprintf "%.2f fps" fps   
+                statusFPS.Text <-
+                    sprintf "%s | %.2f fps"
+                        (match state with |Running -> "Running" |Paused -> "Paused")
+                        fps   
                 statusStrip.Refresh () 
             )
         | None -> ()
@@ -136,7 +152,7 @@ type GameboyWindow () as this =
         //Debugger.breakExecution debugger
         //Debugger.start debugger
 
-        Gameboy.run gb
+        Gameboy.start gb
 
         gameboy <- Some gb        
 

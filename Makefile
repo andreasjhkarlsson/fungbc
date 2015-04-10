@@ -1,32 +1,40 @@
-CC=fsharpc
-CF=-O --tailcalls+ --crossoptimize+ --debug-
+EXECUTABLE = fungbc.exe
+COMPILER = fsharpc
+FLAGS = -O --tailcalls+ --crossoptimize+ --debug-
+SRC = src/
 
 FILES= \
-	src/Misc.fs \
-	src/Units.fs \
-	src/Constants.fs \
-	src/BitLogic.fs \
-	src/MemoryCell.fs \
-	src/Rom.fs \
-	src/Tile.fs \
-	src/Ram.fs \
-	src/Clock.fs \
-	src/IORegisters.fs \
-	src/Interrupts.fs \
-	src/Timer.fs \
-	src/Gpu.fs \
-	src/Input.fs \
-	src/Mmu.fs \
-	src/Register.fs \
-	src/Instruction.fs \
-	src/Cpu.fs \
-	src/Gameboy.fs \
-	src/Debugger.fs \
-	src/GameboyWindow.fs \
-	src/Program.fs
+	$(SRC)Misc.fs \
+	$(SRC)Units.fs \
+	$(SRC)Constants.fs \
+	$(SRC)BitLogic.fs \
+	$(SRC)MemoryCell.fs \
+	$(SRC)Rom.fs \
+	$(SRC)Tile.fs \
+	$(SRC)Ram.fs \
+	$(SRC)Clock.fs \
+	$(SRC)IORegisters.fs \
+	$(SRC)Interrupts.fs \
+	$(SRC)Timer.fs \
+	$(SRC)Gpu.fs \
+	$(SRC)Input.fs \
+	$(SRC)Mmu.fs \
+	$(SRC)Register.fs \
+	$(SRC)Instruction.fs \
+	$(SRC)Cpu.fs \
+	$(SRC)Gameboy.fs \
+	$(SRC)Debugger.fs \
+	$(SRC)GameboyWindow.fs \
+	$(SRC)Program.fs
 
+release: $(EXECUTABLE)
 
-fungbc.exe: $(FILES)
-	$(CC) $(CF) $(FILES) -o fungbc.exe
+debug: FLAGS = --debug+ --optimize- --tailcalls- --crossoptimize-
+debug: $(EXECUTABLE)
 
+$(EXECUTABLE): $(FILES)
+	$(COMPILER) $(FLAGS) $(FILES) -o $@
 
+.PHONY: clean
+clean:
+	rm $(EXECUTABLE)

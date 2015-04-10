@@ -2,6 +2,7 @@
 
 open System.Windows.Forms
 open System.Drawing
+open System.Drawing.Imaging
 open System.Timers
 open Constants
 open Gameboy
@@ -26,6 +27,9 @@ type GameboyScreen (scale) as this =
         lock framebuffer (fun () -> Graphics.FromImage(framebuffer).DrawImage(bitmap,0,0,framebuffer.Width,framebuffer.Height))
         this.BeginInvoke(new System.Action(fun _ -> this.Invalidate ())) |> ignore
 
+    member this.SaveToFile (filename: string) =
+        lock framebuffer (fun () -> framebuffer.Save(filename,ImageFormat.Png))
+
     override this.OnPaint args =
         base.OnPaint args
         lock framebuffer (fun () -> args.Graphics.DrawImage(framebuffer,0,0,width,height))
@@ -42,6 +46,10 @@ type GameboyWindow () as this =
 
     let statusUpdater = new System.Timers.Timer(250.0)
 
+    let contextMenu = new ContextMenuStrip()
+
+    let screenCapMenuItem = new ToolStripMenuItem("Screen capture") 
+
     let mutable gameboy = None
 
     let keycodeToKeypad =
@@ -56,6 +64,8 @@ type GameboyWindow () as this =
         | Keys.Space -> Some Input.Select
         | _ -> None 
 
+    let runInUIContext fn = this.BeginInvoke(new System.Action(fn)) |> ignore
+
     do
 
         this.Text <- APPLICATION_TITLE
@@ -63,6 +73,10 @@ type GameboyWindow () as this =
         this.FormBorderStyle <- FormBorderStyle.FixedSingle
 
         this.ClientSize <- Size(screen.Width,screen.Height + statusStrip.Height)
+
+        screenCapMenuItem.Click.Add this.ScreenCap
+        contextMenu.Items.Add(screenCapMenuItem) |> ignore
+        this.ContextMenuStrip <- contextMenu
 
         screen.Dock <- DockStyle.Top
         this.Controls.Add(screen)
@@ -75,15 +89,26 @@ type GameboyWindow () as this =
         statusUpdater.Elapsed.Add this.UpdateStatus
 
 
+    member this.ScreenCap args =
+        let saveDialog = new SaveFileDialog()
+        saveDialog.AddExtension <- true
+        saveDialog.Title <- "Select destination"
+        saveDialog.Filter <- "Image file (*.png)|*.png"
+        if saveDialog.ShowDialog () = DialogResult.OK then
+            screen.SaveToFile saveDialog.FileName
+
     member this.UpdateStatus args =
         
         match gameboy with
         | Some gameboy ->
             let fps = Gameboy.fps gameboy
-            statusFPS.Text <- sprintf "%.2f fps" fps
+            runInUIContext (fun _ ->
+                statusFPS.Text <- sprintf "%.2f fps" fps   
+                statusStrip.Refresh () 
+            )
         | None -> ()
 
-        statusStrip.Refresh ()
+        
 
     member this.LoadROM path =
         let rom =
@@ -124,7 +149,6 @@ type GameboyWindow () as this =
 
     override this.OnShown args =
         statusUpdater.Enabled <- true
-
         
     override this.OnKeyDown args =
         match gameboy with

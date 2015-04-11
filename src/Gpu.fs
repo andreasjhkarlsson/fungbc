@@ -92,14 +92,16 @@ type LY(init) =
     // Writing from memory resets the register
     override this.MemoryValue with set value = base.MemoryValue <- 0x0uy
 
-let inline Palette (data: uint8) value =
-    let colors = [|Color.White; Color.LightGray; Color.DarkGray; Color.Black|]
-    colors.[(int data >>> (value * 2)) &&& 0x3]
 
 
 type Palette(init) =
     inherit ValueBackedIORegister(init)
-    let colors = [|Color.White; Color.LightGray; Color.DarkGray; Color.Black|]
+
+    let colors = [|Color.White
+                   Color.LightGray
+                   Color.DarkGray
+                   Color.Black|]
+
     member this.Color index =  
         colors.[(int this.Value >>> (index * 2)) &&& 0x3]
 
@@ -184,7 +186,7 @@ type FrameBuffer(width: int, height: int) =
     do
         unlockBitmap bitmapData
     
-    member this.SetPixel x y color = buffer.[(y * bitmapData.Stride + (x * 4)) / 4] <- color
+    member this.SetPixel x y (color: Color) = buffer.[(y * bitmapData.Stride + (x * 4)) / 4] <- color.ToArgb ()
 
     member this.BeginDraw () = bitmapData <- lockBitmap ()
 
@@ -225,25 +227,33 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
             let cx = int registers.SCX.Value + x
             let tileIndex = bgMap ((cx % 256) / 8) ((cy % 256) / 8)
             let tile = tileData tileIndex
-            let color = Tile.decode8x8 tile (cx % 8) (cy % 8) |> registers.BGP.Color
-            frame.SetPixel x y (color.ToArgb())
+            Tile.decode8x8 tile (cx % 8) (cy % 8) |> registers.BGP.Color
 
-        let drawSprites x =
-            activeSprites |> Array.iter (fun sprite ->
-                if ((int sprite.TX) >= x) && ((int sprite.TX) <= (x + 7)) then
-                    let pallete = match sprite.Palette with |Palette0 -> registers.OBP0 |Palette1 -> registers.OBP1
-                    let tile = vram.Tile1 sprite.Tile
-                    let tx = if sprite.XFlip then 7 - (int sprite.TX - x) else int sprite.TX - x
-                    let ty = if sprite.YFlip then 7 - (int sprite.TY - y) else int sprite.TY - y
-                    let color = Tile.decode8x8 tile tx ty|> pallete.Color
-                    frame.SetPixel x y (color.ToArgb ())
+        let drawSprites x backgroundColor =
+            let sprite = activeSprites |> Array.tryFind (fun sprite ->
+                ((int sprite.TX) >= x) &&
+                ((int sprite.TX) <= (x + 7))
             )
-            ()
+            match sprite with
+            | Some sprite ->
+                let palette = match sprite.Palette with |Palette0 -> registers.OBP0 |Palette1 -> registers.OBP1
+                let tile = vram.Tile1 sprite.Tile
+                let tx = if sprite.XFlip then 7 - (int sprite.TX - x) else int sprite.TX - x
+                let ty = if sprite.YFlip then 7 - (int sprite.TY - y) else int sprite.TY - y
+                let colorIndex = Tile.decode8x8 tile tx ty
+
+                // Apparently index 0 is always transparent (regardless of palette??????)
+                if colorIndex <> 0 then
+                    palette.Color colorIndex
+                else
+                    backgroundColor             
+            | None ->
+                backgroundColor
 
         let rec draw x =
             if x > 0 then
-                drawBackground x
-                drawSprites x
+                drawBackground x |> drawSprites x |> frame.SetPixel x y
+                
                 draw (x-1)
         draw (RESOLUTION.Width - 1)
 

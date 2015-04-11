@@ -20,8 +20,8 @@ type SpriteAttribute (c0: MemoryCell,c1: MemoryCell,c2: MemoryCell,c3: MemoryCel
     member this.X = c1.Value
 
     // Normalize coordinates (not sure why 1 & 9 instead of 0 & 8)
-    member this.TX = c1.Value - 1uy
-    member this.TY = c0.Value - 9uy
+    member this.TX = (int c1.Value) - 1
+    member this.TY = (int c0.Value) - 9
 
     member this.Tile = c2.Value
 
@@ -102,8 +102,7 @@ type Palette(init) =
                    Color.DarkGray
                    Color.Black|]
 
-    member this.Color index =  
-        colors.[(int this.Value >>> (index * 2)) &&& 0x3]
+    member this.Color index = colors.[(int this.Value >>> (index * 2)) &&& 0x3]
 
 
 type VRAM () =
@@ -209,53 +208,57 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
     let frame = FrameBuffer(RESOLUTION.Width, RESOLUTION.Height)
 
     let drawLine y =
+        
+        let lineWidth = (RESOLUTION.Width)
 
-        let bgMap = match registers.LCDC.BGTilemapSelect with |Map0 -> vram.TileMap0 |Map1 -> vram.TileMap1
+        // Draw background
+        do
+            let bgMap = match registers.LCDC.BGTilemapSelect with |Map0 -> vram.TileMap0 |Map1 -> vram.TileMap1
 
-        let tileData = match registers.LCDC.BGAndWindowTileDataSelect with |Tiles0 -> int8 >> vram.Tile0|Tiles1 -> vram.Tile1
+            let tileData = match registers.LCDC.BGAndWindowTileDataSelect with |Tiles0 -> int8 >> vram.Tile0|Tiles1 -> vram.Tile1
 
-        let cy = int registers.SCY.Value + y
+            let cy = int registers.SCY.Value + y
 
-        // Find visible sprites for this line
-        let activeSprites =
-            vram.ObjectAttributes
-            |> Array.filter (fun attribute ->
-                (int attribute.TY) >= y && (int attribute.TY) <= (y + 7 )
-            )
+            let rec drawBackground x =
+                if x >= 0 then
+                    let cx = int registers.SCX.Value + x
+                    let tileIndex = bgMap ((cx % 256) / 8) ((cy % 256) / 8)
+                    let tile = tileData tileIndex
+                    Tile.decode8x8 tile (cx % 8) (cy % 8) |> registers.BGP.Color |> frame.SetPixel x y
+                    drawBackground (x-1)
+            drawBackground (lineWidth - 1)
 
-        let drawBackground x =
-            let cx = int registers.SCX.Value + x
-            let tileIndex = bgMap ((cx % 256) / 8) ((cy % 256) / 8)
-            let tile = tileData tileIndex
-            Tile.decode8x8 tile (cx % 8) (cy % 8) |> registers.BGP.Color
+        // Draw sprites
+        do
 
-        let drawSprites x backgroundColor =
-            let sprite = activeSprites |> Array.tryFind (fun sprite ->
-                ((int sprite.TX) >= x) &&
-                ((int sprite.TX) <= (x + 7))
-            )
-            match sprite with
-            | Some sprite ->
+            let drawSprite (sprite: SpriteAttribute) = 
+
                 let palette = match sprite.Palette with |Palette0 -> registers.OBP0 |Palette1 -> registers.OBP1
                 let tile = vram.Tile1 sprite.Tile
-                let tx = if sprite.XFlip then 7 - (int sprite.TX - x) else int sprite.TX - x
-                let ty = if sprite.YFlip then 7 - (int sprite.TY - y) else int sprite.TY - y
-                let colorIndex = Tile.decode8x8 tile tx ty
+                let tileY = if sprite.YFlip then 7 - (sprite.TY - y) else (sprite.TY - y)
 
-                // Apparently index 0 is always transparent (regardless of palette??????)
-                if colorIndex <> 0 then
-                    palette.Color colorIndex
-                else
-                    backgroundColor             
-            | None ->
-                backgroundColor
+                let rec drawTileLine x =
+                    if x >= 0 then
+                                
+                        let screenX = sprite.TX - x
 
-        let rec draw x =
-            if x > 0 then
-                drawBackground x |> drawSprites x |> frame.SetPixel x y
-                
-                draw (x-1)
-        draw (RESOLUTION.Width - 1)
+                        let tileX = if sprite.XFlip then 7 - x else x
+
+                        if screenX >= 0 && screenX < lineWidth then
+                            let colorIndex = Tile.decode8x8 tile tileX tileY
+                            // Apparently index 0 is always transparent (regardless of palette??????)
+                            if colorIndex <> 0 then
+                                palette.Color colorIndex |> frame.SetPixel screenX y
+
+                        // Next column
+                        drawTileLine (x - 1)
+                                
+                drawTileLine 7
+
+            vram.ObjectAttributes
+            |> Array.filter (fun s -> s.TY >= y && s.TY <= (y + 7))
+            |> Array.iter drawSprite
+
 
     let drawScreen (FrameReceiver receiver) =
         frame.EndDraw ()
@@ -300,8 +303,9 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
     member this.Registers = registers
 
     member this.ForceRedraw () =
-        {0..143} |> Seq.iter drawLine   
-        drawScreen frameReceiver 
+        do
+            {0..143} |> Seq.iter drawLine   
+            drawScreen frameReceiver 
 
     member this.FPS = fps
 
@@ -326,7 +330,7 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
                     if lcds.HBlankInterrupt then
                         interrupts.Current.Set <- LCDC
 
-                    drawLine line
+                    do drawLine line
                 | VBlank t  ->
                     if not (lastStage |> isVBlank) then
                         fps <- 1000.0 / float stopWatch.ElapsedMilliseconds
@@ -341,7 +345,7 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
                         if interrupts.Enable then
                             interrupts.Current.Set <- Interrupts.VBlank
 
-                        drawScreen frameReceiver
+                        do drawScreen frameReceiver
 
                     ly.Value <- uint8 <| RESOLUTION.Height + t
                 | ScanOAM line ->

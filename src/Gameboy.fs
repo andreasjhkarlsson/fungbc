@@ -91,7 +91,7 @@ let create (rom: ROM) (frameReceiver: FrameReceiver) =
                         mailbox.Post Run
                     with
                     | error ->
-                        printfn "Runtime errror!\n%s" error.StackTrace
+                        printfn "Runtime errror!\n%s\n%s" error.Message error.StackTrace
                         mailbox.PostAndReply Kill
                 | Reset ->
                     cpu.Reset ()

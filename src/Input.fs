@@ -36,7 +36,7 @@ type Keypad (interrupts: InterruptManager) =
     
     // Pin columns
     let pins4 = (A, B, Select, Start)
-    let pins5 = (Right, Left, Down, Up)
+    let pins5 = (Right, Left, Up, Down)
     
     member this.Item
         with get key = keyStates |> Map.find key

@@ -131,7 +131,7 @@ type GameboyWindow () as this =
     
     member this.ScreenCap args =
         let screenCap = screen.Capture ()
-        let saveDialog = new SaveFileDialog()
+        use saveDialog = new SaveFileDialog()
         saveDialog.AddExtension <- true
         saveDialog.Title <- "Select destination"
         saveDialog.Filter <- "Image file (*.png)|*.png"
@@ -157,7 +157,7 @@ type GameboyWindow () as this =
         )
 
     member this.OpenROM _ =
-        let dialog = new OpenFileDialog()
+        use dialog = new OpenFileDialog()
         dialog.Title <- "Select ROM"
         dialog.Filter <- "Gameboy ROMs (*.gb)|*.gb"
         if dialog.ShowDialog () = DialogResult.OK then

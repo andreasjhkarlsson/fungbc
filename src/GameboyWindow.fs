@@ -11,28 +11,28 @@ open Debugger
 open Gpu
 open Resource
 
-type GameboyScreen (scale) as this =
+type GameboyScreen () as this =
     inherit Panel()
-
-    let width = RESOLUTION.Width * scale
-
-    let height = RESOLUTION.Height * scale
 
     let framebuffer = new Bitmap(RESOLUTION.Width, RESOLUTION.Height)
 
     do
         this.DoubleBuffered <- true
-        this.ClientSize <- Size(width,height)
 
     member this.PresentFrame bitmap =
         lock framebuffer (fun () -> Graphics.FromImage(framebuffer).DrawImage(bitmap,0,0,framebuffer.Width,framebuffer.Height))
-        this.BeginInvoke(new System.Action(fun _ -> this.Invalidate ())) |> ignore
+        this.BeginInvoke(new System.Action(fun _ -> this.Invalidate ())) |> ignore 
 
     member this.Capture () = lock framebuffer (fun () -> framebuffer.Clone () :?> Bitmap)
 
     override this.OnPaint args =
         base.OnPaint args
-        lock framebuffer (fun () -> args.Graphics.DrawImage(framebuffer,0,0,width,height))
+        lock framebuffer (fun () -> args.Graphics.DrawImage(framebuffer,0,0,this.Width,this.Height))
+
+type ScaleToolStripMenuItem(scale) =
+    inherit ToolStripMenuItem(sprintf "%dx" scale)
+
+    member this.Scale = scale
 
 type GameboyWindow () as this =
 
@@ -42,13 +42,19 @@ type GameboyWindow () as this =
 
     let statusLabel = new ToolStripStatusLabel()
 
-    let screen = new GameboyScreen(3)   
+    let screen = new GameboyScreen()   
 
     let statusUpdater = new System.Timers.Timer(250.0)
 
     let contextMenu = new ContextMenuStrip()
 
     let executionMenu = new ToolStripMenuItem("Control execution...")
+
+    let scaleMenu = new ToolStripMenuItem("Scale...")
+
+    let scaleItems =
+        [1; 2; 4; 6]
+        |> List.map (fun scale -> new ScaleToolStripMenuItem(scale))
 
     let screenCapMenuItem = new ToolStripMenuItem("Save screen capture...") 
 
@@ -90,7 +96,7 @@ type GameboyWindow () as this =
 
         this.MaximizeBox <- false
        
-        this.ClientSize <- Size(screen.Width,screen.Height + statusStrip.Height)
+        this.Scale 3
 
         // Setup context menu
         do 
@@ -98,19 +104,30 @@ type GameboyWindow () as this =
             loadRomItem.Click.Add this.OpenROM
             contextMenu.Items.Add(loadRomItem) |> ignore
 
-            resumeMenuItem.Click.Add this.Resume
-            executionMenu.DropDownItems.Add(resumeMenuItem) |> ignore
+            // Setup control execution menu
+            do
+                resumeMenuItem.Click.Add this.Resume
+                executionMenu.DropDownItems.Add(resumeMenuItem) |> ignore
 
-            pauseMenuItem.Click.Add this.Pause
-            executionMenu.DropDownItems.Add(pauseMenuItem) |> ignore
+                pauseMenuItem.Click.Add this.Pause
+                executionMenu.DropDownItems.Add(pauseMenuItem) |> ignore
 
-            stopMenuItem.Click.Add this.Stop
-            executionMenu.DropDownItems.Add(stopMenuItem) |> ignore
+                stopMenuItem.Click.Add this.Stop
+                executionMenu.DropDownItems.Add(stopMenuItem) |> ignore
 
-            resetMenuItem.Click.Add this.Reset
-            executionMenu.DropDownItems.Add(resetMenuItem) |> ignore
+                resetMenuItem.Click.Add this.Reset
+                executionMenu.DropDownItems.Add(resetMenuItem) |> ignore
 
-            contextMenu.Items.Add(executionMenu) |> ignore
+                contextMenu.Items.Add(executionMenu) |> ignore
+
+            // Setup scale menu
+            do
+                scaleItems
+                |> List.iter (fun item ->
+                    scaleMenu.DropDownItems.Add item |> ignore
+                    item.Click.Add (fun _ -> this.Scale item.Scale)
+                )
+                contextMenu.Items.Add scaleMenu |> ignore
         
             screenCapMenuItem.Click.Add this.ScreenCap
             contextMenu.Items.Add(screenCapMenuItem) |> ignore
@@ -122,7 +139,8 @@ type GameboyWindow () as this =
 
             contextMenu.Opening.Add this.UpdateContextMenu 
 
-        screen.Dock <- DockStyle.Top
+        screen.Dock <- DockStyle.Fill
+   
         this.Controls.Add(screen)
 
         statusStrip.Items.Add(statusLabel :> ToolStripItem) |> ignore
@@ -133,6 +151,8 @@ type GameboyWindow () as this =
         statusUpdater.Elapsed.Add this.UpdateStatus
 
     member this.Reset _ = gameboy |> Option.iter Gameboy.reset
+
+    member this.Scale scale = this.ClientSize <- Size(RESOLUTION.Width * scale,RESOLUTION.Height * scale + statusStrip.Height)
     
     member this.ScreenCap args =
         let screenCap = screen.Capture ()

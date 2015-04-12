@@ -2,6 +2,9 @@
 
 open System.Drawing
 open System.Drawing.Imaging
+open System.Runtime.InteropServices
+open System.Diagnostics
+open System.Threading
 open IORegisters
 open Tile
 open MemoryCell
@@ -10,7 +13,7 @@ open Units
 open Constants
 open BitLogic
 open Interrupts
-open System.Runtime.InteropServices
+
 
 type OBJBGPriority = |Above |Behind
 type SpritePalette = |Palette0 |Palette1
@@ -169,6 +172,7 @@ type GPURegisters () =
 
 type RenderStage = |ScanOAM of int |ScanVRAM of int |HBlank of int |VBlank of int
 
+type Speed = |Unlimited |Limit of int<Hz>
 
 type FrameBuffer(width: int, height: int) =
     let bitmap = new Bitmap(width, height, PixelFormat.Format32bppArgb)
@@ -203,9 +207,11 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
 
     let registers = GPURegisters()
 
-    let stopWatch = System.Diagnostics.Stopwatch.StartNew()
+    let stopWatch = Stopwatch.StartNew()
 
     let frame = FrameBuffer(RESOLUTION.Width, RESOLUTION.Height)
+
+    let mutable fpsMode = Limit 60<Hz>
 
     let drawLine y =
         
@@ -336,9 +342,8 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
 
                     do drawLine line
                 | VBlank t  ->
-                    if not (lastStage |> isVBlank) then
-                        fps <- 1000.0 / float stopWatch.ElapsedMilliseconds
-                        stopWatch.Restart()
+                    if not (lastStage |> isVBlank) then do
+
                         lcds.Mode <- Mode.VBlank
 
                         // Should VBlank generate LCDC interrupt?
@@ -349,9 +354,30 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
                         if interrupts.Enable then
                             interrupts.Current.Set <- Interrupts.VBlank
 
-                        do drawScreen frameReceiver
+                        
+                        drawScreen frameReceiver
+                        match fpsMode with
+                        | Unlimited ->
+                            ()
+                        | Limit frequency ->
+                            
+                            let rec limit () =
+                                if ((float Stopwatch.Frequency) / (float frequency) - (float stopWatch.ElapsedTicks)) >= 0.0 then
+                                    // Yield remaining time slice to any other thread ready to run.
+                                    Thread.Sleep(0)
+                                    limit ()
 
+                            do limit ()
+
+                        // Divide stopwatch ticks with this value to avoid precision errors
+                        let precision = 10.0 ** 6.0
+
+                        fps <- precision / float ((float stopWatch.ElapsedTicks) / ((float Stopwatch.Frequency) / precision))
+
+                        stopWatch.Restart()
+                                
                     ly.Value <- uint8 <| RESOLUTION.Height + t
+
                 | ScanOAM line ->
                     lcds.Mode <- Mode.SearchingOAMRAM // Correct?
                     ly.Value <- uint8 <| line 

@@ -9,6 +9,7 @@ open Gameboy
 open Rom
 open Debugger
 open Gpu
+open Resource
 
 type GameboyScreen (scale) as this =
     inherit Panel()
@@ -61,7 +62,7 @@ type GameboyWindow () as this =
 
     let loadRomItem = new ToolStripMenuItem("Load ROM")
 
-    let helpAndAboutMenuItem = new ToolStripMenuItem("Help && About")
+    let helpAndAboutMenuItem = new ToolStripMenuItem("About")
 
     let mutable gameboy = None
 
@@ -81,7 +82,9 @@ type GameboyWindow () as this =
 
     do
 
-        this.Text <- APPLICATION_TITLE
+        this.Text <- Resource.title
+
+        this.Icon <- Resource.icon
 
         this.FormBorderStyle <- FormBorderStyle.FixedSingle
        
@@ -273,14 +276,4 @@ type GameboyWindow () as this =
             executionMenu.Enabled <- false
             screenCapMenuItem.Enabled <- false
 
-    member this.HelpAndAbout _ =
-        MessageBox.Show(
-            @"A massive thanks for everyone making this emulator possible. Including accatyyc & cliffords.
-            Controls:
-                Joypad: arrow keys
-                A button: x
-                B button: z
-                Start: enter
-                Select: space
-            "
-        ) |> ignore
+    member this.HelpAndAbout _ = MessageBox.Show(Resource.about) |> ignore

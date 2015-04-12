@@ -61,6 +61,9 @@ let create (rom: ROM) (frameReceiver: FrameReceiver) =
     let cpu = CPU(mmu,interrupts,systemClock)
 
     cpu.Reset ()
+    gpu.Reset ()
+    mmu.InitDefaults ()
+
     
     let components = {Ram = ram; Clock = systemClock; Interrupts = interrupts;
                       Keypad = keypad; Timers = timers; Gpu = gpu; Mmu = mmu; Cpu = cpu}
@@ -96,6 +99,9 @@ let create (rom: ROM) (frameReceiver: FrameReceiver) =
                         mailbox.PostAndReply Kill
                 | Reset ->
                     cpu.Reset ()
+                    gpu.Reset ()
+                    systemClock.Reset ()
+                    mmu.InitDefaults ()
                 | Step reply ->
                     runEmulation 1
                     reply.Reply () 

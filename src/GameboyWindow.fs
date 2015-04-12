@@ -87,6 +87,8 @@ type GameboyWindow () as this =
         this.Icon <- Resource.icon
 
         this.FormBorderStyle <- FormBorderStyle.FixedSingle
+
+        this.MaximizeBox <- false
        
         this.ClientSize <- Size(screen.Width,screen.Height + statusStrip.Height)
 

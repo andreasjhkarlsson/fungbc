@@ -3,10 +3,16 @@ COMPILER = fsharpc
 FLAGS = -O --tailcalls+ --crossoptimize+ --debug-
 SRC = src/
 
+RES = res/
+RESCOMPILER = resgen
+RESX = $(RES)resources.resx
+RESOURCES = $(RES)Resources.resources
+
 FILES= \
 	$(SRC)Misc.fs \
 	$(SRC)Units.fs \
 	$(SRC)Constants.fs \
+	$(SRC)Resource.fs \
 	$(SRC)BitLogic.fs \
 	$(SRC)MemoryCell.fs \
 	$(SRC)Rom.fs \
@@ -27,14 +33,19 @@ FILES= \
 	$(SRC)GameboyWindow.fs \
 	$(SRC)Program.fs
 
+
 release: $(EXECUTABLE)
 
 debug: FLAGS = --debug+ --optimize- --tailcalls- --crossoptimize-
 debug: $(EXECUTABLE)
 
-$(EXECUTABLE): $(FILES)
-	$(COMPILER) $(FLAGS) $(FILES) -o $@
+$(EXECUTABLE): $(FILES) $(RESOURCES)
+	$(COMPILER) $(FLAGS) $(FILES) --resource:$(RESOURCES) -o $@
+
+$(RESOURCES): $(RESX)
+	cd $(SRC); $(RESCOMPILER) ../$(RESX) ../$(RESOURCES)
 
 .PHONY: clean
 clean:
 	rm $(EXECUTABLE)
+	rm $(RESOURCES)

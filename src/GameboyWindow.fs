@@ -214,6 +214,7 @@ type GameboyWindow () as this =
 
     override this.OnShown args =
         statusUpdater.Enabled <- true
+        base.OnShown args
         
     override this.OnKeyDown args =
         match gameboy with
@@ -222,9 +223,9 @@ type GameboyWindow () as this =
             | Some key ->
                 (Gameboy.keypad gameboy).[key] <- Input.Pressed
             | None ->
-                ()
+                base.OnKeyDown args
         | None -> 
-            ()
+            base.OnKeyDown args
 
     override this.OnKeyUp args =
         match gameboy with
@@ -233,9 +234,9 @@ type GameboyWindow () as this =
             | Some key ->
                 (Gameboy.keypad gameboy).[key] <- Input.Released
             | None ->
-                ()
+                base.OnKeyUp args
         | None -> 
-            ()
+            base.OnKeyUp args
 
     member this.Resume _ =
         match gameboy with

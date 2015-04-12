@@ -12,8 +12,6 @@ open Constants
 [<STAThread>]
 let main argv = 
 
-    
-
     Application.EnableVisualStyles()
     Application.SetCompatibleTextRenderingDefault false
 
@@ -21,7 +19,9 @@ let main argv =
     
     if argv.Length > 0 then
         let romPath = argv.[0] 
-        gbWindow.LoadROM romPath
+        gbWindow.Shown.Add(fun _ -> gbWindow.LoadROM romPath)
+
+
 
     Application.Run(gbWindow)
 

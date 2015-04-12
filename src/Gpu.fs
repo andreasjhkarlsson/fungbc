@@ -211,8 +211,6 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
 
     let frame = FrameBuffer(RESOLUTION.Width, RESOLUTION.Height)
 
-    let mutable fpsMode = Limit 60<Hz>
-
     let drawLine y =
         
         let lineWidth = (RESOLUTION.Width)
@@ -315,6 +313,8 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
 
     member this.FPS = fps
 
+    member val Speed = Limit 60<Hz> with get, set
+
     member this.Reset () =
         lastStage <- VBlank 0
         clock.Reset ()
@@ -356,7 +356,7 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
 
                         
                         drawScreen frameReceiver
-                        match fpsMode with
+                        match this.Speed with
                         | Unlimited ->
                             ()
                         | Limit frequency ->

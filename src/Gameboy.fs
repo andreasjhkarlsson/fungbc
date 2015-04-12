@@ -24,6 +24,7 @@ type Message =
     |Start
     |State of AsyncReplyChannel<State>
     |Reset
+    |Speed of Speed option*AsyncReplyChannel<Speed>
 
 
 type GameboyAgent = MailboxProcessor<Message>
@@ -104,6 +105,11 @@ let create (rom: ROM) (frameReceiver: FrameReceiver) =
                     reply.Reply gpu.FPS
                 | State reply ->
                     reply.Reply state
+                | Speed (speed,reply) ->
+                    match speed with
+                    |Some speed -> gpu.Speed <- speed
+                    |_ -> ()
+                    reply.Reply gpu.Speed
                 | _ ->
                     ()
 
@@ -147,3 +153,7 @@ let components (Gameboy (_,components)) = components
 let keypad gameboy = (components gameboy).Keypad
 
 let fps (Gameboy (agent, _)) = agent.PostAndReply FPS
+
+let speed (Gameboy (agent, _)) = agent.PostAndReply (fun reply -> Speed (None, reply))
+
+let setSpeed (Gameboy (agent, _)) speed = agent.PostAndAsyncReply (fun reply -> Speed (Some speed, reply)) |> ignore

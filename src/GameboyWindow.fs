@@ -10,6 +10,7 @@ open Rom
 open Debugger
 open Gpu
 open Resource
+open Units
 
 type GameboyScreen () as this =
     inherit Panel()
@@ -68,6 +69,8 @@ type GameboyWindow () as this =
 
     let loadRomItem = new ToolStripMenuItem("Load ROM")
 
+    let limitFPSItem = new ToolStripMenuItem("Limit FPS")
+
     let helpAndAboutMenuItem = new ToolStripMenuItem("About")
 
     let mutable gameboy = None
@@ -96,7 +99,7 @@ type GameboyWindow () as this =
 
         this.MaximizeBox <- false
        
-        this.Scale 3
+        this.Scale 2
 
         // Setup context menu
         do 
@@ -128,6 +131,10 @@ type GameboyWindow () as this =
                     item.Click.Add (fun _ -> this.Scale item.Scale)
                 )
                 contextMenu.Items.Add scaleMenu |> ignore
+
+            limitFPSItem.Checked <- true
+            limitFPSItem.Click.Add this.ToggleFPSLimit 
+            contextMenu.Items.Add(limitFPSItem) |> ignore
         
             screenCapMenuItem.Click.Add this.ScreenCap
             contextMenu.Items.Add(screenCapMenuItem) |> ignore
@@ -152,7 +159,21 @@ type GameboyWindow () as this =
 
     member this.Reset _ = gameboy |> Option.iter Gameboy.reset
 
-    member this.Scale scale = this.ClientSize <- Size(RESOLUTION.Width * scale,RESOLUTION.Height * scale + statusStrip.Height)
+    member this.ToggleFPSLimit args =
+        match gameboy with
+        | Some gameboy ->
+            let currentSpeed = Gameboy.speed gameboy
+            match currentSpeed with
+            | Unlimited ->
+                Gameboy.setSpeed gameboy (Limit 60<Hz>)
+            | Limit _ ->
+                Gameboy.setSpeed gameboy Unlimited
+        |_ ->
+            ()
+
+    member this.Scale scale =
+        this.ClientSize <- Size(RESOLUTION.Width * scale,RESOLUTION.Height * scale + statusStrip.Height)
+        scaleItems |> List.iter (fun item -> item.Checked <- item.Scale = scale)
     
     member this.ScreenCap args =
         let screenCap = screen.Capture ()
@@ -287,6 +308,8 @@ type GameboyWindow () as this =
         | Some gameboy ->
             executionMenu.Enabled <- true
             screenCapMenuItem.Enabled <- true
+            limitFPSItem.Enabled <- true
+            limitFPSItem.Checked <- not ((Gameboy.speed gameboy) = Unlimited)
             let executionState = Gameboy.state gameboy
             match executionState with
             | Running ->
@@ -298,5 +321,6 @@ type GameboyWindow () as this =
         | None ->
             executionMenu.Enabled <- false
             screenCapMenuItem.Enabled <- false
+            limitFPSItem.Enabled <- false
 
     member this.HelpAndAbout _ = MessageBox.Show(Resource.about) |> ignore

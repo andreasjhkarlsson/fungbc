@@ -23,6 +23,8 @@ type MutableClock (frequency,start) =
     let mutable ticks = start
     override this.Ticks with get () = ticks
 
+    member this.Reset () = ticks <- 0UL
+
     member this.Tick count = ticks <- ticks + count
 
 // This clock ticks after another, reference clock

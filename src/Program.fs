@@ -21,8 +21,6 @@ let main argv =
         let romPath = argv.[0] 
         gbWindow.Shown.Add(fun _ -> gbWindow.LoadROM romPath)
 
-
-
     Application.Run(gbWindow)
 
     0

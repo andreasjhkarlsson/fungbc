@@ -486,6 +486,7 @@ type CPU (mmu, interrupts: InterruptManager, clock: MutableClock) as this =
         registers.PC.Value <- 0x100us
         interrupts.Enable <- true
         mmu.InitDefaults ()
+        clock.Reset ()
 
     member this.Registers = registers
 

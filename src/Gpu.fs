@@ -309,6 +309,10 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
 
     member this.FPS = fps
 
+    member this.Reset () =
+        lastStage <- VBlank 0
+        clock.Reset ()
+
     member this.Update () =
         // Extract some registers
         let lcds = registers.LCDS

@@ -61,7 +61,7 @@
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
     <None Include="App.config" />
-    <EmbeddedResource Include="resources.resx" />
+    <EmbeddedResource Include="..\res\resources.resx" />
     <Compile Include="Misc.fs" />
     <Compile Include="Units.fs" />
     <Compile Include="Constants.fs" />

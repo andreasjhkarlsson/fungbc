@@ -49,7 +49,7 @@ let hookReadWrite (cell: MemoryCell) read write =
     let set value = cell.Value <- write value
     VirtualCell(get,set) :> MemoryCell
 
-let hookRead (cell: MemoryCell) fn = hookReadWrite cell fn (fun v -> v)
+let hookRead fn (cell: MemoryCell) = hookReadWrite cell fn (fun v -> v)
 
 let hookWrite fn (cell: MemoryCell) = hookReadWrite cell (fun v -> v) fn
 

@@ -4,6 +4,7 @@ open System.IO
 open MemoryCell
 open BitLogic
 open Units
+open Misc
 
 [<AbstractClass>]
 type ROM () =
@@ -112,9 +113,9 @@ type CartHeader(bytes: array<uint8>) =
                                 | 0xFF -> HuC1 (Ram, Battery)
                                 | _ -> CartridgeType.Unknown
 
-        member this.Size = (pown 2 15) <<< (int bytes.[0x48]) // 32 kB << n
+        member this.Size = ((int <| 32 * kB) <<< (int bytes.[0x48])) * 1<byte>
 
-        member this.RAMSize = match int bytes.[0x49] with |0x1 -> 2048 |0x2 -> 8192 |0x3 -> pown 2 15 |_ -> 0
+        member this.RAMSize = match int bytes.[0x49] with |0x1 -> 2 * kB |0x2 -> 8 * kB |0x3 -> 32 * kB |_ -> 0<byte>
 
         member this.Region = match int bytes.[0x4A] with |0x0 -> Japan |0x1 -> NotJapan |_ -> Unknown
 
@@ -132,26 +133,109 @@ type CartROM (header,data) =
 
     let header = CartHeader(Array.sub data 0x100 0x50)
 
+
+    let romBanks =
+        [|0..(header.Size / (16*kB) - 1)|]
+        |> Array.map (fun n ->
+            Array.sub data (n * (16 * kB |> int)) (16 * kB |> int)
+        )
+
+    let ramBanks =
+        [|0..(header.RAMSize / (8 * kB) - 1)|]
+        |> Array.map (fun _ ->
+            Array.create (8*kB |> int) 0uy
+        )
+
+
+    abstract RAMBank: unit -> int
+
+    abstract HighROMBank: unit -> int
+
+    abstract ROMWrite: uint16 -> uint8 -> unit
+
+    member this.LowROMBank () = 0
+
     member this.Header = header
 
+    default this.ROMWrite address value = ()
+
     override this.RAMBlock =
-        match header.CartridgeType.Ram with
-        | Some ram -> Some <| readWriteMemoryBlock (8*kB) // TODO: use correct size from header
-        | None -> None
+        if header.CartridgeType.Ram.IsSome then
+            Some <| readWriteMemoryBlock (8*kB)
+        else
+            None
+
+    override this.ROMBlock =
+
+        let switchableCell bank address =
+            let get () = romBanks.[bank ()].[address]
+            let set value = this.ROMWrite (uint16 address) value
+            VirtualCell(get,set) :> MemoryCell
+
+        initMemoryBlock (32 * kB) (fun address ->
+            match address with
+            | Range 0x0000 0x3FFF offset ->
+                switchableCell this.LowROMBank offset
+            | Range 0x4000 0x7FFF offset ->
+                switchableCell this.HighROMBank offset
+            | _ -> failwith "Unmapped"
+        )
 
 
 type StaticCartROM(header,data) =
     inherit CartROM(header,data)
 
-    override this.ROMBlock =
-        initMemoryBlock (32*kB) (fun index -> data.[index] |> readOnlyCell)
+    override this.HighROMBank () = 1
+
+    override this.RAMBank () = 0
+
+type Mode = |Rom |Ram
+
+type MBC1CartROM(header,data) =
+    inherit CartROM(header,data)
+
+    let mutable activeROMBank = 1uy
+
+    let mutable activeRAMBank = 0uy
+
+    let mutable mode = Rom
+
+    override this.HighROMBank () = if mode = Rom then int activeROMBank else activeROMBank &&& 0x1Fuy |> int
+
+    override this.RAMBank () = if mode = Ram then int activeRAMBank else 0
+
+    override this.ROMWrite address value =
+
+        match address with
+        | Range 0x0000us 0x1FFFus _ ->
+            ()
+        | Range 0x2000us 0x3FFFus _ ->
+            // Only the low 5 bits are valid for this regsiter
+            let value = value &&& 0x1Fuy
+            activeROMBank <- (activeROMBank &&& 0x60uy) ||| (value)
+            // Setting bank 0 really means set bank 1
+            if value = 0uy then
+                activeROMBank <- activeROMBank |> setBit 0
+
+        | Range 0x4000us 0x5FFFus _ ->
+            // Only the low 2 bits are valid
+            let value = value &&& 0x3uy
+            activeRAMBank <- value
+            activeROMBank <- (activeROMBank &&& 0x1Fuy) ||| (value <<< 5)
+        | Range 0x6000us 0x7FFFus _ ->
+            mode <- if value = 0uy then Rom else Ram
+        | _ ->
+            ()
+
 
 let loadFromCartDump path =
     let data = File.ReadAllBytes path
     let header = CartHeader(Array.sub data 0x100 0x50)
 
     match header.CartridgeType with
-    | CartridgeType.ROM (ram, battery) ->
+    | CartridgeType.ROM _ ->
         StaticCartROM(header,data) :> CartROM
+    | CartridgeType.MBC1 _ ->
+        MBC1CartROM(header,data) :> CartROM
     | _ ->
         raise <| System.Exception("Cart type unsupported")

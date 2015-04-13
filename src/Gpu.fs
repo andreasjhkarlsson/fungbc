@@ -105,6 +105,8 @@ type Palette(init) =
                    Color.DarkGray
                    Color.Black|]
 
+    member this.Transparent = colors.[0]
+
     member this.Color index = colors.[(int this.Value >>> (index * 2)) &&& 0x3]
 
 
@@ -186,10 +188,14 @@ type FrameBuffer(width: int, height: int) =
 
     let buffer = Array.create (((abs bitmapData.Stride) * height) / 4) 0
 
+    let index x y = (y * bitmapData.Stride + (x * 4)) / 4
+
     do
         unlockBitmap bitmapData
     
-    member this.SetPixel x y (color: Color) = buffer.[(y * bitmapData.Stride + (x * 4)) / 4] <- color.ToArgb ()
+    member this.SetPixel x y (color: Color) = buffer.[index x y] <- color.ToArgb ()
+
+    member this.ComparePixel x y (color: Color) = buffer.[index x y] = color.ToArgb ()
 
     member this.BeginDraw () = bitmapData <- lockBitmap ()
 
@@ -245,14 +251,15 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
                     if x >= 0 then
                                 
                         let screenX = sprite.TX - x
-
                         let tileX = if sprite.XFlip then 7 - x else x
 
                         if screenX >= 0 && screenX < lineWidth then
                             let colorIndex = Tile.decode8x8 tile tileX tileY
                             // Apparently index 0 is always transparent (regardless of palette??????)
-                            if colorIndex <> 0 then
-                                palette.Color colorIndex |> frame.SetPixel screenX y
+                            if colorIndex <> 0 then 
+                                // Draw pixel if sprite is above background or if background is transparent
+                                if sprite.Priority = Above || (frame.ComparePixel screenX y registers.BGP.Transparent) then
+                                   do palette.Color colorIndex |> frame.SetPixel screenX y    
 
                         // Next column
                         drawTileLine (x - 1)

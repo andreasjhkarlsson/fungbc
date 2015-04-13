@@ -23,7 +23,6 @@ type Timer = |Timer
 
 type Rumble = |Rumble
 
-
 type CartridgeType =
     | ROM of (Ram option)*(Battery option)
     | MBC1 of (Ram option)*(Battery option)
@@ -133,7 +132,6 @@ type CartROM (header,data) =
 
     let header = CartHeader(Array.sub data 0x100 0x50)
 
-
     let romBanks =
         [|0..(header.Size / (16*kB) - 1)|]
         |> Array.map (fun n ->
@@ -145,7 +143,6 @@ type CartROM (header,data) =
         |> Array.map (fun _ ->
             Array.create (8*kB |> int) 0uy
         )
-
 
     abstract RAMBank: unit -> int
 
@@ -181,7 +178,6 @@ type CartROM (header,data) =
             | _ -> failwith "Unmapped"
         )
 
-
 type StaticCartROM(header,data) =
     inherit CartROM(header,data)
 
@@ -189,10 +185,35 @@ type StaticCartROM(header,data) =
 
     override this.RAMBank () = 0
 
+[<AbstractClass>]
+type MBCCartROM(header,data) =
+    inherit CartROM(header,data)
+
+    abstract Reg0: uint8 with set
+
+    abstract Reg1: uint8 with set
+
+    abstract Reg2: uint8 with set
+
+    abstract Reg3: uint8 with set
+
+    override this.ROMWrite address value =
+        match address with
+        | Range 0x0000us 0x1FFFus _ ->
+            this.Reg0 <- value
+        | Range 0x2000us 0x3FFFus _ ->
+            this.Reg1 <- value
+        | Range 0x4000us 0x5FFFus _ ->
+            this.Reg2 <- value
+        | Range 0x6000us 0x7FFFus _ ->
+            this.Reg3 <- value
+        | _ ->
+            ()
+
 type Mode = |Rom |Ram
 
 type MBC1CartROM(header,data) =
-    inherit CartROM(header,data)
+    inherit MBCCartROM(header,data)
 
     let mutable activeROMBank = 1uy
 
@@ -204,12 +225,10 @@ type MBC1CartROM(header,data) =
 
     override this.RAMBank () = if mode = Ram then int activeRAMBank else 0
 
-    override this.ROMWrite address value =
+    override this.Reg0 with set value = ()
 
-        match address with
-        | Range 0x0000us 0x1FFFus _ ->
-            ()
-        | Range 0x2000us 0x3FFFus _ ->
+    override this.Reg1
+        with set value =
             // Only the low 5 bits are valid for this regsiter
             let value = value &&& 0x1Fuy
             activeROMBank <- (activeROMBank &&& 0x60uy) ||| (value)
@@ -217,16 +236,51 @@ type MBC1CartROM(header,data) =
             if value = 0uy then
                 activeROMBank <- activeROMBank |> setBit 0
 
-        | Range 0x4000us 0x5FFFus _ ->
+    override this.Reg2
+        with set value =
             // Only the low 2 bits are valid
             let value = value &&& 0x3uy
             activeRAMBank <- value
             activeROMBank <- (activeROMBank &&& 0x1Fuy) ||| (value <<< 5)
-        | Range 0x6000us 0x7FFFus _ ->
-            mode <- if value = 0uy then Rom else Ram
-        | _ ->
-            ()
 
+    override this.Reg3
+        with set value =
+            mode <- if value = 0uy then Rom else Ram
+
+type MBC3CartROM(header,data) =
+    inherit MBCCartROM(header,data)
+
+    let mutable activeROMBank = 1uy
+
+    let mutable activeRAMBank = 0uy
+
+    override this.HighROMBank () = activeROMBank |> int
+    
+    override this.RAMBank () = activeRAMBank |> int
+
+    override this.Reg0
+        with set value = ()
+
+    override this.Reg1
+        with set value =
+            let value = value &&& 0x7Fuy
+            activeROMBank <- if value = 0uy then 1uy else value
+
+    override this.Reg2
+        with set value =
+            match value with
+            |ramBank when value >= 0uy && value <= 3uy ->
+                activeRAMBank <- ramBank
+                printfn "Load RAM bank: %d" activeRAMBank
+            |rtc when value >= 0x8uy && value <= 0xCuy ->
+                printfn "Load RTC"
+            |_ ->
+                ()
+
+    override this.Reg3
+        with set value =
+            if value = 1uy then
+                printfn "Latch RTC"
 
 let loadFromCartDump path =
     let data = File.ReadAllBytes path
@@ -237,5 +291,7 @@ let loadFromCartDump path =
         StaticCartROM(header,data) :> CartROM
     | CartridgeType.MBC1 _ ->
         MBC1CartROM(header,data) :> CartROM
+    | CartridgeType.MBC3 _ ->
+        MBC3CartROM(header,data) :> CartROM
     | _ ->
         raise <| System.Exception("Cart type unsupported")

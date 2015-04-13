@@ -831,6 +831,7 @@ let cycleCount instruction long =
     | SWAP_R8 _
     | XOR_R8_AR16 _
     | XOR_R8_D8 _
+    | LDH_AR8_R8 _
         -> 8
     | BIT_AR16 _
     | DEC_AR16 _
@@ -841,6 +842,8 @@ let cycleCount instruction long =
     | LD_R16_D16 _
     | LD_R16_R16 _
     | POP_R16 _
+    | LDH_R8_A8 _
+    | LD_AR16_D8 _ 
         -> 12
     | ADD_R16_D8 _
     | JP_A16 _
@@ -877,11 +880,7 @@ let cycleCount instruction long =
     | RET_F _
     | RET_NF _
         -> if not long then 8 else 20
-    | LDH_A8_R8 _ // Unsure
-    | LDH_AR8_R8 _ // Unsure
-    | LDH_R8_A8 _ // Unsure
-    | LD_AR16_D8 _ // Unsure
-        -> 0
+
     
 
 

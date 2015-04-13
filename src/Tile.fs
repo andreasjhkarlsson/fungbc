@@ -6,7 +6,7 @@ open BitLogic
 // Would be GREAT if you could somehow enforce the length of the array to be 16
 type TileData = |TileData of MemoryBlock
 
-let decode8x8 (TileData data) x y =
+let inline decode8x8 (TileData data) x y =
     (*
         == Pixels are stored like this (one row) ==
 

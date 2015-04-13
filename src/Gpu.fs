@@ -234,23 +234,38 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
                     let cx = int registers.SCX.Value + x
                     let tileIndex = bgMap ((cx % 256) / 8) ((cy % 256) / 8)
                     let tile = tileData tileIndex
-                    Tile.decode8x8 tile (cx % 8) (cy % 8) |> registers.BGP.Color |> frame.SetPixel x y
-                    drawBackground (x-1)
-            drawBackground (lineWidth - 1)
+                    do
+                        Tile.decode8x8 tile (cx % 8) (cy % 8)
+                        |> registers.BGP.Color
+                        |> frame.SetPixel x y
+                        drawBackground (x-1)
+
+            if registers.LCDC.BGDisplay then do drawBackground (lineWidth - 1)
 
         // Draw sprites
         do
+            
+            let (_, spriteHeight) = registers.LCDC.SpriteSize
 
             let drawSprite (sprite: SpriteAttribute) = 
-
+                // Find palette for this sprite
                 let palette = match sprite.Palette with |Palette0 -> registers.OBP0 |Palette1 -> registers.OBP1
-                let tile = vram.Tile1 sprite.Tile
-                let tileY = if sprite.YFlip then 7 - (sprite.TY - y) else (sprite.TY - y)
+
+                // Calculate y coordinate in tile for this sprite (NOTE: May be larger than 7!)
+                let tileY = if sprite.YFlip then (spriteHeight-1) - (sprite.TY - y) else (sprite.TY - y)
+
+                // Find tile to be decoded
+                let tile = if tileY > 7 then vram.Tile1 (sprite.Tile+1uy) else vram.Tile1 sprite.Tile
+
+                // Wrap y
+                let tileY = tileY % 8
 
                 let rec drawTileLine x =
                     if x >= 0 then
-                                
+                        // Calculate destination x value
                         let screenX = sprite.TX - x
+
+                        // Flip x if flag is set
                         let tileX = if sprite.XFlip then 7 - x else x
 
                         if screenX >= 0 && screenX < lineWidth then
@@ -265,10 +280,12 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
                         drawTileLine (x - 1)
                                 
                 drawTileLine 7
-
-            vram.ObjectAttributes
-            |> Array.filter (fun s -> s.TY >= y && s.TY <= (y + 7))
-            |> Array.iter drawSprite
+            
+            if registers.LCDC.SpriteEnable then do
+                vram.ObjectAttributes
+                |> Array.filter (fun s -> s.TY >= y && s.TY <= (y + (spriteHeight-1)))
+                |> Array.sortBy (fun s -> -(int s.X)) // Lower value X should overlap (draw after) larger x (maybe sacrifice this for performance?).
+                |> Array.iter drawSprite
 
 
     let drawScreen (FrameReceiver receiver) =

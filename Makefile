@@ -22,6 +22,7 @@ FILES= \
 	$(SRC)IORegisters.fs \
 	$(SRC)Interrupts.fs \
 	$(SRC)Timer.fs \
+	$(SRC)Palette.fs \
 	$(SRC)Gpu.fs \
 	$(SRC)Input.fs \
 	$(SRC)Mmu.fs \

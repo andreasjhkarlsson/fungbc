@@ -13,7 +13,7 @@ open Units
 open Constants
 open BitLogic
 open Interrupts
-
+open Palette
 
 type OBJBGPriority = |Above |Behind
 type SpritePalette = |Palette0 |Palette1
@@ -96,18 +96,19 @@ type LY(init) =
     override this.MemoryValue with set value = base.MemoryValue <- 0x0uy
 
 
-
-type Palette(init) =
+type PaletteMapRegister(init,initPalette) =
     inherit ValueBackedIORegister(init)
 
-    let colors = [|Color.White
-                   Color.LightGray
-                   Color.DarkGray
-                   Color.Black|]
+    // Store palette internally as array for instant lookup from value
+    let mutable palette = Palette.toArray initPalette
 
-    member this.Transparent = colors.[0]
+    member this.Palette
+        with get () = Palette.ofArray palette
+        and set newPalette = palette <- Palette.toArray newPalette
 
-    member this.Color index = colors.[(int this.Value >>> (index * 2)) &&& 0x3]
+    member this.Transparent = palette.[0]
+
+    member this.Color index = palette.[(int this.Value >>> (index * 2)) &&& 0x3]
 
 
 type VRAM () =
@@ -155,9 +156,9 @@ type GPURegisters () =
     let lcds = LCDStatus(0uy)
     let scx = ValueBackedIORegister(0uy)
     let scy = ValueBackedIORegister(0uy)
-    let bgp = Palette(0uy)
-    let obp0 = Palette(0uy)
-    let obp1 = Palette(0uy)
+    let bgp = PaletteMapRegister(0uy,Palette.grayscale)
+    let obp0 = PaletteMapRegister(0uy,Palette.grayscale)
+    let obp1 = PaletteMapRegister(0uy,Palette.grayscale)
     let ly = LY(0uy)
     let lyc = ValueBackedIORegister(0uy)
 
@@ -342,6 +343,14 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
     member this.Reset () =
         lastStage <- VBlank 0
         clock.Reset ()
+
+    member this.Palette
+        with get () =
+            registers.BGP.Palette
+        and set palette =
+            registers.BGP.Palette <- palette
+            registers.OBP0.Palette <- palette
+            registers.OBP1.Palette <- palette
 
     member this.Update () =
         // Extract some registers

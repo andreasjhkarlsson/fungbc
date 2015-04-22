@@ -156,9 +156,9 @@ type GPURegisters () =
     let lcds = LCDStatus(0uy)
     let scx = ValueBackedIORegister(0uy)
     let scy = ValueBackedIORegister(0uy)
-    let bgp = PaletteMapRegister(0uy,Palette.grayscale)
-    let obp0 = PaletteMapRegister(0uy,Palette.grayscale)
-    let obp1 = PaletteMapRegister(0uy,Palette.grayscale)
+    let bgp = PaletteMapRegister(0uy,Palette.Predefined.grayscale)
+    let obp0 = PaletteMapRegister(0uy,Palette.Predefined.grayscale)
+    let obp1 = PaletteMapRegister(0uy,Palette.Predefined.grayscale)
     let ly = LY(0uy)
     let lyc = ValueBackedIORegister(0uy)
 

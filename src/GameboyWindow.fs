@@ -35,6 +35,11 @@ type ScaleToolStripMenuItem(scale) =
 
     member this.Scale = scale
 
+type PaletteToolStripMenuItem(name: string,palette) =
+    inherit ToolStripMenuItem(name)
+
+    member this.Palette = palette
+
 type GameboyWindow () as this =
 
     inherit Form()
@@ -56,6 +61,17 @@ type GameboyWindow () as this =
     let scaleItems =
         [1; 2; 4; 6]
         |> List.map (fun scale -> new ScaleToolStripMenuItem(scale))
+
+    let paletteMenu = new ToolStripMenuItem("Palette...")
+
+    let paletteItems =
+        [("Standard Gray", Palette.Predefined.grayscale)
+         ("Terminal Green", Palette.Predefined.terminalGreen)
+         ("Fabolous Pink", Palette.Predefined.fabolousPink)
+         ("Dreamy Blue", Palette.Predefined.dreamyBlue)
+         ("Horror Red", Palette.Predefined.horrorRed)
+         ("Summer Green", Palette.Predefined.summerGreen)]
+        |> List.map (fun (name, palette) -> new PaletteToolStripMenuItem(name,palette))
 
     let screenCapMenuItem = new ToolStripMenuItem("Save screen capture...") 
 
@@ -132,6 +148,15 @@ type GameboyWindow () as this =
                 )
                 contextMenu.Items.Add scaleMenu |> ignore
 
+            // Setup palette menu
+            do
+                paletteItems
+                |> List.iter (fun item ->
+                    paletteMenu.DropDownItems.Add item |> ignore
+                    item.Click.Add (fun _ -> this.Palette item.Palette)
+                )
+                contextMenu.Items.Add paletteMenu |> ignore
+
             limitFPSItem.Checked <- true
             limitFPSItem.Click.Add this.ToggleFPSLimit 
             contextMenu.Items.Add(limitFPSItem) |> ignore
@@ -174,6 +199,13 @@ type GameboyWindow () as this =
     member this.Scale scale =
         this.ClientSize <- Size(RESOLUTION.Width * scale,RESOLUTION.Height * scale + statusStrip.Height)
         scaleItems |> List.iter (fun item -> item.Checked <- item.Scale = scale)
+
+    member this.Palette palette =
+        match gameboy with
+        | Some gameboy ->
+            gameboy |> Gameboy.setPalette palette
+        | None ->
+            ()
     
     member this.ScreenCap args =
         let screenCap = screen.Capture ()
@@ -308,6 +340,7 @@ type GameboyWindow () as this =
         | Some gameboy ->
             executionMenu.Enabled <- true
             screenCapMenuItem.Enabled <- true
+            paletteMenu.Enabled <- true
             limitFPSItem.Enabled <- true
             limitFPSItem.Checked <- not ((Gameboy.speed gameboy) = Unlimited)
             let executionState = Gameboy.state gameboy
@@ -318,9 +351,15 @@ type GameboyWindow () as this =
             | Paused ->
                 resumeMenuItem.Enabled <- true
                 pauseMenuItem.Enabled <- false
+
+            let palette = gameboy |> Gameboy.palette
+
+            paletteItems |> List.iter (fun item -> item.Checked <- item.Palette = palette)
+
         | None ->
             executionMenu.Enabled <- false
             screenCapMenuItem.Enabled <- false
+            paletteMenu.Enabled <- false
             limitFPSItem.Enabled <- false
 
     member this.HelpAndAbout _ = MessageBox.Show(Resource.about) |> ignore

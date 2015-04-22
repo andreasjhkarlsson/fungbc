@@ -11,20 +11,32 @@ open Cpu
 open Clock
 open Constants
 open Input
+open Palette
 
 type State = |Running |Paused 
 
+type Reply<'a> = AsyncReplyChannel<'a>
+
+type PropertyValue =
+    |Speed of Speed
+    |Palette of Palette
+
+type PropertyReply =
+    |Speed of Reply<Speed>
+    |Palette of Reply<Palette>
+    |FPS of Reply<float>
+
 type Message = 
-    |Kill of AsyncReplyChannel<unit>
+    |Kill of Reply<unit>
     |Run
-    |Step of AsyncReplyChannel<unit>
+    |Step of Reply<unit>
     |Input of Input.Key*Input.KeyState
-    |FPS of AsyncReplyChannel<float>
-    |Pause of AsyncReplyChannel<unit>
+    |Pause of Reply<unit>
     |Start
-    |State of AsyncReplyChannel<State>
+    |State of Reply<State>
     |Reset
-    |Speed of Speed option*AsyncReplyChannel<Speed>
+    |Write of PropertyValue
+    |Read of PropertyReply
 
 
 type GameboyAgent = MailboxProcessor<Message>
@@ -79,13 +91,12 @@ let create (rom: ROM) (frameReceiver: FrameReceiver) =
                     // Increment timers (may raise interrupt)
                     timers.Update ()
                     runEmulation (iters - 1)
-                else
-                    ()
                                     
             let rec handleMessage state = async {
 
                 let! message = mailbox.Receive ()
 
+                // Emulator control
                 match message with
                 | Run when state = Running ->
                     // Since agent posting / receiving incurs an overhead
@@ -107,18 +118,26 @@ let create (rom: ROM) (frameReceiver: FrameReceiver) =
                     reply.Reply () 
                 | Input (key,state)->
                     keypad.[key] <- state
-                | FPS (reply) ->
-                    reply.Reply gpu.FPS
                 | State reply ->
                     reply.Reply state
-                | Speed (speed,reply) ->
-                    match speed with
-                    |Some speed -> gpu.Speed <- speed
-                    |_ -> ()
-                    reply.Reply gpu.Speed
+                | Write property ->
+                    match property with
+                    | PropertyValue.Speed speed ->
+                        gpu.Speed <- speed
+                    | PropertyValue.Palette palette ->
+                        gpu.Palette <- palette
+                | Read property ->
+                    match property with
+                    | Speed reply ->
+                        reply.Reply gpu.Speed
+                    | Palette reply ->
+                        reply.Reply gpu.Palette
+                    | FPS reply ->
+                        reply.Reply gpu.FPS
                 | _ ->
                     ()
 
+                // Agent control
                 match message with
                 | Kill reply ->
                     // Stop processing messages and signal back that we have ack'ed the kill
@@ -140,26 +159,32 @@ let create (rom: ROM) (frameReceiver: FrameReceiver) =
 
     Gameboy (agent, components)
 
-let start (Gameboy (agent,_)) = agent.Post Start
+let post message (Gameboy (agent,_)) = agent.Post message
 
-let pause (Gameboy (agent,_)) = agent.PostAndReply Pause
+let postAndReply builder (Gameboy (agent,_)) = agent.PostAndReply builder
 
-let reset (Gameboy (agent,_)) = agent.Post Reset
+let components (Gameboy (_,components)) =  components
 
-let state (Gameboy (agent,_)) = agent.PostAndReply State
+let start = post Start
 
-let step (Gameboy (agent,_)) = agent.PostAndReply Step
+let pause = postAndReply Pause
 
-let kill (Gameboy (agent,_)) = agent.PostAndReply Kill
+let reset = post Reset
 
-let postInput (Gameboy (agent,_)) key state = Input(key,state) |> agent.Post
+let state = postAndReply State
 
-let components (Gameboy (_,components)) = components
+let step = postAndReply Step
 
-let keypad gameboy = (components gameboy).Keypad
+let kill = postAndReply Kill
 
-let fps (Gameboy (agent, _)) = agent.PostAndReply FPS
+let postInput key state = post <| Input(key,state)
 
-let speed (Gameboy (agent, _)) = agent.PostAndReply (fun reply -> Speed (None, reply))
+let fps = postAndReply <| (Read << FPS)
 
-let setSpeed (Gameboy (agent, _)) speed = agent.PostAndAsyncReply (fun reply -> Speed (Some speed, reply)) |> ignore
+let speed = postAndReply <| (Read << Speed)
+
+let setSpeed  = post << (Write << PropertyValue.Speed)
+
+let palette = postAndReply <| (Read << Palette)
+
+let setPalette = post << (Write << PropertyValue.Palette)

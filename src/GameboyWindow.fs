@@ -165,9 +165,9 @@ type GameboyWindow () as this =
             let currentSpeed = Gameboy.speed gameboy
             match currentSpeed with
             | Unlimited ->
-                Gameboy.setSpeed gameboy (Limit 60<Hz>)
+                gameboy |> Gameboy.setSpeed (Limit 60<Hz>)
             | Limit _ ->
-                Gameboy.setSpeed gameboy Unlimited
+                gameboy |> Gameboy.setSpeed Unlimited 
         |_ ->
             ()
 
@@ -264,7 +264,7 @@ type GameboyWindow () as this =
         | Some gameboy ->
             match keycodeToKeypad args.KeyCode with
             | Some key ->
-                (Gameboy.keypad gameboy).[key] <- Input.Pressed
+                gameboy |> Gameboy.postInput key Input.Pressed
             | None ->
                 base.OnKeyDown args
         | None -> 
@@ -275,7 +275,7 @@ type GameboyWindow () as this =
         | Some gameboy ->
             match keycodeToKeypad args.KeyCode with
             | Some key ->
-                (Gameboy.keypad gameboy).[key] <- Input.Released
+                gameboy |> Gameboy.postInput key Input.Released
             | None ->
                 base.OnKeyUp args
         | None -> 

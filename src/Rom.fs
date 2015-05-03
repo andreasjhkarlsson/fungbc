@@ -127,7 +127,7 @@ type CartHeader(bytes: array<uint8>) =
         member this.GlobalChecksum = (bytes.[0x4E] <<< 8) ||| (bytes.[0x4F]) // Big endian
 
 [<AbstractClass>]
-type CartROM (header,data) =
+type CartROM (header,data,savefile) =
     inherit ROM ()
 
     let header = CartHeader(Array.sub data 0x100 0x50)
@@ -144,6 +144,19 @@ type CartROM (header,data) =
             Array.create (8*kB |> int) 0uy
         )
 
+    do
+        try
+            // Load RAM contents from savefile
+            File.ReadAllBytes savefile |> Array.iteri (fun address value ->
+                let bank = int (address / (8 *kB))
+                let bankAddress = address % (8*kB |> int)
+                ramBanks.[bank].[bankAddress] <- value
+            )
+        with
+        | _ -> () // Simpy means there is no savefile yet
+
+    member this.SaveRAMFile () = File.WriteAllBytes(savefile, Array.concat ramBanks)
+
     abstract RAMBank: unit -> int
 
     abstract HighROMBank: unit -> int
@@ -158,7 +171,14 @@ type CartROM (header,data) =
 
     override this.RAMBlock =
         if header.CartridgeType.Ram.IsSome then
-            Some <| readWriteMemoryBlock (8*kB)
+            let switchableCell bank address =
+                let get () = ramBanks.[(bank ())].[address]
+                let set value = ramBanks.[(bank ())].[address] <- value
+                VirtualCell(get,set) :> MemoryCell
+
+            initMemoryBlock (8 * kB) (fun address ->
+                switchableCell this.RAMBank address
+            ) |> Some
         else
             None
 
@@ -182,16 +202,16 @@ type CartROM (header,data) =
             | _ -> failwith "Unmapped"
         )
 
-type StaticCartROM(header,data) =
-    inherit CartROM(header,data)
+type StaticCartROM(header,data,savefile) =
+    inherit CartROM(header,data,savefile)
 
     override this.HighROMBank () = 1
 
     override this.RAMBank () = 0
 
 [<AbstractClass>]
-type MBCCartROM(header,data) =
-    inherit CartROM(header,data)
+type MBCCartROM(header,data,savefile) =
+    inherit CartROM(header,data,savefile)
 
     abstract Reg0: uint8 with set
 
@@ -216,8 +236,8 @@ type MBCCartROM(header,data) =
 
 type Mode = |Rom |Ram
 
-type MBC1CartROM(header,data) =
-    inherit MBCCartROM(header,data)
+type MBC1CartROM(header,data,savefile) =
+    inherit MBCCartROM(header,data,savefile)
 
     let mutable activeROMBank = 1uy
 
@@ -251,8 +271,8 @@ type MBC1CartROM(header,data) =
         with set value =
             mode <- if value = 0uy then Rom else Ram
 
-type MBC3CartROM(header,data) =
-    inherit MBCCartROM(header,data)
+type MBC3CartROM(header,data,savefile) =
+    inherit MBCCartROM(header,data,savefile)
 
     let mutable activeROMBank = 1uy
 
@@ -263,7 +283,13 @@ type MBC3CartROM(header,data) =
     override this.RAMBank () = activeRAMBank |> int
 
     override this.Reg0
-        with set value = ()
+        with set value =
+            match value &&& 0xFuy with
+            | 0xAuy ->
+                printfn "Enable RAM"
+            | _ ->
+                printfn "Disable RAM"
+                this.SaveRAMFile ()
 
     override this.Reg1
         with set value =
@@ -289,13 +315,14 @@ type MBC3CartROM(header,data) =
 let loadFromCartDump path =
     let data = File.ReadAllBytes path
     let header = CartHeader(Array.sub data 0x100 0x50)
+    let savefile = path + ".sav"
 
     match header.CartridgeType with
     | CartridgeType.ROM _ ->
-        StaticCartROM(header,data) :> CartROM
+        StaticCartROM(header,data,savefile) :> CartROM
     | CartridgeType.MBC1 _ ->
-        MBC1CartROM(header,data) :> CartROM
+        MBC1CartROM(header,data,savefile) :> CartROM
     | CartridgeType.MBC3 _ ->
-        MBC3CartROM(header,data) :> CartROM
+        MBC3CartROM(header,data,savefile) :> CartROM
     | _ ->
         raise <| System.Exception("Cart type unsupported")

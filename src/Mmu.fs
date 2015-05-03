@@ -68,6 +68,7 @@ type MMU (gpu: GPU, rom: ROM, ram: GBCRam,keypad: Keypad, interrupts: InterruptM
         mapAddress 0xFF05us timers.TIMA.MemoryCell
         mapAddress 0xFF06us timers.TMA.MemoryCell
         mapAddress 0xFF07us timers.TAC.MemoryCell
+        mapAddress 0xFF0Fus interrupts.Current.MemoryCell
         mapAddress 0xFF40us gpu.Registers.LCDC.MemoryCell
         mapAddress 0xFF41us gpu.Registers.LCDS.MemoryCell
         mapAddress 0xFF42us gpu.Registers.SCY.MemoryCell
@@ -78,8 +79,8 @@ type MMU (gpu: GPU, rom: ROM, ram: GBCRam,keypad: Keypad, interrupts: InterruptM
         mapAddress 0xFF47us gpu.Registers.BGP.MemoryCell
         mapAddress 0xFF48us gpu.Registers.OBP0.MemoryCell
         mapAddress 0xFF49us gpu.Registers.OBP1.MemoryCell
-
-        mapAddress 0xFF0Fus interrupts.Current.MemoryCell
+        mapAddress 0xFF4Aus gpu.Registers.WY.MemoryCell
+        mapAddress 0xFF4Bus gpu.Registers.WX.MemoryCell
         mapAddress 0xFFFFus interrupts.InterruptEnable.MemoryCell
 
     // Read mapped byte

@@ -156,6 +156,8 @@ type GPURegisters () =
     let lcds = LCDStatus(0uy)
     let scx = ValueBackedIORegister(0uy)
     let scy = ValueBackedIORegister(0uy)
+    let wx = ValueBackedIORegister(0uy)
+    let wy = ValueBackedIORegister(0uy)
     let bgp = PaletteMapRegister(0uy,Palette.Predefined.grayscale)
     let obp0 = PaletteMapRegister(0uy,Palette.Predefined.grayscale)
     let obp1 = PaletteMapRegister(0uy,Palette.Predefined.grayscale)
@@ -166,6 +168,8 @@ type GPURegisters () =
     member this.LCDS = lcds
     member this.SCX = scx
     member this.SCY = scy
+    member this.WX = wx
+    member this.WY = wy
     member this.BGP = bgp
     member this.OBP0 = obp0
     member this.OBP1 = obp1
@@ -220,33 +224,41 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
 
     let drawLine y =
         
-        let lineWidth = (RESOLUTION.Width)
+        let lineWidth = RESOLUTION.Width
+        let screenHeight = RESOLUTION.Height
+        let lcdc = registers.LCDC
+
+        let drawTileLayer tileMap tileData xOffset yOffset scroll = 
+            let adjustedY = y + yOffset
+
+            let rec drawPixel x =
+                if x >= 0 then
+                    let adjustedX = x + xOffset
+                    if scroll || (adjustedX >= 0 && adjustedX < lineWidth) then
+                        let tile = tileMap ((adjustedX % 256) / 8) ((adjustedY % 256) / 8) |> tileData
+                        do
+                            Tile.decode8x8 tile (adjustedX % 8) (adjustedY % 8)
+                            |> registers.BGP.Color
+                            |> frame.SetPixel x y
+                    do drawPixel (x - 1)
+            if scroll || (adjustedY >= 0 && adjustedY < screenHeight) then do drawPixel (lineWidth - 1)
+
+        let tileData = match registers.LCDC.BGAndWindowTileDataSelect with |Tiles0 -> int8 >> vram.Tile0|Tiles1 -> vram.Tile1
 
         // Draw background
-        do
-            let bgMap = match registers.LCDC.BGTilemapSelect with |Map0 -> vram.TileMap0 |Map1 -> vram.TileMap1
-
-            let tileData = match registers.LCDC.BGAndWindowTileDataSelect with |Tiles0 -> int8 >> vram.Tile0|Tiles1 -> vram.Tile1
-
-            let cy = int registers.SCY.Value + y
-
-            let rec drawBackground x =
-                if x >= 0 then
-                    let cx = int registers.SCX.Value + x
-                    let tileIndex = bgMap ((cx % 256) / 8) ((cy % 256) / 8)
-                    let tile = tileData tileIndex
-                    do
-                        Tile.decode8x8 tile (cx % 8) (cy % 8)
-                        |> registers.BGP.Color
-                        |> frame.SetPixel x y
-                        drawBackground (x-1)
-
-            if registers.LCDC.BGDisplay then do drawBackground (lineWidth - 1)
+        if lcdc.BGDisplay then do
+            let map = match registers.LCDC.BGTilemapSelect with |Map0 -> vram.TileMap0 |Map1 -> vram.TileMap1
+            drawTileLayer map tileData (int registers.SCX.Value) (int registers.SCY.Value) true
+        
+        // Draw window
+        if lcdc.WindowEnabled then do
+            let map = match registers.LCDC.WindowTileMapSelect with |Map0 -> vram.TileMap0 |Map1 -> vram.TileMap1
+            drawTileLayer map tileData (-(int registers.WX.Value - 7)) (-(int registers.WY.Value)) false
 
         // Draw sprites
-        do
+        if lcdc.SpriteEnable then do
             
-            let (_, spriteHeight) = registers.LCDC.SpriteSize
+            let (_, spriteHeight) = lcdc.SpriteSize
 
             let drawSprite (sprite: SpriteAttribute) = 
                 // Find palette for this sprite
@@ -278,11 +290,11 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
                                    do palette.Color colorIndex |> frame.SetPixel screenX y    
 
                         // Next column
-                        drawTileLine (x - 1)
+                        do drawTileLine (x - 1)
                                 
-                drawTileLine 7
+                do drawTileLine 7
             
-            if registers.LCDC.SpriteEnable then do
+            do
                 vram.ObjectAttributes
                 |> Array.filter (fun s -> s.TY >= y && s.TY <= (y + (spriteHeight-1)))
                 |> Array.sortBy (fun s -> -(int s.X)) // Lower value X should overlap (draw after) larger x (maybe sacrifice this for performance?).
@@ -434,7 +446,3 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
             clock.Reset ()
             ly.Value <- 0uy
             lcds.Mode <- Mode.HBlank
-
-
-
-

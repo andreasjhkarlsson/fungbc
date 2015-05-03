@@ -59,7 +59,7 @@ type GameboyWindow () as this =
     let scaleMenu = new ToolStripMenuItem("Scale...")
 
     let scaleItems =
-        [1; 2; 4; 6]
+        [1; 2; 3; 4; 6; 8]
         |> List.map (fun scale -> new ScaleToolStripMenuItem(scale))
 
     let paletteMenu = new ToolStripMenuItem("Palette...")

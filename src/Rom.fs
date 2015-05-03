@@ -164,17 +164,21 @@ type CartROM (header,data) =
 
     override this.ROMBlock =
 
-        let switchableCell bank address =
-            let get () = romBanks.[bank ()].[address]
-            let set value = this.ROMWrite (uint16 address) value
+        let switchableCell bank baseAddress offset =
+            let get () =
+                try
+                    romBanks.[(bank ())].[offset]
+                with error ->
+                    failwith (sprintf "error reading address %04X from rom bank %d" (baseAddress + offset) (bank()))
+            let set value = this.ROMWrite (baseAddress + offset |> uint16) value
             VirtualCell(get,set) :> MemoryCell
 
         initMemoryBlock (32 * kB) (fun address ->
             match address with
             | Range 0x0000 0x3FFF offset ->
-                switchableCell this.LowROMBank offset
+                switchableCell this.LowROMBank 0x0000 offset
             | Range 0x4000 0x7FFF offset ->
-                switchableCell this.HighROMBank offset
+                switchableCell this.HighROMBank 0x4000 offset
             | _ -> failwith "Unmapped"
         )
 

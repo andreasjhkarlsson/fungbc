@@ -227,6 +227,8 @@ let attach gameboy (mapInfo: MapInfo) =
                 "print stack (z), " +
                 "print uint8 at address (a8 address), " +
                 "print uint16 at address (a16 address), " +
+                "write uint8 to address (w address value), "+
+                "force return instruction (;), "+
                 "print summary (x), " +
                 "halt (h)")
 
@@ -240,6 +242,8 @@ let attach gameboy (mapInfo: MapInfo) =
                 let command = cmdline.[0]
 
                 let parameter = if cmdline.Length > 1 then Some cmdline.[1] else None
+
+                let secondParameter = if cmdline.Length > 2 then Some cmdline.[2] else None
 
                 let (|HexParameter|_|) parameter =
                     match parameter with
@@ -442,6 +446,20 @@ let attach gameboy (mapInfo: MapInfo) =
                     | AddressParameter address -> printResult <| sprintf "0x%04X = %04X" address (mmu.Read16 address)
                     | _ -> printError "Invalid address format"
                     interactive ()
+                | "w" ->
+                    match parameter with
+                    | AddressParameter address ->
+                        match secondParameter with
+                        | HexParameter value ->
+                            mmu.Write8 address (uint8 value)
+                        | _ -> printError "Invalid address format"
+                    | _ -> printError "Invalid address format"
+                    interactive ()
+                | ";" ->
+                    PC.Value <- mmu.Read16 SP.Value
+                    SP.Value <- SP.Value + 2us
+                    printResult "PC <- (SP); SP += 2"
+                    interactive ()
                 | "*" ->
                     gpu.ForceRedraw ()
                     interactive ()
@@ -460,8 +478,16 @@ let attach gameboy (mapInfo: MapInfo) =
 
             match message with
             |Run ->
-                Gameboy.step gameboy
-                mailbox.Post Run
+                try
+                    Gameboy.step gameboy
+                    if hasBreakpoint PC.Value then
+                        mailbox.PostAndAsyncReply Break |> ignore
+                    mailbox.Post Run
+                with
+                | error ->
+                    printfn "The emulator crashed! Entering debugger (NOTE: resuming won't be possible)"
+                    interactive ()
+                
                 return! handleMessage ()
             |Break r ->
                 interactive ()
@@ -482,9 +508,22 @@ let attach gameboy (mapInfo: MapInfo) =
         handleMessage ()
     )
 
-
 let start (debugger: DebuggerAgent) = debugger.Post Run
 
 let breakExecution (debugger: DebuggerAgent) = debugger.PostAndReply (fun r -> Break r)
 
 let kill (debugger: DebuggerAgent) = debugger.PostAndReply (fun r -> Kill r)
+
+let attachOnCtrlC gameboy =
+    let attached = ref false
+    System.Console.CancelKeyPress.AddHandler
+        <| new System.ConsoleCancelEventHandler(fun obj args ->
+            if not (!attached) then
+                printfn "\n--- Ctrl+C, invoking debugger ---\n"
+                let debugger = attach gameboy (MapInfo())
+                Gameboy.pause gameboy
+                start debugger
+                breakExecution debugger
+                args.Cancel <- true
+                attached := true
+            )  

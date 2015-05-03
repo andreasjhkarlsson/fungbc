@@ -29,7 +29,7 @@ type PropertyReply =
 type Message = 
     |Kill of Reply<unit>
     |Run
-    |Step of Reply<unit>
+    |Step of Reply<System.Exception option>
     |Input of Input.Key*Input.KeyState
     |Pause of Reply<unit>
     |Start
@@ -114,8 +114,13 @@ let create (rom: ROM) (frameReceiver: FrameReceiver) =
                     systemClock.Reset ()
                     mmu.InitDefaults ()
                 | Step reply ->
-                    runEmulation 1
-                    reply.Reply () 
+                    try
+                        runEmulation 1
+                        reply.Reply None 
+                    with error ->
+                        printfn "Runtime errror!\n%s\n%s" error.Message error.StackTrace
+                        reply.Reply (Some error) 
+                        mailbox.PostAndReply Kill
                 | Input (key,state)->
                     keypad.[key] <- state
                 | State reply ->
@@ -173,7 +178,10 @@ let reset = post Reset
 
 let state = postAndReply State
 
-let step = postAndReply Step
+let step gameboy =
+    match postAndReply Step gameboy with
+    | Some error -> raise error
+    | None -> ()
 
 let kill = postAndReply Kill
 

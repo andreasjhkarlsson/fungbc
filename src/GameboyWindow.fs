@@ -277,6 +277,8 @@ type GameboyWindow () as this =
         let gb = Gameboy.create rom (FrameReceiver screen.PresentFrame)
 
         Gameboy.start gb
+        
+        Debugger.attachOnCtrlC gb
 
         gameboy <- Some gb        
 

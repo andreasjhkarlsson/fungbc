@@ -167,7 +167,7 @@ type GameboyWindow () as this =
             helpAndAboutMenuItem.Click.Add this.HelpAndAbout
             contextMenu.Items.Add(helpAndAboutMenuItem) |> ignore
         
-            this.ContextMenuStrip <- contextMenu
+            screen.ContextMenuStrip <- contextMenu
 
             contextMenu.Opening.Add this.UpdateContextMenu 
 

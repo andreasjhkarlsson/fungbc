@@ -27,7 +27,7 @@ type PropertyReply =
     |FPS of Reply<float>
 
 type Message = 
-    |Kill of Reply<unit>
+    |Kill
     |Run
     |Step of Reply<System.Exception option>
     |Input of Input.Key*Input.KeyState
@@ -107,7 +107,7 @@ let create (rom: ROM) (frameReceiver: FrameReceiver) =
                     with
                     | error ->
                         printfn "Runtime errror!\n%s\n%s" error.Message error.StackTrace
-                        mailbox.PostAndReply Kill
+                        mailbox.Post Kill
                 | Reset ->
                     cpu.Reset ()
                     gpu.Reset ()
@@ -120,7 +120,7 @@ let create (rom: ROM) (frameReceiver: FrameReceiver) =
                     with error ->
                         printfn "Runtime errror!\n%s\n%s" error.Message error.StackTrace
                         reply.Reply (Some error) 
-                        mailbox.PostAndReply Kill
+                        mailbox.Post Kill 
                 | Input (key,state)->
                     keypad.[key] <- state
                 | State reply ->
@@ -144,9 +144,9 @@ let create (rom: ROM) (frameReceiver: FrameReceiver) =
 
                 // Agent control
                 match message with
-                | Kill reply ->
-                    // Stop processing messages and signal back that we have ack'ed the kill
-                    reply.Reply ()
+                | Kill ->
+                    // Stop processing messages (by stopping recursion)
+                    ()
                 | Pause reply ->
                     reply.Reply ()
                     return! handleMessage Paused
@@ -183,7 +183,7 @@ let step gameboy =
     | Some error -> raise error
     | None -> ()
 
-let kill = postAndReply Kill
+let kill = post Kill
 
 let postInput key state = post <| Input(key,state)
 

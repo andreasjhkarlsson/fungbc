@@ -284,8 +284,9 @@ type GameboyWindow () as this =
 
     override this.OnFormClosing args =
         match gameboy with
-        | Some gameboy ->
-            Gameboy.kill gameboy
+        | Some instance ->
+            gameboy <- None
+            Gameboy.kill instance
         | None -> ()
         base.OnFormClosing args
 

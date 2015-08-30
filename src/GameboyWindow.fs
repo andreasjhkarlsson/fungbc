@@ -21,8 +21,7 @@ type GameboyScreen () as this =
         this.DoubleBuffered <- true
 
     member this.PresentFrame bitmap =
-        lock framebuffer (fun () -> Graphics.FromImage(framebuffer).DrawImage(bitmap,0,0,framebuffer.Width,framebuffer.Height))
-        this.BeginInvoke(new System.Action(fun _ -> this.Invalidate ())) |> ignore 
+        lock framebuffer (fun () -> Graphics.FromImage(framebuffer).DrawImage(bitmap,0,0,framebuffer.Width,framebuffer.Height)) 
 
     member this.Capture () = lock framebuffer (fun () -> framebuffer.Clone () :?> Bitmap)
 
@@ -51,6 +50,8 @@ type GameboyWindow () as this =
     let screen = new GameboyScreen()   
 
     let statusUpdater = new System.Timers.Timer(250.0)
+
+    let redrawTimer = new System.Windows.Forms.Timer ()
 
     let contextMenu = new ContextMenuStrip()
 
@@ -182,6 +183,11 @@ type GameboyWindow () as this =
 
         statusUpdater.Elapsed.Add this.UpdateStatus
 
+        redrawTimer.Interval <- int <| 1000.0 / 60.0
+        redrawTimer.Tick.Add (fun _ -> this.Refresh ())
+
+        redrawTimer.Enabled <- true
+
     member this.Reset _ = gameboy |> Option.iter Gameboy.reset
 
     member this.ToggleFPSLimit args =
@@ -290,11 +296,14 @@ type GameboyWindow () as this =
         | None -> ()
         base.OnFormClosing args
 
+
     override this.OnShown args =
         statusUpdater.Enabled <- true
+        redrawTimer.Start ()
         base.OnShown args
         
     override this.OnKeyDown args =
+
         match gameboy with
         | Some gameboy ->
             match keycodeToKeypad args.KeyCode with

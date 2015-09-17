@@ -5,7 +5,7 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{B65B2C68-63B9-485F-AA89-DAA1E3014234}</ProjectGuid>
-    <OutputType>Exe</OutputType>
+    <OutputType>Library</OutputType>
     <RootNamespace>FunGBC</RootNamespace>
     <AssemblyName>FunGBC</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
@@ -22,7 +22,7 @@
     <WarningLevel>3</WarningLevel>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DocumentationFile>bin\Debug\FunGBC.XML</DocumentationFile>
-    <Prefer32Bit>true</Prefer32Bit>
+    <Prefer32Bit>false</Prefer32Bit>
     <StartArguments>
     </StartArguments>
     <StartWorkingDirectory>
@@ -63,7 +63,7 @@
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
     <None Include="App.config" />
-    <EmbeddedResource Include="..\res\resources.resx">
+    <EmbeddedResource Include="..\..\res\resources.resx">
       <Link>resources.resx</Link>
     </EmbeddedResource>
     <Compile Include="Misc.fs" />

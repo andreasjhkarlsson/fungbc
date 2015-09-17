@@ -14,6 +14,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{BF4D1F
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "FunGBC-WinForms", "src\winforms\FunGBC-WinForms.fsproj", "{A4AF3278-2940-4B92-9746-F909B0BC084C}"
 EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "FunGBC-Cocoa", "src\cocoa\FunGBC-Cocoa.fsproj", "{ABA6CA6B-C200-45FC-947B-12F11EA07E3C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -28,6 +30,10 @@ Global
 		{A4AF3278-2940-4B92-9746-F909B0BC084C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A4AF3278-2940-4B92-9746-F909B0BC084C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A4AF3278-2940-4B92-9746-F909B0BC084C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ABA6CA6B-C200-45FC-947B-12F11EA07E3C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ABA6CA6B-C200-45FC-947B-12F11EA07E3C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ABA6CA6B-C200-45FC-947B-12F11EA07E3C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ABA6CA6B-C200-45FC-947B-12F11EA07E3C}.Release|Any CPU.Build.0 = Release|Any CPU
 		{B65B2C68-63B9-485F-AA89-DAA1E3014234}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{B65B2C68-63B9-485F-AA89-DAA1E3014234}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B65B2C68-63B9-485F-AA89-DAA1E3014234}.Release|Any CPU.ActiveCfg = Release|Any CPU

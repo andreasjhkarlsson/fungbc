@@ -1,6 +1,6 @@
 *.suo
-obj/*
-bin/*
+obj/
+bin/
 .nuget/*
 FunGBC-Test/bin/*
 FunGBC-Test/obj/*
@@ -16,3 +16,5 @@ docs/Thumbs.db
 *.psess
 *.vsp
 *.mdb
+*.resources
+*.userprefs

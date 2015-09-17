@@ -3,7 +3,6 @@
 open System.Drawing
 open System.Reflection
 open System.Resources
-open System.Windows.Forms
 
 
 let executingAssembly = Assembly.GetExecutingAssembly()

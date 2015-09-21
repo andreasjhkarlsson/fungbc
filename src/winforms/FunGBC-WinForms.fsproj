@@ -47,7 +47,7 @@
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.1\Framework\v4.0\Microsoft.FSharp.Targets" />
   <ItemGroup>
-    <ProjectReference Include="..\lib\FunGBC.fsproj">
+    <ProjectReference Include="..\emulator\FunGBC.fsproj">
       <Project>{B65B2C68-63B9-485F-AA89-DAA1E3014234}</Project>
       <Name>FunGBC</Name>
     </ProjectReference>

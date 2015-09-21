@@ -11,23 +11,45 @@ open Debugger
 open Gpu
 open Resource
 open Units
+open System.Runtime.InteropServices
 
-type GameboyScreen () as this =
-    inherit Panel()
+type GameboyScreen () =
 
-    let framebuffer = new Bitmap(RESOLUTION.Width, RESOLUTION.Height)
+    inherit Panel ()
 
-    do
-        this.DoubleBuffered <- true
+    let screen = new Bitmap(RESOLUTION.Width, RESOLUTION.Height)
 
-    member this.PresentFrame bitmap =
-        lock framebuffer (fun () -> Graphics.FromImage(framebuffer).DrawImage(bitmap,0,0,framebuffer.Width,framebuffer.Height)) 
+    let lockScreen () =
+        screen.LockBits(Rectangle(0,0,screen.Width,screen.Height),ImageLockMode.ReadWrite,screen.PixelFormat)
 
-    member this.Capture () = lock framebuffer (fun () -> framebuffer.Clone () :?> Bitmap)
+    let unlockScreen lockData =
+        screen.UnlockBits lockData
+
+    let pixelBuffer, pixelBufferIndex =
+        let lockData = lockScreen ()
+        let stride = abs lockData.Stride
+        let memorySize = (stride * screen.Height) / 4
+        unlockScreen lockData
+        Array.create memorySize 0, fun x y -> (y * stride + (x * 4)) / 4
+ 
+    member this.Capture () = lock this (fun () -> screen.Clone () :?> Bitmap)
 
     override this.OnPaint args =
         base.OnPaint args
-        lock framebuffer (fun () -> args.Graphics.DrawImage(framebuffer,0,0,this.Width,this.Height))
+        lock this (fun () -> args.Graphics.DrawImage(screen,0,0,this.Width,this.Height))
+
+    interface Gpu.Renderer with
+        
+        member this.SetPixel x y color = Array.set pixelBuffer (pixelBufferIndex x y) color
+
+        member this.GetPixel x y = Array.get pixelBuffer (pixelBufferIndex x y)
+
+        member this.Flush () = 
+            lock this (fun () ->
+                let lockData = lockScreen ()
+                Marshal.Copy(pixelBuffer,0,lockData.Scan0,pixelBuffer.Length)
+                unlockScreen lockData
+            )
 
 type ScaleToolStripMenuItem(scale) =
     inherit ToolStripMenuItem(sprintf "%dx" scale)
@@ -280,7 +302,7 @@ type GameboyWindow () as this =
         | None ->
             ()
 
-        let gb = Gameboy.create rom (FrameReceiver screen.PresentFrame)
+        let gb = Gameboy.create rom screen
 
         Gameboy.start gb
         

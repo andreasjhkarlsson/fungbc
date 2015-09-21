@@ -35,8 +35,10 @@ type SpriteAttribute (c0: MemoryCell,c1: MemoryCell,c2: MemoryCell,c3: MemoryCel
     member this.Palette = match c3.Value |> bitStateOf 4 with |CLEAR -> Palette0 |SET -> Palette1
 
 
-type FrameReceiver =
-    |FrameReceiver of (Bitmap -> unit)
+type Renderer =
+    abstract member SetPixel: int -> int -> int -> unit
+    abstract member GetPixel: int -> int -> int
+    abstract member Flush: unit -> unit
 
 type TileMapSelect = |Map1 |Map0
 
@@ -181,36 +183,7 @@ type RenderStage = |ScanOAM of int |ScanVRAM of int |HBlank of int |VBlank of in
 
 type Speed = |Unlimited |Limit of int<Hz>
 
-type FrameBuffer(width: int, height: int) =
-    let bitmap = new Bitmap(width, height, PixelFormat.Format32bppArgb)
-
-    let lockBitmap () =
-        bitmap.LockBits(Rectangle(0,0,width,height),ImageLockMode.ReadWrite,bitmap.PixelFormat)
-
-    let unlockBitmap bitmapData = bitmap.UnlockBits bitmapData
-
-    let mutable bitmapData = lockBitmap ()
-
-    let buffer = Array.create (((abs bitmapData.Stride) * height) / 4) 0
-
-    let index x y = (y * bitmapData.Stride + (x * 4)) / 4
-
-    do
-        unlockBitmap bitmapData
-    
-    member this.SetPixel x y (color: Color) = buffer.[index x y] <- color.ToArgb ()
-
-    member this.ComparePixel x y (color: Color) = buffer.[index x y] = color.ToArgb ()
-
-    member this.BeginDraw () = bitmapData <- lockBitmap ()
-
-    member this.EndDraw () =
-        Marshal.Copy(buffer,0,bitmapData.Scan0,buffer.Length)
-        unlockBitmap bitmapData
-
-    member this.Bitmap = bitmap
-
-type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
+type GPU (systemClock, interrupts: InterruptManager,renderer: Renderer) =
 
     let clock = Clock.derive systemClock systemClock.Frequency :?> DerivedClock
 
@@ -219,8 +192,6 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
     let registers = GPURegisters()
 
     let stopWatch = Stopwatch.StartNew()
-
-    let frame = FrameBuffer(RESOLUTION.Width, RESOLUTION.Height)
 
     let drawLine y =
         
@@ -239,7 +210,8 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
                         do
                             Tile.decode8x8 tile (adjustedX % 8) (adjustedY % 8)
                             |> registers.BGP.Color
-                            |> frame.SetPixel x y
+                            |> (fun color -> color.ToArgb ())
+                            |> renderer.SetPixel x y
                     do drawPixel (x - 1)
             if scroll || (adjustedY >= 0 && adjustedY < screenHeight) then do drawPixel (lineWidth - 1)
 
@@ -286,8 +258,8 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
                             // Apparently index 0 is always transparent (regardless of palette??????)
                             if colorIndex <> 0 then 
                                 // Draw pixel if sprite is above background or if background is transparent
-                                if sprite.Priority = Above || (frame.ComparePixel screenX y registers.BGP.Transparent) then
-                                   do palette.Color colorIndex |> frame.SetPixel screenX y    
+                                if sprite.Priority = Above || ((renderer.GetPixel screenX y) = (registers.BGP.Transparent.ToArgb ())) then
+                                   do (palette.Color colorIndex).ToArgb () |> renderer.SetPixel screenX y    
 
                         // Next column
                         do drawTileLine (x - 1)
@@ -301,10 +273,7 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
                 |> Array.iter drawSprite
 
 
-    let drawScreen (FrameReceiver receiver) =
-        frame.EndDraw ()
-        receiver frame.Bitmap
-        frame.BeginDraw ()
+    let drawScreen = renderer.Flush
 
 
     let isVBlank = function |VBlank _ -> true |_ -> false
@@ -336,8 +305,6 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
 
     let mutable fps = 0.0
 
-    do
-        frame.BeginDraw ()
 
     member this.VRAM = vram
 
@@ -346,7 +313,7 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
     member this.ForceRedraw () =
         do
             {0..143} |> Seq.iter drawLine   
-            drawScreen frameReceiver 
+            drawScreen () 
 
     member this.FPS = fps
 
@@ -400,7 +367,7 @@ type GPU (systemClock, interrupts: InterruptManager,frameReceiver) =
                             interrupts.Current.Set <- Interrupts.VBlank
 
                         
-                        drawScreen frameReceiver
+                        drawScreen ()
                         match this.Speed with
                         | Unlimited ->
                             ()

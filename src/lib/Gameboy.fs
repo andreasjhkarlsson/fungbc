@@ -55,7 +55,7 @@ type GameboyComponents = {
 
 type Gameboy = |Gameboy of GameboyAgent*GameboyComponents
 
-let create (rom: ROM) (frameReceiver: FrameReceiver) =
+let create (rom: ROM) (renderer: Gpu.Renderer) =
     let ram = GBCRam()
 
     let systemClock = MutableClock(GBC_SYSTEM_CLOCK_FREQUENCY,0UL)
@@ -66,7 +66,7 @@ let create (rom: ROM) (frameReceiver: FrameReceiver) =
 
     let timers = Timers(systemClock,interrupts)
 
-    let gpu = GPU(systemClock, interrupts, frameReceiver)
+    let gpu = GPU(systemClock, interrupts, renderer)
 
     let mmu = MMU(gpu, rom,ram,keypad,interrupts,timers)
 

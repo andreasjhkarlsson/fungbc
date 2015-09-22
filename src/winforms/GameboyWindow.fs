@@ -13,7 +13,7 @@ open Resource
 open Units
 open System.Runtime.InteropServices
 
-type GameboyScreen () =
+type GameboyScreen () as this =
 
     inherit Panel ()
 
@@ -31,6 +31,9 @@ type GameboyScreen () =
         let memorySize = (stride * screen.Height) / 4
         unlockScreen lockData
         Array.create memorySize 0, fun x y -> (y * stride + (x * 4)) / 4
+
+    do
+        this.DoubleBuffered <- true
  
     member this.Capture () = lock this (fun () -> screen.Clone () :?> Bitmap)
 

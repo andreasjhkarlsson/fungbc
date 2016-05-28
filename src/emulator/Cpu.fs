@@ -467,9 +467,9 @@ type CPU (mmu, interrupts: InterruptManager, clock: MutableClock) as this =
             (r8 r).Value <- result
 
         | FGBC_PRINT_R8 (r) ->
-            printf "%d" (r8 r).Value
+            do Log.logf "%d" (r8 r).Value
         | FGBC_PRINTA_R8 (r) ->
-            printf "%c" <| char (r8 r).Value 
+            do Log.logf "%c" <| char (r8 r).Value 
 
         // Update clock
         clock.Tick (cycleCount instruction longCycle |> uint64)

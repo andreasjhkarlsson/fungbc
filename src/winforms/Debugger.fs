@@ -267,7 +267,6 @@ let attach gameboy (mapInfo: MapInfo) =
                             (match mapInfo.SymbolByAddress b.Address with Some s -> s.Name | None -> ""))
                     interactive ()
                 | "i" ->
-                    //printResult <| sprintf "Last executed instruction = %s" (formatInstruction previousPC)
                     interactive ()
                 | "a" ->
                     match parameter with

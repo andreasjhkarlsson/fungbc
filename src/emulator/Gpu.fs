@@ -1,7 +1,5 @@
 ﻿module Gpu
 
-open System.Drawing
-open System.Drawing.Imaging
 open System.Runtime.InteropServices
 open System.Diagnostics
 open System.Threading
@@ -210,7 +208,6 @@ type GPU (systemClock, interrupts: InterruptManager,renderer: Renderer) =
                         do
                             Tile.decode8x8 tile (adjustedX % 8) (adjustedY % 8)
                             |> registers.BGP.Color
-                            |> (fun color -> color.ToArgb ())
                             |> renderer.SetPixel x y
                     do drawPixel (x - 1)
             if scroll || (adjustedY >= 0 && adjustedY < screenHeight) then do drawPixel (lineWidth - 1)
@@ -258,8 +255,8 @@ type GPU (systemClock, interrupts: InterruptManager,renderer: Renderer) =
                             // Apparently index 0 is always transparent (regardless of palette??????)
                             if colorIndex <> 0 then 
                                 // Draw pixel if sprite is above background or if background is transparent
-                                if sprite.Priority = Above || ((renderer.GetPixel screenX y) = (registers.BGP.Transparent.ToArgb ())) then
-                                   do (palette.Color colorIndex).ToArgb () |> renderer.SetPixel screenX y    
+                                if sprite.Priority = Above || ((renderer.GetPixel screenX y) = (registers.BGP.Transparent)) then
+                                   do (palette.Color colorIndex) |> renderer.SetPixel screenX y    
 
                         // Next column
                         do drawTileLine (x - 1)
@@ -365,7 +362,6 @@ type GPU (systemClock, interrupts: InterruptManager,renderer: Renderer) =
                         // Generate VBlank interrupt regardless of the above
                         if interrupts.Enable then
                             interrupts.Current.Set <- Interrupts.VBlank
-
                         
                         drawScreen ()
                         match this.Speed with
@@ -376,7 +372,8 @@ type GPU (systemClock, interrupts: InterruptManager,renderer: Renderer) =
                             let rec limit () =
                                 if ((float Stopwatch.Frequency) / (float frequency) - (float stopWatch.ElapsedTicks)) >= 0.0 then
                                     // Yield remaining time slice to any other thread ready to run.
-                                    Thread.Sleep(0)
+                                    // TODO: Thread.Sleep is not available in PCL. Implement some other way.
+                                    // Thread.Sleep(0)
                                     limit ()
 
                             do limit ()

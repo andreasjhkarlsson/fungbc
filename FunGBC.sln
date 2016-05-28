@@ -1,20 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2012
-VisualStudioVersion = 12.0.31101.0
+# Visual Studio 14
+VisualStudioVersion = 14.0.25123.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "FunGBC", "src\emulator\FunGBC.fsproj", "{B65B2C68-63B9-485F-AA89-DAA1E3014234}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunGBC", "src\emulator\FunGBC.fsproj", "{E892F6B4-A6C7-4810-A5A2-5635FAD00D3F}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunGBC-Test", "test\FunGBC-Test.fsproj", "{61D8092F-158D-46D5-A7A0-8288E8CE27D0}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{BF4D1F13-5E8B-4201-8C8D-1F99EE82F57E}"
-	ProjectSection(SolutionItems) = preProject
-		.nuget\packages.config = .nuget\packages.config
-	EndProjectSection
-EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "FunGBC-WinForms", "src\winforms\FunGBC-WinForms.fsproj", "{A4AF3278-2940-4B92-9746-F909B0BC084C}"
-EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "FunGBC-Cocoa", "src\cocoa\FunGBC-Cocoa.fsproj", "{ABA6CA6B-C200-45FC-947B-12F11EA07E3C}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunGBC-WinForms", "src\winforms\\FunGBC-WinForms.fsproj", "{DD7556B0-7490-4A93-9AD1-20C1B43223DE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -22,24 +13,14 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{61D8092F-158D-46D5-A7A0-8288E8CE27D0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{61D8092F-158D-46D5-A7A0-8288E8CE27D0}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{61D8092F-158D-46D5-A7A0-8288E8CE27D0}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{61D8092F-158D-46D5-A7A0-8288E8CE27D0}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A4AF3278-2940-4B92-9746-F909B0BC084C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A4AF3278-2940-4B92-9746-F909B0BC084C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A4AF3278-2940-4B92-9746-F909B0BC084C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A4AF3278-2940-4B92-9746-F909B0BC084C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{ABA6CA6B-C200-45FC-947B-12F11EA07E3C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{ABA6CA6B-C200-45FC-947B-12F11EA07E3C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{ABA6CA6B-C200-45FC-947B-12F11EA07E3C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{ABA6CA6B-C200-45FC-947B-12F11EA07E3C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{B65B2C68-63B9-485F-AA89-DAA1E3014234}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B65B2C68-63B9-485F-AA89-DAA1E3014234}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B65B2C68-63B9-485F-AA89-DAA1E3014234}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B65B2C68-63B9-485F-AA89-DAA1E3014234}.Release|Any CPU.Build.0 = Release|Any CPU
-	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
+		{E892F6B4-A6C7-4810-A5A2-5635FAD00D3F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E892F6B4-A6C7-4810-A5A2-5635FAD00D3F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E892F6B4-A6C7-4810-A5A2-5635FAD00D3F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E892F6B4-A6C7-4810-A5A2-5635FAD00D3F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DD7556B0-7490-4A93-9AD1-20C1B43223DE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DD7556B0-7490-4A93-9AD1-20C1B43223DE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DD7556B0-7490-4A93-9AD1-20C1B43223DE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DD7556B0-7490-4A93-9AD1-20C1B43223DE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,6 +1,5 @@
 ﻿module Gameboy
 
-open System.Drawing
 open Rom
 open Ram
 open Interrupts
@@ -106,7 +105,7 @@ let create (rom: ROM) (renderer: Gpu.Renderer) =
                         mailbox.Post Run
                     with
                     | error ->
-                        printfn "Runtime errror!\n%s\n%s" error.Message error.StackTrace
+                        do Log.logf "Runtime errror!\n%s\n%s" error.Message error.StackTrace
                         mailbox.Post Kill
                 | Reset ->
                     cpu.Reset ()
@@ -118,7 +117,7 @@ let create (rom: ROM) (renderer: Gpu.Renderer) =
                         runEmulation 1
                         reply.Reply None 
                     with error ->
-                        printfn "Runtime errror!\n%s\n%s" error.Message error.StackTrace
+                        do Log.logf "Runtime errror!\n%s\n%s" error.Message error.StackTrace
                         reply.Reply (Some error) 
                         mailbox.Post Kill 
                 | Input (key,state)->

@@ -3,6 +3,7 @@
 open System.Windows.Forms
 open System.Drawing
 open System.Drawing.Imaging
+open System.IO
 open System.Timers
 open Constants
 open Gameboy
@@ -285,7 +286,14 @@ type GameboyWindow () as this =
         
             let ext = (System.IO.Path.GetExtension path).ToLower ()
             match ext with
-            | ".gb" ->  Rom.loadFromCartDump path
+            | ".gb" ->
+                let romData = path |> File.ReadAllBytes
+                let saveFile = path + ".sav"
+                Rom.load romData {
+                    new SaveFile with
+                        member x.Load () = try Some <| File.ReadAllBytes saveFile with _ -> None
+                        member x.Save data = do File.WriteAllBytes(saveFile,data)
+                    }
             | _ -> raise <| System.Exception(sprintf "Unsupported file extension: %s" ext)
 
         let mapInfo = 

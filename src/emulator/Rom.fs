@@ -6,6 +6,10 @@ open BitLogic
 open Units
 open Misc
 
+type SaveFile =
+    abstract Load: unit -> uint8[] option
+    abstract Save: uint8[] -> unit
+
 [<AbstractClass>]
 type ROM () =
     abstract ROMBlock: array<MemoryCell>
@@ -54,7 +58,7 @@ type CartHeader(bytes: array<uint8>) =
     
     let subBytes fromIndex toIndex = Array.sub bytes fromIndex (toIndex - fromIndex + 1)
 
-    let toText = System.Text.Encoding.ASCII.GetString
+    let toText (chars: uint8[]) = chars |> Array.map (char >> string) |> String.concat ""
 
     let parseError message = System.Exception("Error parsing rom header. " + message) |> raise
 
@@ -62,7 +66,6 @@ type CartHeader(bytes: array<uint8>) =
 
     member this.Title =
         subBytes 0x34 0x43
-        |> Array.toSeq
         |> Seq.takeWhile (not << (=) 0uy)
         |> Seq.toArray
         |> toText
@@ -127,7 +130,7 @@ type CartHeader(bytes: array<uint8>) =
         member this.GlobalChecksum = (bytes.[0x4E] <<< 8) ||| (bytes.[0x4F]) // Big endian
 
 [<AbstractClass>]
-type CartROM (header,data,savefile) =
+type CartROM (header,data,saveFile: SaveFile) =
     inherit ROM ()
 
     let header = CartHeader(Array.sub data 0x100 0x50)
@@ -145,17 +148,19 @@ type CartROM (header,data,savefile) =
         )
 
     do
-        try
+        match saveFile.Load () with
+        | Some saveFile ->
             // Load RAM contents from savefile
-            File.ReadAllBytes savefile |> Array.iteri (fun address value ->
+            saveFile |> Array.iteri (fun address value ->
                 let bank = int (address / (8 *kB))
                 let bankAddress = address % (8*kB |> int)
                 ramBanks.[bank].[bankAddress] <- value
-            )
-        with
-        | _ -> () // Simpy means there is no savefile yet
+            ) 
+        | None ->
+            ()
 
-    member this.SaveRAMFile () = File.WriteAllBytes(savefile, Array.concat ramBanks)
+
+    member this.GetRAMData () = Array.concat ramBanks
 
     abstract RAMBank: unit -> int
 
@@ -286,10 +291,10 @@ type MBC3CartROM(header,data,savefile) =
         with set value =
             match value &&& 0xFuy with
             | 0xAuy ->
-                printfn "Enable RAM"
+                do Log.log "Enable RAM"
             | _ ->
-                printfn "Disable RAM"
-                this.SaveRAMFile ()
+                do Log.log "Disable RAM"
+                do savefile.Save <| this.GetRAMData ()
 
     override this.Reg1
         with set value =
@@ -301,28 +306,27 @@ type MBC3CartROM(header,data,savefile) =
             match value with
             |ramBank when value >= 0uy && value <= 3uy ->
                 activeRAMBank <- ramBank
-                printfn "Load RAM bank: %d" activeRAMBank
+                do Log.logf "Load RAM bank: %d" activeRAMBank
             |rtc when value >= 0x8uy && value <= 0xCuy ->
-                printfn "Load RTC"
+                do Log.log "Load RTC"
             |_ ->
                 ()
 
     override this.Reg3
         with set value =
             if value = 1uy then
-                printfn "Latch RTC"
+                do Log.log "Latch RTC"
 
-let loadFromCartDump path =
-    let data = File.ReadAllBytes path
-    let header = CartHeader(Array.sub data 0x100 0x50)
-    let savefile = path + ".sav"
+let load rom saveFile =
+
+    let header = CartHeader(Array.sub rom 0x100 0x50)
 
     match header.CartridgeType with
     | CartridgeType.ROM _ ->
-        StaticCartROM(header,data,savefile) :> CartROM
+        StaticCartROM(header,rom,saveFile) :> CartROM
     | CartridgeType.MBC1 _ ->
-        MBC1CartROM(header,data,savefile) :> CartROM
+        MBC1CartROM(header,rom,saveFile) :> CartROM
     | CartridgeType.MBC3 _ ->
-        MBC3CartROM(header,data,savefile) :> CartROM
+        MBC3CartROM(header,rom,saveFile) :> CartROM
     | _ ->
         raise <| System.Exception("Cart type unsupported")

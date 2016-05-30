@@ -116,7 +116,8 @@ type GameboyWindow () as this =
          ("Fabolous Pink", Palette.Predefined.fabolousPink)
          ("Dreamy Blue", Palette.Predefined.dreamyBlue)
          ("Horror Red", Palette.Predefined.horrorRed)
-         ("Summer Green", Palette.Predefined.summerGreen)]
+         ("Summer Green", Palette.Predefined.summerGreen)
+         ("Psychedelic", Palette.Predefined.psychedelic)]
         |> List.map (fun (name, palette) -> new PaletteToolStripMenuItem(name,palette))
 
     let screenCapMenuItem = new ToolStripMenuItem("Save screen capture...") 

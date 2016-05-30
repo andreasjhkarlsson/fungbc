@@ -22,3 +22,5 @@ module Predefined =
     let horrorRed = create (0xFFF5F5F5) (0xFFFF0000) (0xFF8B0000) (0xFF000000)
 
     let summerGreen = create (0xFFF5FFFA) (0xFFF0E68C) (0xFF9ACD32) (0xFF6B8E23)
+
+    let psychedelic = create 0xFF00FF00 0xffff1493 0xFF00ffff 0xff000000

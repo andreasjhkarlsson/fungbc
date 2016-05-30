@@ -16,12 +16,7 @@ A fairly powerful computer is needed to achieve full fps.
 #### Building
 
 ###### Windows
-Build fungbc.sln with Visual Studio 2013
- 
- 
-###### *nix
-
-Build using make. Requires mono.
+Build fungbc.sln with Visual Studio, xbuild or Xamarin Studio
 
 #### Screenshots
 

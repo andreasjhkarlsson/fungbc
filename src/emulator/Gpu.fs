@@ -12,6 +12,7 @@ open Constants
 open BitLogic
 open Interrupts
 open Palette
+open Host
 
 type OBJBGPriority = |Above |Behind
 type SpritePalette = |Palette0 |Palette1
@@ -181,7 +182,7 @@ type RenderStage = |ScanOAM of int |ScanVRAM of int |HBlank of int |VBlank of in
 
 type Speed = |Unlimited |Limit of int<Hz>
 
-type GPU (systemClock, interrupts: InterruptManager,renderer: Renderer) =
+type GPU (systemClock, interrupts: InterruptManager,renderer: Renderer, host: Host) =
 
     let clock = Clock.derive systemClock systemClock.Frequency :?> DerivedClock
 
@@ -370,10 +371,17 @@ type GPU (systemClock, interrupts: InterruptManager,renderer: Renderer) =
                         | Limit frequency ->
                             
                             let rec limit () =
-                                if ((float Stopwatch.Frequency) / (float frequency) - (float stopWatch.ElapsedTicks)) >= 0.0 then
-                                    // Yield remaining time slice to any other thread ready to run.
-                                    // TODO: Thread.Sleep is not available in PCL. Implement some other way.
-                                    // Thread.Sleep(0)
+
+                                let ticksLeft = ((float Stopwatch.Frequency) / (float frequency) - (float stopWatch.ElapsedTicks))
+
+                                if ticksLeft >= 0.0 then
+                                    
+                                    do
+                                        ((ticksLeft / (float) Stopwatch.Frequency))
+                                        |> (*) (10.0**6.0)
+                                        |> int
+                                        |> host.Idle
+
                                     limit ()
 
                             do limit ()

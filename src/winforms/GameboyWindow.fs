@@ -5,6 +5,7 @@ open System.Drawing
 open System.Drawing.Imaging
 open System.IO
 open System.Timers
+open System.Threading
 open Constants
 open Gameboy
 open Rom
@@ -13,6 +14,24 @@ open Gpu
 open Resource
 open Units
 open System.Runtime.InteropServices
+
+module HighPrecisionSleep =
+    // Super unsupported function but totally cool.
+    // Allows you to sleep in 100 ns intervals.
+    // Since min windows wait time is 15.6 ms this probably won't yield
+    // the thread so its only use is to reduce cpu power usage, which is fair enough.
+    [<DllImport(@"ntdll.dll", EntryPoint="ZwDelayExecution")>]
+    extern nativeint ZwDelayExecution(unativeint unused,int64* time)
+
+    let Sleep micros =
+        match OS.this with
+        | OS.Windows ->
+            let mutable nanos = -10L*(int64 micros)
+            if nanos < 0L then do ZwDelayExecution(0un,&&nanos) |> ignore
+        | _ ->
+            // TODO: Call usleep or something
+            Thread.Sleep(0)
+
 
 type GameboyScreen () as this =
 
@@ -313,9 +332,11 @@ type GameboyWindow () as this =
         | None ->
             ()
 
-        let gb = Gameboy.create rom screen
+        let gb = Gameboy.create rom screen this
 
         Gameboy.start gb
+
+        gb |> Gameboy.setSpeed Unlimited
         
         Debugger.attachOnCtrlC gb
 
@@ -408,3 +429,15 @@ type GameboyWindow () as this =
             limitFPSItem.Enabled <- false
 
     member this.HelpAndAbout _ = MessageBox.Show(Resource.about) |> ignore
+
+    interface Host.Host with
+        member this.Idle micros =
+            // Simply spinlock if time is < 500 microseconds to get close to perfect fps
+            if micros > 500 then do HighPrecisionSleep.Sleep (micros/2)
+        member this.Error ex =
+            runInUIContext (fun () ->
+                MessageBox.Show(ex.Message,
+                                sprintf "%s encountered an unexpected error" Resource.title, 
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Error) |> ignore
+            )

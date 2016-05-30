@@ -9,11 +9,6 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunGBC-WinForms", "src\winf
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunGBC-iOS", "src\ios\FunGBC-iOS.fsproj", "{7D43ECCF-08FC-4D8F-AD28-E8C913F46346}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{CA93EC3E-6F85-402D-9CDE-4EADCC90073A}"
-	ProjectSection(SolutionItems) = preProject
-		Performance1.psess = Performance1.psess
-	EndProjectSection
-EndProject
 Global
 	GlobalSection(Performance) = preSolution
 		HasPerformanceSessions = true

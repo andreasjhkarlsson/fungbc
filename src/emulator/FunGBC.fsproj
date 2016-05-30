@@ -57,6 +57,7 @@
     <Compile Include="Interrupts.fs" />
     <Compile Include="Timer.fs" />
     <Compile Include="Palette.fs" />
+    <Compile Include="Host.fs" />
     <Compile Include="Gpu.fs" />
     <Compile Include="Input.fs" />
     <Compile Include="Mmu.fs" />

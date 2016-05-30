@@ -54,6 +54,7 @@
     </EmbeddedResource>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Resource.fs" />
+    <Compile Include="OS.fs" />
     <Compile Include="Debugger.fs" />
     <Compile Include="GameboyWindow.fs" />
     <Compile Include="Program.fs" />

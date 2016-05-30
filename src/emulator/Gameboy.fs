@@ -11,6 +11,7 @@ open Clock
 open Constants
 open Input
 open Palette
+open Host
 
 type State = |Running |Paused 
 
@@ -37,7 +38,6 @@ type Message =
     |Write of PropertyValue
     |Read of PropertyReply
 
-
 type GameboyAgent = MailboxProcessor<Message>
 
 type GameboyComponents = {
@@ -49,12 +49,13 @@ type GameboyComponents = {
         Gpu: GPU
         Mmu: MMU
         Cpu: CPU
+        Host: Host
     }
 
 
 type Gameboy = |Gameboy of GameboyAgent*GameboyComponents
 
-let create (rom: ROM) (renderer: Gpu.Renderer) =
+let create (rom: ROM) renderer host =
     let ram = GBCRam()
 
     let systemClock = MutableClock(GBC_SYSTEM_CLOCK_FREQUENCY,0UL)
@@ -65,7 +66,7 @@ let create (rom: ROM) (renderer: Gpu.Renderer) =
 
     let timers = Timers(systemClock,interrupts)
 
-    let gpu = GPU(systemClock, interrupts, renderer)
+    let gpu = GPU(systemClock, interrupts, renderer, host)
 
     let mmu = MMU(gpu, rom,ram,keypad,interrupts,timers)
 
@@ -77,7 +78,8 @@ let create (rom: ROM) (renderer: Gpu.Renderer) =
 
     
     let components = {Ram = ram; Clock = systemClock; Interrupts = interrupts;
-                      Keypad = keypad; Timers = timers; Gpu = gpu; Mmu = mmu; Cpu = cpu}
+                      Keypad = keypad; Timers = timers; Gpu = gpu; Mmu = mmu;
+                      Cpu = cpu; Host = host}
 
     let agent = GameboyAgent.Start(fun mailbox ->
             // Run the emulator for a number of iterations
@@ -106,6 +108,7 @@ let create (rom: ROM) (renderer: Gpu.Renderer) =
                     with
                     | error ->
                         do Log.logf "Runtime errror!\n%s\n%s" error.Message error.StackTrace
+                        do host.Error error
                         mailbox.Post Kill
                 | Reset ->
                     cpu.Reset ()
@@ -118,6 +121,7 @@ let create (rom: ROM) (renderer: Gpu.Renderer) =
                         reply.Reply None 
                     with error ->
                         do Log.logf "Runtime errror!\n%s\n%s" error.Message error.StackTrace
+                        do host.Error error
                         reply.Reply (Some error) 
                         mailbox.Post Kill 
                 | Input (key,state)->

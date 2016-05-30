@@ -28,7 +28,9 @@ type GameboyViewController (handle:IntPtr) =
                             member x.Load () = None
                             member x.Save _ = () }
 
-        let gb = Gameboy.create rom (this.GameboyView :> Gpu.Renderer)
+        let gb = Gameboy.create rom (this.GameboyView :> Gpu.Renderer) { new Host.Host with
+                                                                            member x.Idle _ = ()
+                                                                            member x.Error _ = () }
 
         do gb |> Gameboy.start
         

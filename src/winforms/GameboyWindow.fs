@@ -45,12 +45,18 @@ type GameboyScreen () as this =
     let unlockScreen lockData =
         screen.UnlockBits lockData
 
+    let stride =
+        let lockData = lockScreen ()
+        let res = abs lockData.Stride
+        unlockScreen lockData
+        res
+
     let pixelBuffer, pixelBufferIndex =
         let lockData = lockScreen ()
         let stride = abs lockData.Stride
         let memorySize = (stride * screen.Height) / 4
         unlockScreen lockData
-        Array.create memorySize 0, fun x y -> (y * stride + (x * 4)) / 4
+        Array.create memorySize 0, fun x y -> ((y * stride + (x * 4)) / 4)
 
     do
         this.DoubleBuffered <- true
@@ -63,9 +69,9 @@ type GameboyScreen () as this =
 
     interface Gpu.Renderer with
         
-        member this.SetPixel x y color = Array.set pixelBuffer (pixelBufferIndex x y) color
+        member this.SetPixel x y color = Array.set pixelBuffer (((y * stride + (x * 4)) / 4)) color
 
-        member this.GetPixel x y = Array.get pixelBuffer (pixelBufferIndex x y)
+        member this.GetPixel x y = Array.get pixelBuffer (((y * stride + (x * 4)) / 4))
 
         member this.Flush () = 
             lock this (fun () ->

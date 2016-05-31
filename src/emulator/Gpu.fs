@@ -41,6 +41,8 @@ type Renderer =
 
 type TileMapSelect = |Map1 |Map0
 
+type TileMapMode = Signed | Unsigned
+
 type TileDataSelect = |Tiles0 |Tiles1
 
 type LCDControl (init) =
@@ -111,6 +113,18 @@ type PaletteMapRegister(init,initPalette) =
 
     member this.Color index = palette.[(int this.Value >>> (index * 2)) &&& 0x3]
 
+type TileDataBlock(memory: MemoryBlock,offset,count,mode) =
+    let data =
+        let createTile index = Array.sub memory (offset + index * 16) 16 |> TileData
+        Array.init 256 createTile 
+       
+    member this.Item index = data.[if mode = Signed then int (int8 index) + 128 else index]
+
+
+type TileMap(memory: MemoryBlock,offset,count) =
+    let data = Array.sub memory offset count
+
+    member this.Item (x,y) = (Array.get data (x + y * 32)).Value
 
 type VRAM () =
     let memory = 8*kB |> readWriteMemoryBlock
@@ -124,25 +138,20 @@ type VRAM () =
                             oam.[4*index+3])
         )
 
-    let mapTiles offset count =
-        let createTile index = Array.sub memory (offset + index * 16) 16 |> TileData
-        Array.init 256 createTile
+    let tiles1 = TileDataBlock(memory,0,256,Unsigned)
 
-    let tiles1 = mapTiles 0 256
-    let tiles0 = mapTiles 2048 256
+    let tiles0 = TileDataBlock(memory,2048,256,Signed)
 
-    let tileMap0 = Array.sub memory 0x1800 1024
-    let tileMap1 = Array.sub memory  0x1C00 1024
+    let tileMap0 = TileMap(memory,0x1800,1024)
+    let tileMap1 = TileMap(memory,0x1C00,1024)
 
-    // Use useless constraints on the index to clarify that
-    // tiles1 are indexes as 0 - 255 and tiles0 as -128 - 127
-    member this.Tile1 (index: uint8) =
-        tiles1.[index |> int]
-    member this.Tile0 (index: int8) =
-        tiles0.[int index + 128]
+    member this.Tiles1 = tiles1
 
-    member this.TileMap0 x y = (Array.get tileMap0 (x + y * 32)).Value
-    member this.TileMap1 x y = (Array.get tileMap1 (x + y * 32)).Value
+    member this.Tiles0 = tiles0
+
+    member this.TileMap0 = tileMap0
+
+    member this.TileMap1 = tileMap1
 
     member this.ObjectAttribute index = objectAttributeTable.[index]
 
@@ -198,14 +207,14 @@ type GPU (systemClock, interrupts: InterruptManager,renderer: Renderer, host: Ho
         let screenHeight = RESOLUTION.Height
         let lcdc = registers.LCDC
 
-        let drawTileLayer tileMap tileData xOffset yOffset scroll = 
+        let drawTileLayer (tileMap: TileMap) (tileData: TileDataBlock) xOffset yOffset scroll = 
             let adjustedY = y + yOffset
 
             let rec drawPixel x =
                 if x >= 0 then
                     let adjustedX = x + xOffset
                     if scroll || (adjustedX >= 0 && adjustedX < lineWidth) then
-                        let tile = tileMap ((adjustedX % 256) / 8) ((adjustedY % 256) / 8) |> tileData
+                        let tile = tileData.[tileMap.[((adjustedX % 256) / 8),((adjustedY % 256) / 8)] |> int]
                         do
                             Tile.decode8x8 tile (adjustedX % 8) (adjustedY % 8)
                             |> registers.BGP.Color
@@ -213,7 +222,7 @@ type GPU (systemClock, interrupts: InterruptManager,renderer: Renderer, host: Ho
                     do drawPixel (x - 1)
             if scroll || (adjustedY >= 0 && adjustedY < screenHeight) then do drawPixel (lineWidth - 1)
 
-        let tileData = match registers.LCDC.BGAndWindowTileDataSelect with |Tiles0 -> int8 >> vram.Tile0|Tiles1 -> vram.Tile1
+        let tileData = match registers.LCDC.BGAndWindowTileDataSelect with |Tiles0 -> vram.Tiles0 |Tiles1 -> vram.Tiles1
 
         // Draw background
         if lcdc.BGDisplay then do
@@ -238,10 +247,10 @@ type GPU (systemClock, interrupts: InterruptManager,renderer: Renderer, host: Ho
                 let tileY = if sprite.YFlip then (spriteHeight-1) - (sprite.TY - y) else (sprite.TY - y)
 
                 // Find tile to be decoded
-                let tile = if tileY > 7 then vram.Tile1 (sprite.Tile+1uy) else vram.Tile1 sprite.Tile
+                let tile = if tileY > 7 then vram.Tiles1.[sprite.Tile+1uy |> int] else vram.Tiles1.[sprite.Tile |> int]
 
                 // Wrap y
-                let tileY = tileY % 8
+                let tileY = tileY % 8 
 
                 let rec drawTileLine x =
                     if x >= 0 then

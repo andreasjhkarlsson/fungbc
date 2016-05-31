@@ -14,6 +14,9 @@ open Gpu
 open Resource
 open Units
 open System.Runtime.InteropServices
+open Microsoft.FSharp.NativeInterop
+
+#nowarn "9" "51" // Silences native ptr warnings
 
 module HighPrecisionSleep =
     // Super unsupported function but totally cool.
@@ -37,48 +40,61 @@ type GameboyScreen () as this =
 
     inherit Panel ()
 
-    let screen = new Bitmap(RESOLUTION.Width, RESOLUTION.Height)
+    let mutable front = new Bitmap(RESOLUTION.Width, RESOLUTION.Height)
 
-    let lockScreen () =
-        screen.LockBits(Rectangle(0,0,screen.Width,screen.Height),ImageLockMode.ReadWrite,screen.PixelFormat)
+    let mutable back = front.Clone () :?> Bitmap
 
-    let unlockScreen lockData =
-        screen.UnlockBits lockData
+    let lockBuffer (bitmap: Bitmap) =
+        bitmap.LockBits(Rectangle(0,0,bitmap.Width,front.Height),ImageLockMode.ReadWrite,bitmap.PixelFormat)    
 
-    let stride =
-        let lockData = lockScreen ()
-        let res = abs lockData.Stride
-        unlockScreen lockData
-        res
+    let mutable lockData = lockBuffer back
 
-    let pixelBuffer, pixelBufferIndex =
-        let lockData = lockScreen ()
-        let stride = abs lockData.Stride
-        let memorySize = (stride * screen.Height) / 4
-        unlockScreen lockData
-        Array.create memorySize 0, fun x y -> ((y * stride + (x * 4)) / 4)
+    let flip () =
+        
+        lock this (fun () ->
+            
+            do back.UnlockBits lockData
+
+            let tmp = front
+            front <- back
+            back <- tmp
+            
+            lockData <- lockBuffer back
+        )
+
 
     do
         this.DoubleBuffered <- true
  
-    member this.Capture () = lock this (fun () -> screen.Clone () :?> Bitmap)
+    member this.Capture () = lock this (fun () -> front.Clone () :?> Bitmap)
 
     override this.OnPaint args =
         base.OnPaint args
-        lock this (fun () -> args.Graphics.DrawImage(screen,0,0,this.Width,this.Height))
+        lock this (fun () -> args.Graphics.DrawImage(front,0,0,this.Width,this.Height))
 
+    
     interface Gpu.Renderer with
         
-        member this.SetPixel x y color = Array.set pixelBuffer (((y * stride + (x * 4)) / 4)) color
+        member this.SetPixel x y color =
+            // No need to lock access as lockData is only changed from
+            // flip which is only called from Flush (same threads that calls this)
 
-        member this.GetPixel x y = Array.get pixelBuffer (((y * stride + (x * 4)) / 4))
+            let bufferPtr = NativePtr.ofNativeInt lockData.Scan0
 
-        member this.Flush () = 
-            lock this (fun () ->
-                let lockData = lockScreen ()
-                Marshal.Copy(pixelBuffer,0,lockData.Scan0,pixelBuffer.Length)
-                unlockScreen lockData
-            )
+            let pixelPtr = NativePtr.add bufferPtr ((y * lockData.Stride + (x * 4)) / 4)
+
+            do NativePtr.write pixelPtr color
+            
+
+        member this.GetPixel x y = 
+
+            let bufferPtr = NativePtr.ofNativeInt lockData.Scan0
+
+            let pixelPtr = NativePtr.add bufferPtr ((y * lockData.Stride + (x * 4)) / 4)
+
+            NativePtr.read pixelPtr
+
+        member this.Flush () = do flip ()
 
 type ScaleToolStripMenuItem(scale) =
     inherit ToolStripMenuItem(sprintf "%dx" scale)

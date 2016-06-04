@@ -51,3 +51,7 @@ let inline nibbles value = ((value &&& 0xF0uy) >>> 4, value &&& 0xFuy)
 let inline highNibble value = fst (nibbles value)
 
 let inline lowNibble value = snd (nibbles value)
+
+let inline bitsValue value from ``to`` =
+    let from, ``to`` = max from ``to``, min from ``to``
+    (value >>> ``to``) &&& ((1 <<< (from - ``to`` + 1)) - 1)

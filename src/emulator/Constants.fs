@@ -14,3 +14,7 @@ type Dimension = {Width: int; Height: int}
 let RESOLUTION = {Width = 160; Height = 144}
 
 let APPLICATION_TITLE = "FunGBC"
+
+type AudioConfig = {SampleRate: int<Hz>; BitDepth: int}
+
+let AudioConfig = {SampleRate = 44100<Hz>; BitDepth = 8}

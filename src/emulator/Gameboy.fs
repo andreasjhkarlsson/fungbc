@@ -47,6 +47,7 @@ type GameboyComponents = {
         Keypad: Keypad
         Timers: Timers
         Gpu: GPU
+        Gbs: Sound.GBS
         Mmu: MMU
         Cpu: CPU
         Host: Host
@@ -55,7 +56,7 @@ type GameboyComponents = {
 
 type Gameboy = |Gameboy of GameboyAgent*GameboyComponents
 
-let create (rom: ROM) renderer host =
+let create (rom: ROM) host =
     let ram = GBCRam()
 
     let systemClock = MutableClock(GBC_SYSTEM_CLOCK_FREQUENCY,0UL)
@@ -66,9 +67,11 @@ let create (rom: ROM) renderer host =
 
     let timers = Timers(systemClock,interrupts)
 
-    let gpu = GPU(systemClock, interrupts, renderer, host)
+    let gpu = GPU(systemClock, interrupts, host)
 
-    let mmu = MMU(gpu, rom,ram,keypad,interrupts,timers)
+    let gbs = Sound.GBS(systemClock,host)
+
+    let mmu = MMU(gpu,rom,ram,gbs,keypad,interrupts,timers)
 
     let cpu = CPU(mmu,interrupts,systemClock)
 
@@ -79,18 +82,21 @@ let create (rom: ROM) renderer host =
     
     let components = {Ram = ram; Clock = systemClock; Interrupts = interrupts;
                       Keypad = keypad; Timers = timers; Gpu = gpu; Mmu = mmu;
-                      Cpu = cpu; Host = host}
+                      Cpu = cpu; Host = host; Gbs = gbs}
 
     let agent = GameboyAgent.Start(fun mailbox ->
             // Run the emulator for a number of iterations
             let rec runEmulation iters =
                 if iters > 0 then
                     // Execute a single instruction
-                    cpu.Execute ()
+                    do cpu.Execute ()
                     // Updates gpu state (may draw and raise interrupt)
-                    gpu.Update ()
+                    do gpu.Update ()
+                    // Update sound
+                    do gbs.Update ()
                     // Increment timers (may raise interrupt)
-                    timers.Update ()
+                    do timers.Update ()
+
                     runEmulation (iters - 1)
                                     
             let rec handleMessage state = async {
@@ -152,8 +158,10 @@ let create (rom: ROM) renderer host =
                     ()
                 | Pause reply ->
                     reply.Reply ()
+                    do host.SoundReceiver.Stop ()
                     return! handleMessage Paused
                 | Start ->
+                    do host.SoundReceiver.Start ()
                     mailbox.Post Run
                     return! handleMessage Running
                 | _ ->

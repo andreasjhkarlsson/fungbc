@@ -45,6 +45,7 @@
   <ItemGroup>
     <Compile Include="Misc.fs" />
     <Compile Include="Units.fs" />
+    <Compile Include="Types.fs" />
     <Compile Include="Log.fs" />
     <Compile Include="Constants.fs" />
     <Compile Include="BitLogic.fs" />
@@ -60,6 +61,7 @@
     <Compile Include="Host.fs" />
     <Compile Include="Gpu.fs" />
     <Compile Include="Input.fs" />
+    <Compile Include="Sound.fs" />
     <Compile Include="Mmu.fs" />
     <Compile Include="Register.fs" />
     <Compile Include="Instruction.fs" />

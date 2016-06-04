@@ -1,6 +1,6 @@
 ﻿module Palette
 
-type Color = int
+open Types
 
 type Palette = Color*Color*Color*Color
 

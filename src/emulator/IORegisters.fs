@@ -27,5 +27,7 @@ type ValueBackedIORegister(init) =
 
     member this.SetBit bit state = this.Value <- controlBit bit state this.Value
 
+    member this.GetBits from ``to`` = BitLogic.bitsValue (int this.Value) from ``to`` |> uint8
+
 
     

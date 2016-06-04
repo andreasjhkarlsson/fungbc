@@ -7,6 +7,8 @@ open Constants
 [<AbstractClass>]
 type Clock (frequency: int<Hz>) =
 
+    let mutable lastTick = 0UL
+
     abstract Ticks: uint64 with get
 
     member this.Frequency = frequency
@@ -14,6 +16,13 @@ type Clock (frequency: int<Hz>) =
     member this.Seconds = ((float this.Ticks) / (float frequency) )
 
     member this.MilliSeconds = this.Seconds * 1000.0
+
+    member this.Ticked fn =
+        let ticks = this.Ticks
+        if lastTick <> ticks then
+            do fn ticks
+            lastTick <- ticks
+
 
 
 
@@ -58,7 +67,6 @@ type FlipClock(reference: Clock) =
     member this.Flipped = this.Ticks = 1UL
 
     member this.Reset () = if this.Flipped then this.Tick 1UL
-        
 
 
 // Create a new clock from an existing one with specified frequency

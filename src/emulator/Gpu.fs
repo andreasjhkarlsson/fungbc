@@ -33,12 +33,6 @@ type SpriteAttribute (c0: MemoryCell,c1: MemoryCell,c2: MemoryCell,c3: MemoryCel
     member this.XFlip = c3.Value |> isBitSet 5 |> not
     member this.Palette = match c3.Value |> bitStateOf 4 with |CLEAR -> Palette0 |SET -> Palette1
 
-
-type Renderer =
-    abstract member SetPixel: int -> int -> int -> unit
-    abstract member GetPixel: int -> int -> int
-    abstract member Flush: unit -> unit
-
 type TileMapSelect = |Map1 |Map0
 
 type TileMapMode = Signed | Unsigned
@@ -191,7 +185,7 @@ type RenderStage = |ScanOAM of int |ScanVRAM of int |HBlank of int |VBlank of in
 
 type Speed = |Unlimited |Limit of int<Hz>
 
-type GPU (systemClock, interrupts: InterruptManager,renderer: Renderer, host: Host) =
+type GPU (systemClock, interrupts: InterruptManager,host: Host) =
 
     let clock = Clock.derive systemClock systemClock.Frequency :?> DerivedClock
 
@@ -218,7 +212,7 @@ type GPU (systemClock, interrupts: InterruptManager,renderer: Renderer, host: Ho
                         do
                             Tile.decode8x8 tile (adjustedX % 8) (adjustedY % 8)
                             |> registers.BGP.Color
-                            |> renderer.SetPixel x y
+                            |> host.Renderer.SetPixel x y
                     do drawPixel (x - 1)
             if scroll || (adjustedY >= 0 && adjustedY < screenHeight) then do drawPixel (lineWidth - 1)
 
@@ -265,8 +259,8 @@ type GPU (systemClock, interrupts: InterruptManager,renderer: Renderer, host: Ho
                             // Apparently index 0 is always transparent (regardless of palette??????)
                             if colorIndex <> 0 then 
                                 // Draw pixel if sprite is above background or if background is transparent
-                                if sprite.Priority = Above || ((renderer.GetPixel screenX y) = (registers.BGP.Transparent)) then
-                                   do (palette.Color colorIndex) |> renderer.SetPixel screenX y    
+                                if sprite.Priority = Above || ((host.Renderer.GetPixel screenX y) = (registers.BGP.Transparent)) then
+                                   do (palette.Color colorIndex) |> host.Renderer.SetPixel screenX y    
 
                         // Next column
                         do drawTileLine (x - 1)
@@ -280,7 +274,7 @@ type GPU (systemClock, interrupts: InterruptManager,renderer: Renderer, host: Ho
                 |> Array.iter drawSprite
 
 
-    let drawScreen = renderer.Flush
+    let drawScreen = host.Renderer.Flush
 
 
     let isVBlank = function |VBlank _ -> true |_ -> false

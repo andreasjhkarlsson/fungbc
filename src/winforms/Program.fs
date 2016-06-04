@@ -8,6 +8,8 @@ open Gameboy
 open GameboyWindow
 open Constants
 open Log
+open NAudio
+open NAudio.Wave
 
 [<EntryPoint>]
 [<STAThread>]

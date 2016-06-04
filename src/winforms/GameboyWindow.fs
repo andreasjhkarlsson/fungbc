@@ -13,6 +13,7 @@ open Debugger
 open Gpu
 open Resource
 open Units
+open AudioDevice
 open System.Runtime.InteropServices
 open Microsoft.FSharp.NativeInterop
 
@@ -52,7 +53,6 @@ type GameboyScreen () as this =
     let flip () =
         
         lock this (fun () ->
-            
             do back.UnlockBits lockData
 
             let tmp = front
@@ -73,12 +73,11 @@ type GameboyScreen () as this =
         lock this (fun () -> args.Graphics.DrawImage(front,0,0,this.Width,this.Height))
 
     
-    interface Gpu.Renderer with
+    interface Host.Renderer with
         
         member this.SetPixel x y color =
             // No need to lock access as lockData is only changed from
             // flip which is only called from Flush (same threads that calls this)
-
             let bufferPtr = NativePtr.ofNativeInt lockData.Scan0
 
             let pixelPtr = NativePtr.add bufferPtr ((y * lockData.Stride + (x * 4)) / 4)
@@ -87,7 +86,6 @@ type GameboyScreen () as this =
             
 
         member this.GetPixel x y = 
-
             let bufferPtr = NativePtr.ofNativeInt lockData.Scan0
 
             let pixelPtr = NativePtr.add bufferPtr ((y * lockData.Stride + (x * 4)) / 4)
@@ -157,6 +155,8 @@ type GameboyWindow () as this =
     let limitFPSItem = new ToolStripMenuItem("Limit FPS")
 
     let helpAndAboutMenuItem = new ToolStripMenuItem("About")
+
+    let audioDevice = AudioDevice ()
 
     let mutable gameboy = None
 
@@ -255,6 +255,8 @@ type GameboyWindow () as this =
         redrawTimer.Tick.Add (fun _ -> this.Refresh ())
 
         redrawTimer.Enabled <- true
+
+        audioDevice.Init ()
 
     member this.Reset _ = gameboy |> Option.iter Gameboy.reset
 
@@ -355,11 +357,9 @@ type GameboyWindow () as this =
         | None ->
             ()
 
-        let gb = Gameboy.create rom screen this
+        let gb = Gameboy.create rom this
 
         Gameboy.start gb
-
-        gb |> Gameboy.setSpeed Unlimited
         
         Debugger.attachOnCtrlC gb
 
@@ -464,3 +464,6 @@ type GameboyWindow () as this =
                                 MessageBoxButtons.OK,
                                 MessageBoxIcon.Error) |> ignore
             )
+        member this.Renderer = screen :> Host.Renderer
+
+        member this.SoundReceiver = audioDevice :> Host.SoundReceiver

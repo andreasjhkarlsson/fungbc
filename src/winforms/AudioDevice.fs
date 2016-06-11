@@ -20,9 +20,9 @@ type AudioDevice () =
     member this.Pause () = do device.Pause ()
 
     interface Host.SoundReceiver with
-        member this.PlaySamples _ samples = do provider.AddSamples(samples,0,samples.Length)
+        member this.PlaySamples _ samples count = do provider.AddSamples(samples,0,count)
 
-        member this.Buffered = provider.BufferedDuration.Milliseconds
+        member this.Buffered = provider.BufferedBytes
 
         member this.Start () = this.Start ()
 

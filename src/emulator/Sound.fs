@@ -9,8 +9,121 @@ open Clock
 open Types
 open Units
 open Host
+open System.Collections.Generic
 
 type EnvelopeAddMode = Add | Subtract
+
+module Mixer =
+    
+    type Buffer(size) =
+
+        let buffer = Array.zeroCreate size
+
+        let mutable used = 0
+
+        member this.Add item =
+            buffer.[used] <- item
+            used <- used + 1
+
+        member this.AddMany (items: AudioSample[]) =
+            let count = min this.Available items.Length
+            do System.Array.Copy(items,0,buffer,used,count)
+            do used <- used + count
+
+        member this.Used = used
+
+        member this.Size = buffer.Length
+
+        member this.Full = used = this.Size
+
+        member this.Clear () = used <- 0
+
+        member this.Available = this.Size - used
+
+        member this.TrimFront count =
+            System.Array.Copy(buffer,count,buffer,0,used-count)
+            used <- used - count
+
+        member this.TrimBack count = used <- used - count
+
+        member this.Data = buffer
+
+        member this.Move (destination: Buffer) =
+            destination.AddMany this.Data
+            this.Clear ()
+
+    // An agent would have been much cleaner, but with unacceptable overhead :(
+    module BufferPool =
+        let cache = new Dictionary<int,Buffer list> ()
+                
+        let checkout size = lock cache (fun _ ->
+            if not <| cache.ContainsKey(size) then cache.[size] <- []
+            match cache.[size] with
+            | head::tail ->
+                cache.[size] <- tail
+                head
+            | [] -> Log.log "Created new audio buffer"; Buffer(size)
+        )
+
+        let checkin (buffer: Buffer) = lock cache (fun _ ->
+            do buffer.Clear ()
+            do cache.[buffer.Size] <-  buffer :: cache.[buffer.Size]
+        )
+
+    type Message = Process of Buffer
+
+    type Agent = {Processor: MailboxProcessor<Message>; FrontBuffer: Buffer}
+
+    let Add sample (agent: Agent) =
+    
+        do agent.FrontBuffer.Add sample
+        if agent.FrontBuffer.Full then
+            let newBuffer = BufferPool.checkout agent.FrontBuffer.Size
+            newBuffer.AddMany agent.FrontBuffer.Data
+            do newBuffer |> Process |> agent.Processor.Post
+            do agent.FrontBuffer.Clear ()
+
+    let create (host: Host) =
+        
+        let soundReceiver = host.SoundReceiver
+
+        let backBuffer = Buffer(Constants.AudioConfig.SampleRate / 10<Hz>)
+
+        let frontBuffer = Buffer(backBuffer.Size / 10)
+
+        let sendToHost (buffer: Buffer) count =
+            do soundReceiver.PlaySamples Speaker.Left buffer.Data count
+            do buffer.TrimFront count
+
+        let processor = MailboxProcessor.Start (fun mb ->
+
+            do soundReceiver.Start ()
+
+            let rec background () = async {
+                let! msg = mb.Receive ()
+
+                match msg with
+                | Process buffer ->
+                    do backBuffer.AddMany buffer.Data
+
+                    do BufferPool.checkin buffer
+
+                    if soundReceiver.Buffered < backBuffer.Size*2 then
+                        do sendToHost backBuffer (min backBuffer.Used (backBuffer.Size*2-soundReceiver.Buffered))
+
+                    do
+                        Log.logf "Audio playback: Backbuffer = %f ms, device buffer = %f ms"
+                            ((float backBuffer.Used) / (float Constants.AudioConfig.SampleRate) |> (*) 1000.0)
+                            ((float soundReceiver.Buffered) / (float Constants.AudioConfig.SampleRate) |> (*) 1000.0)
+                    
+                return! background ()
+            }
+
+            background ()
+        )
+
+        { Processor = processor; FrontBuffer = frontBuffer }
+
 
 type Channel () =
     inherit obj ()
@@ -103,7 +216,7 @@ type Square2 (soundClock: Clock) as this =
             this.CurrentSample <- 0uy
 
 
-type GBS (systemClock: Clock, host: Host) =
+type GBS (systemClock: Clock, host) =
 
     let soundClock = Clock.derive systemClock Constants.AudioConfig.SampleRate
 
@@ -111,7 +224,7 @@ type GBS (systemClock: Clock, host: Host) =
 
     let stopwatch = new Stopwatch()
 
-    let audioBuffer = Array.create (soundClock.Frequency / 10 |> int) 0uy
+    let mixer = Mixer.create host
 
     member val Square2 = Square2 (soundClock)
 
@@ -138,17 +251,20 @@ type GBS (systemClock: Clock, host: Host) =
 
     member this.Update () =
     
-        if this.MasterEnable then do soundClock.Ticked (fun ticks ->
-            
-            let n = (uint32 ticks) % (uint32 audioBuffer.Length)
-            
-            do 
-                this.Square2.Update ()
-                audioBuffer.[int n] <- this.Square2.CurrentSample            
+        do soundClock.Ticked (fun ticks ->
 
-            if n = 0u then do
-                Log.logf "Host buffer: %d ms" host.SoundReceiver.Buffered
-                host.SoundReceiver.PlaySamples Speaker.Left audioBuffer
+            let sample =
+                if this.MasterEnable then
+                    if this.Square2.Enable then
+                        do this.Square2.Update ()
+                        this.Square2.CurrentSample
+                    else
+                        0uy
+                else
+                    0uy
+
+            mixer |> Mixer.Add sample
+
         )
 
 

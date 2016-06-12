@@ -157,8 +157,8 @@ module Mixer =
 
         { Processor = processor; FrontBuffer = frontBuffer }
 
-
-type Square2 (soundClock: Clock, nr51: NR51) as this =
+[<AbstractClass>]
+type SquareChannel (soundClock: Clock) as this =
     inherit Channel ()
 
     let mutable leftInDuty = 0
@@ -187,7 +187,7 @@ type Square2 (soundClock: Clock, nr51: NR51) as this =
         this.Enable <- false
 
 
-    member val NR21 = {
+    member val NRx1 = {
         new ValueBackedIORegister (0uy) with
             override x.MemoryValue
                 with get () = x.Value &&& 0b11000000uy
@@ -196,15 +196,15 @@ type Square2 (soundClock: Clock, nr51: NR51) as this =
                      length <- 64 - (x.GetBits 5 0 |> int)
     }
 
-    member val NR22 = ValueBackedIORegister(0uy)
+    member val NRx2 = ValueBackedIORegister(0uy)
 
-    member val NR23 = {
+    member val NRx3 = {
         new ValueBackedIORegister(0uy) with
             override x.MemoryValue
                 with get () = 0uy
     }
 
-    member val NR24 = {
+    member val NRx4 = {
         new ValueBackedIORegister(0uy) with
             override x.MemoryValue
                 with get () = x.Value &&& 0b01000000uy
@@ -214,7 +214,7 @@ type Square2 (soundClock: Clock, nr51: NR51) as this =
     }
 
     member this.Duty =
-        match this.NR21.GetBits 7 6 with
+        match this.NRx1.GetBits 7 6 with
         | 0uy -> 0.125
         | 1uy -> 0.25
         | 2uy -> 0.5
@@ -222,23 +222,20 @@ type Square2 (soundClock: Clock, nr51: NR51) as this =
         | _ -> failwith "Unknown sound duty"
 
 
-    member this.StartVolume = this.NR22.GetBits 7 4
+    member this.StartVolume = this.NRx2.GetBits 7 4
 
-    member this.EnvelopeAddMode = if this.NR22.GetBit 3 = SET then Add else Subtract
+    member this.EnvelopeAddMode = if this.NRx2.GetBit 3 = SET then Add else Subtract
 
-    member this.Period = this.NR22.GetBits 2 0
+    member this.Period = this.NRx2.GetBits 2 0
 
-    member this.PlayMode = if this.NR24.GetBit 6 = SET then Counter else Continuous
+    member this.PlayMode = if this.NRx4.GetBit 6 = SET then Counter else Continuous
 
     member this.Frequency =
-        let regValue = ((int this.NR24.Value &&& 0b111) <<< 8) ||| (int this.NR23.Value)
+        let regValue = ((int this.NRx4.Value &&& 0b111) <<< 8) ||| (int this.NRx3.Value)
         4194304<Hz> / (32 * (2048 - regValue))
 
 
     override this.Amplitude = currentAmp
-
-    override this.LeftVolume = if nr51.Square2Left then 1.0 else 0.0
-    override this.RightVolume = if nr51.Square2Right then 1.0 else 0.0
 
     override this.Update () =
         
@@ -281,6 +278,21 @@ type Square2 (soundClock: Clock, nr51: NR51) as this =
             currentAmp <- 0.0
 
 
+type Square2 (soundClock: Clock, nr51: NR51) =
+    inherit SquareChannel(soundClock)
+
+    member this.NR21 = this.NRx1
+
+    member this.NR22 = this.NRx2
+
+    member this.NR23 = this.NRx3
+
+    member this.NR24 = this.NRx4
+
+    override this.LeftVolume = if nr51.Square2Left then 1.0 else 0.0
+
+    override this.RightVolume = if nr51.Square2Right then 1.0 else 0.0
+
 type GBS (systemClock: Clock, host) as this =
 
     let soundClock = Clock.derive systemClock Constants.AudioConfig.SampleRate
@@ -308,9 +320,7 @@ type GBS (systemClock: Clock, host) as this =
                     BitLogic.mapByte (
                         function
                         | B7 -> this.MasterEnable |> BitLogic.setIfTrue
-                        | B6
-                        | B5
-                        | B4 -> CLEAR
+                        | B6 | B5 | B4 -> CLEAR
                         | B3 -> CLEAR // Sound 4
                         | B2 -> CLEAR // Sound 3
                         | B1 -> square2.Enable |> BitLogic.setIfTrue
@@ -320,7 +330,6 @@ type GBS (systemClock: Clock, host) as this =
                 and set value =
                     this.MasterEnable <- value |> BitLogic.isBitSet 7
                     square2.Enable <- value |> BitLogic.isBitSet 1
-
     }
 
     member this.LeftSpeakerEnabled = this.NR50.GetBit 3 = SET

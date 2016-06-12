@@ -246,7 +246,7 @@ type Square2 (soundClock: Clock) as this =
             this.CurrentSample <- 0uy
 
 
-type GBS (systemClock: Clock, host) =
+type GBS (systemClock: Clock, host) as this =
 
     let soundClock = Clock.derive systemClock Constants.AudioConfig.SampleRate
 
@@ -256,15 +256,34 @@ type GBS (systemClock: Clock, host) =
 
     let mixer = Mixer.create host
 
-    member val Square2 = Square2 (soundClock)
+    let square2 = Square2(soundClock)
+
+    member this.Square2 = square2
+
+    member val MasterEnable = false with get, set
 
     member val NR50 = ValueBackedIORegister(0uy)
     member val NR51 = ValueBackedIORegister(0uy)
     member val NR52 = {
         new ValueBackedIORegister(0uy) with
             override x.MemoryValue
-                with get () = x.Value
-                and set value = x.Value <- value &&& 0x80uy 
+                with get () =
+                    BitLogic.mapByte (
+                        function
+                        | B7 -> this.MasterEnable |> BitLogic.setIfTrue
+                        | B6
+                        | B5
+                        | B4 -> CLEAR
+                        | B3 -> CLEAR // Sound 4
+                        | B2 -> CLEAR // Sound 3
+                        | B1 -> square2.Enable |> BitLogic.setIfTrue
+                        | B0 -> CLEAR // Sound 1
+                    )
+                        
+                and set value =
+                    this.MasterEnable <- value |> BitLogic.isBitSet 7
+                    square2.Enable <- value |> BitLogic.isBitSet 1
+
     }
 
     member this.LeftSpeakerEnabled = this.NR50.GetBit 3 = SET
@@ -276,7 +295,6 @@ type GBS (systemClock: Clock, host) =
     member this.Square2Left = this.NR51.GetBit 1 = SET
     member this.Square2Right = this.NR51.GetBit 5 = SET
 
-    member this.MasterEnable = this.NR52.GetBit 7 = SET
     member this.Square2Enable = this.NR52.GetBit 1 = SET
 
     member this.Update () =

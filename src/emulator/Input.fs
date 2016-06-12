@@ -54,10 +54,10 @@ type Keypad (interrupts: InterruptManager) =
         with get () =
             let column (p0, p1, p2, p3) =
                 let bit = function
-                          |0 -> setIfFalse <| this.Pressed p0
-                          |1 -> setIfFalse <| this.Pressed p1
-                          |2 -> setIfFalse <| this.Pressed p2
-                          |3 -> setIfFalse <| this.Pressed p3
+                          |B0 -> setIfFalse <| this.Pressed p0
+                          |B1 -> setIfFalse <| this.Pressed p1
+                          |B2 -> setIfFalse <| this.Pressed p2
+                          |B3 -> setIfFalse <| this.Pressed p3
                           |_ -> CLEAR
                 mapByte bit
 

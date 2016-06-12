@@ -9,7 +9,7 @@ type Renderer =
     abstract member Flush: unit -> unit
 
 type SoundReceiver =
-    abstract member PlaySamples: Speaker -> AudioSample [] -> int -> unit
+    abstract member PlaySamples: AudioSample [] -> int -> unit
     abstract member Buffered: int
     abstract member Start: unit -> unit
     abstract member Stop: unit -> unit

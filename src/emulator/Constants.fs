@@ -15,6 +15,6 @@ let RESOLUTION = {Width = 160; Height = 144}
 
 let APPLICATION_TITLE = "FunGBC"
 
-type AudioConfig = {SampleRate: int<Hz>; BitDepth: int}
+type AudioConfig = {SampleRate: int<Hz>; BitDepth: int; Channels: int}
 
-let AudioConfig = {SampleRate = 44100<Hz>; BitDepth = 8}
+let AudioConfig = {SampleRate = 44100<Hz>; BitDepth = 8; Channels = 2}

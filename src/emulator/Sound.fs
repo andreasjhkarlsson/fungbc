@@ -15,6 +15,20 @@ type EnvelopeAddMode = Add | Subtract
 
 type PlayMode = Counter | Continuous
 
+type NR51 (init) =
+    inherit ValueBackedIORegister(init)
+    member this.Square2Left = this.GetBit 1 = SET
+    member this.Square2Right = this.GetBit 5 = SET
+
+
+[<AbstractClass>]
+type Channel () =
+    abstract Amplitude: float with get 
+    abstract Update: unit -> unit
+    abstract Enable: bool with get, set
+    abstract LeftVolume: float
+    abstract RightVolume: float
+
 module Mixer =
     
     type Buffer(size) =
@@ -76,25 +90,42 @@ module Mixer =
 
     type Agent = {Processor: MailboxProcessor<Message>; FrontBuffer: Buffer}
 
-    let Add sample (agent: Agent) =
+    let mix (channels: Channel list) (masterLeftVolume,masterRightVolume) (agent: Agent) =
+
+        let buffer sample =
     
-        do agent.FrontBuffer.Add sample
-        if agent.FrontBuffer.Full then
-            let newBuffer = BufferPool.checkout agent.FrontBuffer.Size
-            newBuffer.AddMany agent.FrontBuffer.Data
-            do newBuffer |> Process |> agent.Processor.Post
-            do agent.FrontBuffer.Clear ()
+            do agent.FrontBuffer.Add sample
+            if agent.FrontBuffer.Full then
+                let newBuffer = BufferPool.checkout agent.FrontBuffer.Size
+                newBuffer.AddMany agent.FrontBuffer.Data
+                do newBuffer |> Process |> agent.Processor.Post
+                do agent.FrontBuffer.Clear ()
+
+        let left, right =
+            channels |> List.fold (fun (left, right) channel ->
+                if channel.Enable then
+                    left + channel.Amplitude * channel.LeftVolume,
+                    right + channel.Amplitude * channel.RightVolume
+                else
+                    left, right
+            ) (0.0, 0.0)
+
+
+        do buffer (left * masterLeftVolume  |> min 1.0 |> (*) 64.0 |> int |> uint8)
+        do buffer (right * masterRightVolume |> min 1.0 |> (*) 64.0 |> int |> uint8)
+
+
 
     let create (host: Host) =
         
         let soundReceiver = host.SoundReceiver
 
-        let backBuffer = Buffer(Constants.AudioConfig.SampleRate / 10<Hz>)
+        let backBuffer = Buffer(Constants.AudioConfig.SampleRate / 10<Hz> * Constants.AudioConfig.Channels)
 
         let frontBuffer = Buffer(backBuffer.Size / 10)
 
         let sendToHost (buffer: Buffer) count =
-            do soundReceiver.PlaySamples Speaker.Left buffer.Data count
+            do soundReceiver.PlaySamples buffer.Data count
             do buffer.TrimFront count
 
         let processor = MailboxProcessor.Start (fun mb ->
@@ -115,8 +146,8 @@ module Mixer =
 
                     do
                         Log.logf "Audio playback: Backbuffer = %f ms, device buffer = %f ms"
-                            ((float backBuffer.Used) / (float Constants.AudioConfig.SampleRate) |> (*) 1000.0)
-                            ((float soundReceiver.Buffered) / (float Constants.AudioConfig.SampleRate) |> (*) 1000.0)
+                            ((float backBuffer.Used) / (float Constants.AudioConfig.SampleRate) |> (*) 500.0)
+                            ((float soundReceiver.Buffered) / (float Constants.AudioConfig.SampleRate) |> (*) 500.0)
                     
                 return! background ()
             }
@@ -127,10 +158,7 @@ module Mixer =
         { Processor = processor; FrontBuffer = frontBuffer }
 
 
-type Channel () =
-    inherit obj ()
-
-type Square2 (soundClock: Clock) as this =
+type Square2 (soundClock: Clock, nr51: NR51) as this =
     inherit Channel ()
 
     let mutable leftInDuty = 0
@@ -139,8 +167,12 @@ type Square2 (soundClock: Clock) as this =
     let mutable waveClock = Clock.derive soundClock 1<Hz>
     let mutable envelopeClock = None
     let mutable lengthClock = Clock.derive soundClock 256<Hz>
+    let mutable currentAmp = 0.0
+    let mutable enable = false
 
-    member val Enable = false with get, set
+    override this.Enable
+        with get () = enable
+        and set state = enable <- state
 
 
     member this.Start () =
@@ -203,9 +235,12 @@ type Square2 (soundClock: Clock) as this =
         4194304<Hz> / (32 * (2048 - regValue))
 
 
-    member val CurrentSample = 0uy with get, set
+    override this.Amplitude = currentAmp
 
-    member this.Update () =
+    override this.LeftVolume = if nr51.Square2Left then 1.0 else 0.0
+    override this.RightVolume = if nr51.Square2Right then 1.0 else 0.0
+
+    override this.Update () =
         
         if this.Enable then
 
@@ -237,13 +272,13 @@ type Square2 (soundClock: Clock) as this =
                     ()
             )
 
-            this.CurrentSample <-
+            currentAmp <-
                 if leftInDuty > 0 then
                     leftInDuty <- leftInDuty - 1
-                    volume * 4uy
-                else 0uy
+                    (float volume) / 15.0
+                else 0.0
         else
-            this.CurrentSample <- 0uy
+            currentAmp <- 0.0
 
 
 type GBS (systemClock: Clock, host) as this =
@@ -256,14 +291,16 @@ type GBS (systemClock: Clock, host) as this =
 
     let mixer = Mixer.create host
 
-    let square2 = Square2(soundClock)
+    let nr51 = NR51(0uy)
+
+    let square2 = Square2(soundClock, nr51)
 
     member this.Square2 = square2
 
     member val MasterEnable = false with get, set
 
-    member val NR50 = ValueBackedIORegister(0uy)
-    member val NR51 = ValueBackedIORegister(0uy)
+    member val NR50 = ValueBackedIORegister(255uy)
+    member val NR51 = nr51
     member val NR52 = {
         new ValueBackedIORegister(0uy) with
             override x.MemoryValue
@@ -287,13 +324,10 @@ type GBS (systemClock: Clock, host) as this =
     }
 
     member this.LeftSpeakerEnabled = this.NR50.GetBit 3 = SET
-    member this.LeftSpeakerVolume = this.NR50.GetBits 2 0
+    member this.LeftSpeakerVolume = (float <| this.NR50.GetBits 2 0 + 1uy) / 8.0
 
     member this.RightSpeakerEnabled = this.NR50.GetBit 7 = SET
-    member this.RightSpeakerVolumne = this.NR50.GetBits 6 4
-
-    member this.Square2Left = this.NR51.GetBit 1 = SET
-    member this.Square2Right = this.NR51.GetBit 5 = SET
+    member this.RightSpeakerVolume = (float <| this.NR50.GetBits 6 4 + 1uy) / 8.0
 
     member this.Square2Enable = this.NR52.GetBit 1 = SET
 
@@ -301,18 +335,16 @@ type GBS (systemClock: Clock, host) as this =
     
         do soundClock.Ticked (fun ticks ->
 
-            let sample =
-                if this.MasterEnable then
-                    if this.Square2.Enable then
-                        do this.Square2.Update ()
-                        this.Square2.CurrentSample
-                    else
-                        0uy
-                else
-                    0uy
+            if this.MasterEnable then
 
-            mixer |> Mixer.Add sample
-
+                if this.Square2.Enable then do this.Square2.Update ()
+                do mixer
+                |> Mixer.mix
+                    [square2]
+                    ( this.LeftSpeakerVolume,
+                      this.RightSpeakerVolume)
+            else
+                do mixer |> Mixer.mix [] (0.0,0.0)
         )
 
 

@@ -148,7 +148,7 @@ type Square2 (soundClock: Clock) as this =
 
         lengthClock <- Clock.derive soundClock 256<Hz>
         waveClock <- Clock.derive soundClock this.Frequency
-        envelopeClock <- if this.Period <> 0uy then (int this.Period) * 64<Hz> |> Clock.derive soundClock |> Some else None
+        envelopeClock <- if this.Period <> 0uy then 64<Hz> / (int this.Period) |> Clock.derive soundClock |> Some else None
         volume <- this.StartVolume
 
     member this.Stop () =

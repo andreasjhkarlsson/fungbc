@@ -69,6 +69,11 @@ type MMU (gpu: GPU, rom: ROM, ram: GBCRam,gbs: Sound.GBS,keypad: Keypad, interru
         mapAddress 0xFF06us timers.TMA.MemoryCell
         mapAddress 0xFF07us timers.TAC.MemoryCell
         mapAddress 0xFF0Fus interrupts.Current.MemoryCell
+        mapAddress 0xFF10us gbs.Square1.NR10.MemoryCell
+        mapAddress 0xFF11us gbs.Square1.NR11.MemoryCell
+        mapAddress 0xFF12us gbs.Square1.NR12.MemoryCell
+        mapAddress 0xFF13us gbs.Square1.NR13.MemoryCell
+        mapAddress 0xFF14us gbs.Square1.NR14.MemoryCell
         mapAddress 0xFF16us gbs.Square2.NR21.MemoryCell
         mapAddress 0xFF17us gbs.Square2.NR22.MemoryCell
         mapAddress 0xFF18us gbs.Square2.NR23.MemoryCell

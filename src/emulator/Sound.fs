@@ -17,7 +17,9 @@ type PlayMode = Counter | Continuous
 
 type NR51 (init) =
     inherit ValueBackedIORegister(init)
+    member this.Square1Left = this.GetBit 0 = SET
     member this.Square2Left = this.GetBit 1 = SET
+    member this.Square1Right = this.GetBit 4 = SET
     member this.Square2Right = this.GetBit 5 = SET
 
 
@@ -111,8 +113,8 @@ module Mixer =
             ) (0.0, 0.0)
 
 
-        do buffer (left * masterLeftVolume  |> min 1.0 |> (*) 64.0 |> int |> uint8)
-        do buffer (right * masterRightVolume |> min 1.0 |> (*) 64.0 |> int |> uint8)
+        do buffer (left * masterLeftVolume  |> min 2.0 |> (*) 32.0 |> int |> uint8)
+        do buffer (right * masterRightVolume |> min 2.0 |> (*) 32.0 |> int |> uint8)
 
 
 
@@ -278,6 +280,23 @@ type SquareChannel (soundClock: Clock) as this =
             currentAmp <- 0.0
 
 
+type Square1 (soundClock: Clock, nr51: NR51) =
+    inherit SquareChannel(soundClock)
+
+    member val NR10 = ValueBackedIORegister(0uy)
+
+    member this.NR11 = this.NRx1
+
+    member this.NR12 = this.NRx2
+
+    member this.NR13 = this.NRx3
+
+    member this.NR14 = this.NRx4
+
+    override this.LeftVolume = if nr51.Square1Left then 1.0 else 0.0
+    
+    override this.RightVolume = if nr51.Square1Right then 1.0 else 0.0
+
 type Square2 (soundClock: Clock, nr51: NR51) =
     inherit SquareChannel(soundClock)
 
@@ -305,7 +324,13 @@ type GBS (systemClock: Clock, host) as this =
 
     let nr51 = NR51(0uy)
 
+    let square1 = Square1(soundClock, nr51)
+
     let square2 = Square2(soundClock, nr51)
+
+    let channels: Channel list = [square1; square2]
+
+    member this.Square1 = square1
 
     member this.Square2 = square2
 
@@ -346,10 +371,13 @@ type GBS (systemClock: Clock, host) as this =
 
             if this.MasterEnable then
 
+                channels |> List.iter (fun channel -> if channel.Enable then do channel.Update ())
+
                 if this.Square2.Enable then do this.Square2.Update ()
+
                 do mixer
                 |> Mixer.mix
-                    [square2]
+                    channels
                     ( this.LeftSpeakerVolume,
                       this.RightSpeakerVolume)
             else

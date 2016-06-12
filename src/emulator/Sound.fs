@@ -13,6 +13,8 @@ open System.Collections.Generic
 
 type EnvelopeAddMode = Add | Subtract
 
+type PlayMode = Counter | Continuous
+
 module Mixer =
     
     type Buffer(size) =
@@ -133,7 +135,9 @@ type Square2 (soundClock: Clock) as this =
 
     let mutable leftInDuty = 0
     let mutable length = 0
+    let mutable volume = 0uy
     let mutable waveClock = Clock.derive soundClock 1<Hz>
+    let mutable envelopeClock = None
     let mutable lengthClock = Clock.derive soundClock 256<Hz>
 
     member val Enable = false with get, set
@@ -144,6 +148,8 @@ type Square2 (soundClock: Clock) as this =
 
         lengthClock <- Clock.derive soundClock 256<Hz>
         waveClock <- Clock.derive soundClock this.Frequency
+        envelopeClock <- if this.Period <> 0uy then (int this.Period) * 64<Hz> |> Clock.derive soundClock |> Some else None
+        volume <- this.StartVolume
 
     member this.Stop () =
         this.Enable <- false
@@ -190,6 +196,8 @@ type Square2 (soundClock: Clock) as this =
 
     member this.Period = this.NR22.GetBits 2 0
 
+    member this.PlayMode = if this.NR24.GetBit 6 = SET then Counter else Continuous
+
     member this.Frequency =
         let regValue = ((int this.NR24.Value &&& 0b111) <<< 8) ||| (int this.NR23.Value)
         4194304<Hz> / (32 * (2048 - regValue))
@@ -201,17 +209,39 @@ type Square2 (soundClock: Clock) as this =
         
         if this.Enable then
 
+            do
+                match envelopeClock with
+                | Some envelopeClock ->
+                    envelopeClock.Ticked (fun _ ->
+                        volume <-
+                            match this.EnvelopeAddMode with
+                            | Add ->
+                                if volume < 15uy then volume + 1uy else volume
+                            | Subtract ->
+                                if volume > 0uy then volume - 1uy else volume
+                    )
+                | None ->
+                    ()
+
             do waveClock.Ticked (fun _ ->
                 leftInDuty <- (44100.0 / (float waveClock.Frequency)) * this.Duty |> int
             )
 
             do lengthClock.Ticked (fun _ ->
-                length <- length - 1
-                if length <= 0 then do this.Stop ()
+                
+                match this.PlayMode with
+                | Counter ->
+                    length <- length - 1
+                    if length <= 0 then do this.Stop ()
+                | Continuous ->
+                    ()
             )
 
             this.CurrentSample <-
-                if leftInDuty > 0 then leftInDuty <- leftInDuty - 1; 32uy else 0uy
+                if leftInDuty > 0 then
+                    leftInDuty <- leftInDuty - 1
+                    volume * 4uy
+                else 0uy
         else
             this.CurrentSample <- 0uy
 

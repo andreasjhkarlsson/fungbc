@@ -59,9 +59,9 @@
     <Compile Include="Timer.fs" />
     <Compile Include="Palette.fs" />
     <Compile Include="Host.fs" />
+    <Compile Include="Sound.fs" />
     <Compile Include="Gpu.fs" />
     <Compile Include="Input.fs" />
-    <Compile Include="Sound.fs" />
     <Compile Include="Mmu.fs" />
     <Compile Include="Register.fs" />
     <Compile Include="Instruction.fs" />

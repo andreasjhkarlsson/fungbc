@@ -67,9 +67,9 @@ let create (rom: ROM) host =
 
     let timers = Timers(systemClock,interrupts)
 
-    let gpu = GPU(systemClock, interrupts, host)
-
     let gbs = Sound.GBS(systemClock,host)
+
+    let gpu = GPU(gbs,systemClock, interrupts, host)
 
     let mmu = MMU(gpu,rom,ram,gbs,keypad,interrupts,timers)
 

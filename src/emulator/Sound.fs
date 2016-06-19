@@ -43,8 +43,8 @@ module Mixer =
             buffer.[used] <- item
             used <- used + 1
 
-        member this.AddMany (items: AudioSample[]) =
-            let count = min this.Available items.Length
+        member this.AddMany (items: AudioSample[]) count =
+            let count = min this.Available count
             do System.Array.Copy(items,0,buffer,used,count)
             do used <- used + count
 
@@ -67,7 +67,7 @@ module Mixer =
         member this.Data = buffer
 
         member this.Move (destination: Buffer) =
-            destination.AddMany this.Data
+            destination.AddMany this.Data this.Used
             this.Clear ()
 
     // An agent would have been much cleaner, but with unacceptable overhead :(
@@ -90,18 +90,41 @@ module Mixer =
 
     type Message = Process of Buffer
 
-    type Agent = {Processor: MailboxProcessor<Message>; FrontBuffer: Buffer}
+    type Agent = {Processor: MailboxProcessor<Message>; AudioBuffer: Buffer; Host: Host}
+
+    let sync (agent: Agent) =
+
+        let buffered = agent.Host.SoundReceiver.Buffered
+
+        let extraSamples = buffered - ((int  Constants.AudioConfig.SampleRate * Constants.AudioConfig.Channels) / (1000 / Constants.AudioConfig.BufferLength))
+
+        if extraSamples > 500 then
+
+            let microsToWait =
+                (float extraSamples)
+                / (float Constants.AudioConfig.SampleRate)
+                * 1000000.0 // seconds -> microseconds
+                |> int
+
+            if microsToWait > 500 then
+                agent.Host.Idle (microsToWait / 2) // Don't wait all the calculated time, always time to do it next call anyways
+                      
+
+    let flush (agent: Agent) = 
+        if agent.Host.SoundReceiver.Buffered < 10 then Log.log "Audio buffer exhausted, there may be audio artifacts"
+        let newBuffer = BufferPool.checkout agent.AudioBuffer.Size
+        do newBuffer.AddMany agent.AudioBuffer.Data agent.AudioBuffer.Used
+        do newBuffer |> Process |> agent.Processor.Post
+        do agent.AudioBuffer.Clear ()
 
     let mix (channels: Channel list) (masterLeftVolume,masterRightVolume) (agent: Agent) =
 
         let buffer sample =
     
-            do agent.FrontBuffer.Add sample
-            if agent.FrontBuffer.Full then
-                let newBuffer = BufferPool.checkout agent.FrontBuffer.Size
-                newBuffer.AddMany agent.FrontBuffer.Data
-                do newBuffer |> Process |> agent.Processor.Post
-                do agent.FrontBuffer.Clear ()
+            do agent.AudioBuffer.Add sample
+
+            if agent.AudioBuffer.Full then
+                do flush agent
 
         let left, right =
             channels |> List.fold (fun (left, right) channel ->
@@ -112,19 +135,15 @@ module Mixer =
                     left, right
             ) (0.0, 0.0)
 
-
         do buffer (left * masterLeftVolume  |> min 2.0 |> (*) 32.0 |> int |> uint8)
         do buffer (right * masterRightVolume |> min 2.0 |> (*) 32.0 |> int |> uint8)
-
-
 
     let create (host: Host) =
         
         let soundReceiver = host.SoundReceiver
 
-        let backBuffer = Buffer(Constants.AudioConfig.SampleRate / 10<Hz> * Constants.AudioConfig.Channels)
-
-        let frontBuffer = Buffer(backBuffer.Size / 10)
+        let audioBuffer = Buffer(((int Constants.AudioConfig.SampleRate * Constants.AudioConfig.Channels) /
+                                        (1000 / Constants.AudioConfig.BufferLength)))
 
         let sendToHost (buffer: Buffer) count =
             do soundReceiver.PlaySamples buffer.Data count
@@ -135,21 +154,18 @@ module Mixer =
             do soundReceiver.Start ()
 
             let rec background () = async {
+
                 let! msg = mb.Receive ()
 
                 match msg with
                 | Process buffer ->
-                    do backBuffer.AddMany buffer.Data
+                    do
+                        Log.logf "Audio playback: device buffer = %f ms"
+                            ((float soundReceiver.Buffered) / (float Constants.AudioConfig.SampleRate) |> (*) 500.0)
+
+                    do soundReceiver.PlaySamples buffer.Data buffer.Used
 
                     do BufferPool.checkin buffer
-
-                    if soundReceiver.Buffered < backBuffer.Size*2 then
-                        do sendToHost backBuffer (min backBuffer.Used (backBuffer.Size*2-soundReceiver.Buffered))
-
-                    do
-                        Log.logf "Audio playback: Backbuffer = %f ms, device buffer = %f ms"
-                            ((float backBuffer.Used) / (float Constants.AudioConfig.SampleRate) |> (*) 500.0)
-                            ((float soundReceiver.Buffered) / (float Constants.AudioConfig.SampleRate) |> (*) 500.0)
                     
                 return! background ()
             }
@@ -157,7 +173,7 @@ module Mixer =
             background ()
         )
 
-        { Processor = processor; FrontBuffer = frontBuffer }
+        { Processor = processor; AudioBuffer = audioBuffer; Host = host}
 
 [<AbstractClass>]
 type SquareChannel (soundClock: Clock) as this =
@@ -329,6 +345,8 @@ type GBS (systemClock: Clock, host) as this =
     let square2 = Square2(soundClock, nr51)
 
     let channels: Channel list = [square1; square2]
+
+    member this.Mixer = mixer
 
     member this.Square1 = square1
 

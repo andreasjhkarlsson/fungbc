@@ -13,6 +13,7 @@ open BitLogic
 open Interrupts
 open Palette
 open Host
+open Sound
 
 type OBJBGPriority = |Above |Behind
 type SpritePalette = |Palette0 |Palette1
@@ -185,7 +186,7 @@ type RenderStage = |ScanOAM of int |ScanVRAM of int |HBlank of int |VBlank of in
 
 type Speed = |Unlimited |Limit of int<Hz>
 
-type GPU (systemClock, interrupts: InterruptManager,host: Host) =
+type GPU (sound: Sound.GBS,systemClock, interrupts: InterruptManager,host: Host) =
 
     let clock = Clock.derive systemClock systemClock.Frequency :?> DerivedClock
 
@@ -276,7 +277,6 @@ type GPU (systemClock, interrupts: InterruptManager,host: Host) =
 
     let drawScreen = host.Renderer.Flush
 
-
     let isVBlank = function |VBlank _ -> true |_ -> false
 
     let stageAt time =
@@ -305,7 +305,6 @@ type GPU (systemClock, interrupts: InterruptManager,host: Host) =
     let mutable lastStage = VBlank 0 
 
     let mutable fps = 0.0
-
 
     member this.VRAM = vram
 
@@ -366,8 +365,11 @@ type GPU (systemClock, interrupts: InterruptManager,host: Host) =
                         // Generate VBlank interrupt regardless of the above
                         if interrupts.Enable then
                             interrupts.Current.Set <- Interrupts.VBlank
-                        
-                        drawScreen ()
+
+                        do sound.Mixer |> Mixer.flush
+
+                        do drawScreen ()
+
                         match this.Speed with
                         | Unlimited ->
                             ()
@@ -386,8 +388,9 @@ type GPU (systemClock, interrupts: InterruptManager,host: Host) =
                                         |> host.Idle
 
                                     limit ()
-
+                            
                             do limit ()
+                            do sound.Mixer |> Mixer.sync
 
                         // Divide stopwatch ticks with this value to avoid precision errors
                         let precision = 10.0 ** 6.0

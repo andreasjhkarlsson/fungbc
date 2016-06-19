@@ -182,7 +182,7 @@ type SquareChannel (soundClock: Clock) as this =
     let mutable leftInDuty = 0
     let mutable length = 0
     let mutable volume = 0uy
-    let mutable waveClock = Clock.derive soundClock 1<Hz>
+    let mutable waveClock = None
     let mutable envelopeClock = None
     let mutable lengthClock = Clock.derive soundClock 256<Hz>
     let mutable currentAmp = 0.0
@@ -197,7 +197,10 @@ type SquareChannel (soundClock: Clock) as this =
         this.Enable <- true
 
         lengthClock <- Clock.derive soundClock 256<Hz>
-        waveClock <- Clock.derive soundClock this.Frequency
+        waveClock <-
+            if this.Frequency <> 0<Hz> && soundClock.Frequency / this.Frequency > 0 then
+                Some <| Clock.derive soundClock this.Frequency
+            else None
         envelopeClock <- if this.Period <> 0uy then 64<Hz> / (int this.Period) |> Clock.derive soundClock |> Some else None
         volume <- this.StartVolume
 
@@ -272,10 +275,14 @@ type SquareChannel (soundClock: Clock) as this =
                     )
                 | None ->
                     ()
-
-            do waveClock.Ticked (fun _ ->
-                leftInDuty <- (44100.0 / (float waveClock.Frequency)) * this.Duty |> int
-            )
+            
+            match waveClock with
+            | Some waveClock ->
+                do waveClock.Ticked (fun _ ->
+                    leftInDuty <- (44100.0 / (float waveClock.Frequency)) * this.Duty |> int
+                )
+            | None ->
+                ()
 
             do lengthClock.Ticked (fun _ ->
                 

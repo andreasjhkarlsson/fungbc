@@ -115,9 +115,9 @@ type CartHeader(bytes: array<uint8>) =
                                 | 0xFF -> HuC1 (Ram, Battery)
                                 | _ -> CartridgeType.Unknown
 
-        member this.Size = ((int <| 32 * kB) <<< (int bytes.[0x48])) * 1<byte>
+        member this.Size = ((int <| 32 * kB) <<< (int bytes.[0x48])) * 1<b>
 
-        member this.RAMSize = match int bytes.[0x49] with |0x1 -> 2 * kB |0x2 -> 8 * kB |0x3 -> 32 * kB |_ -> 0<byte>
+        member this.RAMSize = match int bytes.[0x49] with |0x1 -> 2 * kB |0x2 -> 8 * kB |0x3 -> 32 * kB |_ -> 0<b>
 
         member this.Region = match int bytes.[0x4A] with |0x0 -> Japan |0x1 -> NotJapan |_ -> Unknown
 

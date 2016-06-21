@@ -38,11 +38,11 @@ let readWriteCell value = ReadWriteCell(value) :> MemoryCell
 
 let blankCell = readOnlyCell 0uy
 
-let blankMemoryBlock (size: int<byte>): MemoryBlock = Array.create (size |> int) blankCell
+let blankMemoryBlock (size: int<b>): MemoryBlock = Array.create (size |> int) blankCell
 
-let readWriteMemoryBlock (size: int<byte>): MemoryBlock = Array.init (size |> int) (fun _ -> ReadWriteCell(0uy) :> MemoryCell)
+let readWriteMemoryBlock (size: int<b>): MemoryBlock = Array.init (size |> int) (fun _ -> ReadWriteCell(0uy) :> MemoryCell)
 
-let initMemoryBlock (size: int<byte>) fn: MemoryBlock = Array.init (size |> int) fn 
+let initMemoryBlock (size: int<b>) fn: MemoryBlock = Array.init (size |> int) fn 
 
 let hookReadWrite (cell: MemoryCell) read write =
     let get () = read cell.Value

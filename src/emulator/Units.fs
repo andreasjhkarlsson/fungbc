@@ -3,9 +3,9 @@
 // Hertz
 [<Measure>] type Hz
 
-[<Measure>] type byte
+[<Measure>] type b
 
-let kB = 1024<byte>
+let kB = 1024<b>
 
 let MB = 1024 * kB
 

@@ -12,8 +12,9 @@ open Constants
 open BitLogic
 open Interrupts
 open Palette
-open Host
+open Configuration
 open Sound
+open Types
 
 type OBJBGPriority = |Above |Behind
 type SpritePalette = |Palette0 |Palette1
@@ -94,19 +95,12 @@ type LY(init) =
     override this.MemoryValue with set value = base.MemoryValue <- 0x0uy
 
 
-type PaletteMapRegister(init,initPalette) =
+type PaletteMapRegister(init) =
     inherit ValueBackedIORegister(init)
 
-    // Store palette internally as array for instant lookup from value
-    let mutable palette = Palette.toArray initPalette
+    member this.Transparent (palette: Palette) = palette.[0]
 
-    member this.Palette
-        with get () = Palette.ofArray palette
-        and set newPalette = palette <- Palette.toArray newPalette
-
-    member this.Transparent = palette.[0]
-
-    member this.Color index = palette.[(int this.Value >>> (index * 2)) &&& 0x3]
+    member this.Color (palette: Palette) index = palette.[(int this.Value >>> (index * 2)) &&& 0x3]
 
 type TileDataBlock(memory: MemoryBlock,offset,count,mode) =
     let data =
@@ -124,7 +118,7 @@ type TileMap(memory: MemoryBlock,offset,count) =
 type VRAM () =
     let memory = 8*kB |> readWriteMemoryBlock
 
-    let oam = 160<byte> |> readWriteMemoryBlock
+    let oam = 160<b> |> readWriteMemoryBlock
 
     let objectAttributeTable = [|0..39|] |> Array.map (fun index ->
             SpriteAttribute(oam.[4*index],
@@ -163,9 +157,9 @@ type GPURegisters () =
     let scy = ValueBackedIORegister(0uy)
     let wx = ValueBackedIORegister(0uy)
     let wy = ValueBackedIORegister(0uy)
-    let bgp = PaletteMapRegister(0uy,Palette.Predefined.grayscale)
-    let obp0 = PaletteMapRegister(0uy,Palette.Predefined.grayscale)
-    let obp1 = PaletteMapRegister(0uy,Palette.Predefined.grayscale)
+    let bgp = PaletteMapRegister(0uy)
+    let obp0 = PaletteMapRegister(0uy)
+    let obp1 = PaletteMapRegister(0uy)
     let ly = LY(0uy)
     let lyc = ValueBackedIORegister(0uy)
 
@@ -184,9 +178,7 @@ type GPURegisters () =
 
 type RenderStage = |ScanOAM of int |ScanVRAM of int |HBlank of int |VBlank of int
 
-type Speed = |Unlimited |Limit of int<Hz>
-
-type GPU (sound: Sound.GBS,systemClock, interrupts: InterruptManager,host: Host) =
+type GPU (sound: Sound.GBS,systemClock, interrupts: InterruptManager,config: Configuration ref) =
 
     let clock = Clock.derive systemClock systemClock.Frequency :?> DerivedClock
 
@@ -205,6 +197,8 @@ type GPU (sound: Sound.GBS,systemClock, interrupts: InterruptManager,host: Host)
         let drawTileLayer (tileMap: TileMap) (tileData: TileDataBlock) xOffset yOffset scroll = 
             let adjustedY = y + yOffset
 
+            let palette = (!config).Palette
+
             let rec drawPixel x =
                 if x >= 0 then
                     let adjustedX = x + xOffset
@@ -212,8 +206,8 @@ type GPU (sound: Sound.GBS,systemClock, interrupts: InterruptManager,host: Host)
                         let tile = tileData.[tileMap.[((adjustedX % 256) / 8),((adjustedY % 256) / 8)] |> int]
                         do
                             Tile.decode8x8 tile (adjustedX % 8) (adjustedY % 8)
-                            |> registers.BGP.Color
-                            |> host.Renderer.SetPixel x y
+                            |> registers.BGP.Color palette
+                            |> (!config).Renderer.SetPixel x y
                     do drawPixel (x - 1)
             if scroll || (adjustedY >= 0 && adjustedY < screenHeight) then do drawPixel (lineWidth - 1)
 
@@ -236,7 +230,10 @@ type GPU (sound: Sound.GBS,systemClock, interrupts: InterruptManager,host: Host)
 
             let drawSprite (sprite: SpriteAttribute) = 
                 // Find palette for this sprite
-                let palette = match sprite.Palette with |Palette0 -> registers.OBP0 |Palette1 -> registers.OBP1
+
+                let palette = (!config).Palette
+
+                let paletteReg = match sprite.Palette with |Palette0 -> registers.OBP0 |Palette1 -> registers.OBP1
 
                 // Calculate y coordinate in tile for this sprite (NOTE: May be larger than 7!)
                 let tileY = if sprite.YFlip then (spriteHeight-1) - (sprite.TY - y) else (sprite.TY - y)
@@ -260,8 +257,8 @@ type GPU (sound: Sound.GBS,systemClock, interrupts: InterruptManager,host: Host)
                             // Apparently index 0 is always transparent (regardless of palette??????)
                             if colorIndex <> 0 then 
                                 // Draw pixel if sprite is above background or if background is transparent
-                                if sprite.Priority = Above || ((host.Renderer.GetPixel screenX y) = (registers.BGP.Transparent)) then
-                                   do (palette.Color colorIndex) |> host.Renderer.SetPixel screenX y    
+                                if sprite.Priority = Above || (((!config).Renderer.GetPixel screenX y) = (registers.BGP.Transparent palette)) then
+                                   do (paletteReg.Color palette colorIndex) |> (!config).Renderer.SetPixel screenX y    
 
                         // Next column
                         do drawTileLine (x - 1)
@@ -275,7 +272,7 @@ type GPU (sound: Sound.GBS,systemClock, interrupts: InterruptManager,host: Host)
                 |> Array.iter drawSprite
 
 
-    let drawScreen = host.Renderer.Flush
+    let drawScreen = (!config).Renderer.Flush
 
     let isVBlank = function |VBlank _ -> true |_ -> false
 
@@ -304,8 +301,6 @@ type GPU (sound: Sound.GBS,systemClock, interrupts: InterruptManager,host: Host)
             
     let mutable lastStage = VBlank 0 
 
-    let mutable fps = 0.0
-
     member this.VRAM = vram
 
     member this.Registers = registers
@@ -313,23 +308,11 @@ type GPU (sound: Sound.GBS,systemClock, interrupts: InterruptManager,host: Host)
     member this.ForceRedraw () =
         do
             {0..143} |> Seq.iter drawLine   
-            drawScreen () 
-
-    member this.FPS = fps
-
-    member val Speed = Limit 60<Hz> with get, set
+            drawScreen ()
 
     member this.Reset () =
         lastStage <- VBlank 0
         clock.Reset ()
-
-    member this.Palette
-        with get () =
-            registers.BGP.Palette
-        and set palette =
-            registers.BGP.Palette <- palette
-            registers.OBP0.Palette <- palette
-            registers.OBP1.Palette <- palette
 
     member this.Update () =
         // Extract some registers
@@ -370,9 +353,9 @@ type GPU (sound: Sound.GBS,systemClock, interrupts: InterruptManager,host: Host)
 
                         do drawScreen ()
 
-                        match this.Speed with
+                        match (!config).Speed with
                         | Unlimited ->
-                            ()
+                            do sound.Mixer |> Mixer.sync
                         | Limit frequency ->
                             
                             let rec limit () =
@@ -380,22 +363,16 @@ type GPU (sound: Sound.GBS,systemClock, interrupts: InterruptManager,host: Host)
                                 let ticksLeft = ((float Stopwatch.Frequency) / (float frequency) - (float stopWatch.ElapsedTicks))
 
                                 if ticksLeft >= 0.0 then
-                                    
                                     do
                                         ((ticksLeft / (float) Stopwatch.Frequency))
                                         |> (*) (10.0**6.0)
                                         |> int
-                                        |> host.Idle
+                                        |> (!config).Idle
 
                                     limit ()
-                            
-                            do limit ()
+
                             do sound.Mixer |> Mixer.sync
-
-                        // Divide stopwatch ticks with this value to avoid precision errors
-                        let precision = 10.0 ** 6.0
-
-                        fps <- precision / float ((float stopWatch.ElapsedTicks) / ((float Stopwatch.Frequency) / precision))
+                            do limit ()
 
                         stopWatch.Restart()
                                 

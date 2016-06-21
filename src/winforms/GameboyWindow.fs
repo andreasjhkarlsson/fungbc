@@ -14,8 +14,11 @@ open Gpu
 open Resource
 open Units
 open AudioDevice
+open Configuration
+open Types
 open System.Runtime.InteropServices
 open Microsoft.FSharp.NativeInterop
+open System.Diagnostics
 
 #nowarn "9" "51" // Silences native ptr warnings
 
@@ -36,10 +39,29 @@ module HighPrecisionSleep =
             // TODO: Call usleep or something
             Thread.Sleep(0)
 
+type FPSTracker (window) =
+    let stopwatch = new Stopwatch ()
+
+    do stopwatch.Start ()
+    
+    let mutable frameCount = 0u
+
+    let mutable fps = 0.0
+
+    member this.Frame () =
+        frameCount <- frameCount + 1u
+
+        if frameCount % 5u = 0u then
+            fps <- 1000.0 / ((float stopwatch.ElapsedMilliseconds) / (float window))
+            stopwatch.Restart ()
+
+    member this.FPS = fps
 
 type GameboyScreen () as this =
 
     inherit Panel ()
+
+    let fpsTracker = FPSTracker(5)
 
     let mutable front = new Bitmap(RESOLUTION.Width, RESOLUTION.Height)
 
@@ -53,6 +75,7 @@ type GameboyScreen () as this =
     let flip () =
         
         lock this (fun () ->
+
             do back.UnlockBits lockData
 
             let tmp = front
@@ -60,6 +83,8 @@ type GameboyScreen () as this =
             back <- tmp
             
             lockData <- lockBuffer back
+
+            do fpsTracker.Frame ()
         )
 
 
@@ -68,12 +93,14 @@ type GameboyScreen () as this =
  
     member this.Capture () = lock this (fun () -> front.Clone () :?> Bitmap)
 
+    member this.FPS = fpsTracker.FPS
+
     override this.OnPaint args =
         base.OnPaint args
         lock this (fun () -> args.Graphics.DrawImage(front,0,0,this.Width,this.Height))
 
     
-    interface Host.Renderer with
+    interface Configuration.Renderer with
         
         member this.SetPixel x y color =
             // No need to lock access as lockData is only changed from
@@ -263,12 +290,17 @@ type GameboyWindow () as this =
     member this.ToggleFPSLimit args =
         match gameboy with
         | Some gameboy ->
-            let currentSpeed = Gameboy.speed gameboy
-            match currentSpeed with
-            | Unlimited ->
-                gameboy |> Gameboy.setSpeed (Limit 60<Hz>)
-            | Limit _ ->
-                gameboy |> Gameboy.setSpeed Unlimited 
+            let currentSpeed = (Gameboy.getConfig gameboy).Speed
+            let newSpeed =
+                match currentSpeed with
+                | Unlimited ->
+                    Limit 60<Hz>
+                | Limit _ ->
+                    Unlimited 
+            gameboy |> Gameboy.setConfig {
+                Gameboy.getConfig gameboy
+                    with Speed = newSpeed
+            }
         |_ ->
             ()
 
@@ -279,7 +311,10 @@ type GameboyWindow () as this =
     member this.Palette palette =
         match gameboy with
         | Some gameboy ->
-            gameboy |> Gameboy.setPalette palette
+            gameboy |> Gameboy.setConfig {
+                Gameboy.getConfig gameboy with
+                    Palette = palette
+            }
         | None ->
             ()
     
@@ -298,11 +333,10 @@ type GameboyWindow () as this =
         let text =
             match gameboy with
             | Some gameboy ->
-                let fps = Gameboy.fps gameboy
                 let state = Gameboy.state gameboy
                 sprintf "%s | %.2f fps"
                     (match state with |Running -> "Running" |Paused -> "Paused")
-                    fps   
+                    screen.FPS   
             | None ->
                 "Idle"
         runInUIContext (fun _ ->
@@ -357,7 +391,15 @@ type GameboyWindow () as this =
         | None ->
             ()
 
-        let gb = Gameboy.create rom this
+        let gb = Gameboy.create rom {
+            Renderer = screen :> Configuration.Renderer
+            AudioDevice = audioDevice
+            ErrorFn = fun e -> runInUIContext (fun () -> this.ShowError e)
+            Idle = this.Idle
+            Speed = Types.Limit 60<Hz>
+            Palette = Palette.Predefined.grayscale
+        }
+
 
         Gameboy.start gb
         
@@ -431,7 +473,7 @@ type GameboyWindow () as this =
             screenCapMenuItem.Enabled <- true
             paletteMenu.Enabled <- true
             limitFPSItem.Enabled <- true
-            limitFPSItem.Checked <- not ((Gameboy.speed gameboy) = Unlimited)
+            limitFPSItem.Checked <- not ((Gameboy.getConfig gameboy).Speed = Types.Unlimited)
             let executionState = Gameboy.state gameboy
             match executionState with
             | Running ->
@@ -441,7 +483,7 @@ type GameboyWindow () as this =
                 resumeMenuItem.Enabled <- true
                 pauseMenuItem.Enabled <- false
 
-            let palette = gameboy |> Gameboy.palette
+            let palette = (Gameboy.getConfig gameboy).Palette
 
             paletteItems |> List.iter (fun item -> item.Checked <- item.Palette = palette)
 
@@ -453,17 +495,12 @@ type GameboyWindow () as this =
 
     member this.HelpAndAbout _ = MessageBox.Show(Resource.about) |> ignore
 
-    interface Host.Host with
-        member this.Idle micros =
-            // Simply spinlock if time is < 500 microseconds to get close to perfect fps
-            if micros > 500 then do HighPrecisionSleep.Sleep (micros/2)
-        member this.Error ex =
-            runInUIContext (fun () ->
-                MessageBox.Show(ex.Message,
-                                sprintf "%s encountered an unexpected error" Resource.title, 
-                                MessageBoxButtons.OK,
-                                MessageBoxIcon.Error) |> ignore
-            )
-        member this.Renderer = screen :> Host.Renderer
+    member this.Idle micros =
+        // Simply spinlock if time is < 500 microseconds to get close to perfect fps
+        if micros > 500 then do HighPrecisionSleep.Sleep (micros/2)
 
-        member this.SoundReceiver = audioDevice :> Host.SoundReceiver
+    member this.ShowError (ex: exn) =
+        MessageBox.Show(ex.Message,
+                        sprintf "%s encountered an unexpected error" Resource.title, 
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error) |> ignore

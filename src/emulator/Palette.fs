@@ -2,13 +2,10 @@
 
 open Types
 
-type Palette = Color*Color*Color*Color
+type Palette = Palette of Color []
+    with member x.Item index = let (Palette array) = x in array.[index]
 
-let create c0 c1 c2 c3 = c0, c1, c2, c3
-
-let toArray (c0,c1,c2,c3) = [|c0;c1;c2;c3|]
-
-let ofArray (a: array<Color>) = a.[0], a.[1], a.[2], a.[3]
+let create c0 c1 c2 c3 = Palette [|c0;c1;c2;c3|]
 
 module Predefined =
     let grayscale = create (0xFFFFFFFF) (0xFFD3D3D3) (0xFFA9A9A9) (0xFF000000)

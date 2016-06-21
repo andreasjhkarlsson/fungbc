@@ -8,7 +8,7 @@ open BitLogic
 open Clock
 open Types
 open Units
-open Host
+open Configuration
 open System.Collections.Generic
 
 type EnvelopeAddMode = Add | Subtract
@@ -90,11 +90,11 @@ module Mixer =
 
     type Message = Process of Buffer
 
-    type Agent = {Processor: MailboxProcessor<Message>; AudioBuffer: Buffer; Host: Host}
+    type Agent = {Processor: MailboxProcessor<Message>; AudioBuffer: Buffer; Config: Configuration ref}
 
     let sync (agent: Agent) =
 
-        let buffered = agent.Host.SoundReceiver.Buffered
+        let buffered = (!agent.Config).AudioDevice.Buffered
 
         let extraSamples = buffered - ((int  Constants.AudioConfig.SampleRate * Constants.AudioConfig.Channels) / (1000 / Constants.AudioConfig.BufferLength))
 
@@ -107,11 +107,11 @@ module Mixer =
                 |> int
 
             if microsToWait > 500 then
-                agent.Host.Idle (microsToWait / 2) // Don't wait all the calculated time, always time to do it next call anyways
+                (!agent.Config).Idle (microsToWait) // Don't wait all the calculated time, always time to do it next call anyways
                       
 
     let flush (agent: Agent) = 
-        if agent.Host.SoundReceiver.Buffered < 10 then Log.log "Audio buffer exhausted, there may be audio artifacts"
+        if (!agent.Config).AudioDevice.Buffered < 10 then Log.log "Audio buffer exhausted, there may be audio artifacts"
         let newBuffer = BufferPool.checkout agent.AudioBuffer.Size
         do newBuffer.AddMany agent.AudioBuffer.Data agent.AudioBuffer.Used
         do newBuffer |> Process |> agent.Processor.Post
@@ -138,20 +138,16 @@ module Mixer =
         do buffer (left * masterLeftVolume  |> min 2.0 |> (*) 32.0 |> int |> uint8)
         do buffer (right * masterRightVolume |> min 2.0 |> (*) 32.0 |> int |> uint8)
 
-    let create (host: Host) =
-        
-        let soundReceiver = host.SoundReceiver
+    let create (config: Configuration ref) =
 
         let audioBuffer = Buffer(((int Constants.AudioConfig.SampleRate * Constants.AudioConfig.Channels) /
                                         (1000 / Constants.AudioConfig.BufferLength)))
 
         let sendToHost (buffer: Buffer) count =
-            do soundReceiver.PlaySamples buffer.Data count
+            do (!config).AudioDevice.PlaySamples buffer.Data count
             do buffer.TrimFront count
 
         let processor = MailboxProcessor.Start (fun mb ->
-
-            do soundReceiver.Start ()
 
             let rec background () = async {
 
@@ -161,9 +157,9 @@ module Mixer =
                 | Process buffer ->
                     do
                         Log.logf "Audio playback: device buffer = %f ms"
-                            ((float soundReceiver.Buffered) / (float Constants.AudioConfig.SampleRate) |> (*) 500.0)
+                            ((float (!config).AudioDevice.Buffered) / (float Constants.AudioConfig.SampleRate) |> (*) 500.0)
 
-                    do soundReceiver.PlaySamples buffer.Data buffer.Used
+                    do (!config).AudioDevice.PlaySamples buffer.Data buffer.Used
 
                     do BufferPool.checkin buffer
                     
@@ -173,7 +169,7 @@ module Mixer =
             background ()
         )
 
-        { Processor = processor; AudioBuffer = audioBuffer; Host = host}
+        { Processor = processor; AudioBuffer = audioBuffer; Config = config}
 
 [<AbstractClass>]
 type SquareChannel (soundClock: Clock) as this =
@@ -335,7 +331,7 @@ type Square2 (soundClock: Clock, nr51: NR51) =
 
     override this.RightVolume = if nr51.Square2Right then 1.0 else 0.0
 
-type GBS (systemClock: Clock, host) as this =
+type GBS (systemClock: Clock, config: Configuration ref) as this =
 
     let soundClock = Clock.derive systemClock Constants.AudioConfig.SampleRate
 
@@ -343,7 +339,7 @@ type GBS (systemClock: Clock, host) as this =
 
     let stopwatch = new Stopwatch()
 
-    let mixer = Mixer.create host
+    let mixer = Mixer.create config
 
     let nr51 = NR51(0uy)
 

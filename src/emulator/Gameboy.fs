@@ -11,32 +11,24 @@ open Clock
 open Constants
 open Input
 open Palette
-open Host
+open Configuration
 
 type State = |Running |Paused 
 
 type Reply<'a> = AsyncReplyChannel<'a>
 
-type PropertyValue =
-    |Speed of Speed
-    |Palette of Palette
-
-type PropertyReply =
-    |Speed of Reply<Speed>
-    |Palette of Reply<Palette>
-    |FPS of Reply<float>
 
 type Message = 
     |Kill
     |Run
-    |Step of Reply<System.Exception option>
+    |Step of Reply<exn option>
     |Input of Input.Key*Input.KeyState
-    |Pause of Reply<unit>
+    |Pause of unit Reply
     |Start
-    |State of Reply<State>
+    |State of State Reply
     |Reset
-    |Write of PropertyValue
-    |Read of PropertyReply
+    |SetConfig of Configuration
+    |GetConfig of Configuration Reply
 
 type GameboyAgent = MailboxProcessor<Message>
 
@@ -50,13 +42,15 @@ type GameboyComponents = {
         Gbs: Sound.GBS
         Mmu: MMU
         Cpu: CPU
-        Host: Host
     }
 
 
 type Gameboy = |Gameboy of GameboyAgent*GameboyComponents
 
-let create (rom: ROM) host =
+let create (rom: ROM) config =
+
+    let config = ref config
+
     let ram = GBCRam()
 
     let systemClock = MutableClock(GBC_SYSTEM_CLOCK_FREQUENCY,0UL)
@@ -67,9 +61,9 @@ let create (rom: ROM) host =
 
     let timers = Timers(systemClock,interrupts)
 
-    let gbs = Sound.GBS(systemClock,host)
+    let gbs = Sound.GBS(systemClock,config)
 
-    let gpu = GPU(gbs,systemClock, interrupts, host)
+    let gpu = GPU(gbs,systemClock, interrupts, config)
 
     let mmu = MMU(gpu,rom,ram,gbs,keypad,interrupts,timers)
 
@@ -82,7 +76,7 @@ let create (rom: ROM) host =
     
     let components = {Ram = ram; Clock = systemClock; Interrupts = interrupts;
                       Keypad = keypad; Timers = timers; Gpu = gpu; Mmu = mmu;
-                      Cpu = cpu; Host = host; Gbs = gbs}
+                      Cpu = cpu; Gbs = gbs}
 
     let agent = GameboyAgent.Start(fun mailbox ->
             // Run the emulator for a number of iterations
@@ -114,7 +108,7 @@ let create (rom: ROM) host =
                     with
                     | error ->
                         do Log.logf "Runtime errror!\n%s\n%s" error.Message error.StackTrace
-                        do host.Error error
+                        do (!config).ErrorFn error
                         mailbox.Post Kill
                 | Reset ->
                     cpu.Reset ()
@@ -127,27 +121,17 @@ let create (rom: ROM) host =
                         reply.Reply None 
                     with error ->
                         do Log.logf "Runtime errror!\n%s\n%s" error.Message error.StackTrace
-                        do host.Error error
+                        do (!config).ErrorFn error
                         reply.Reply (Some error) 
                         mailbox.Post Kill 
                 | Input (key,state)->
                     keypad.[key] <- state
                 | State reply ->
                     reply.Reply state
-                | Write property ->
-                    match property with
-                    | PropertyValue.Speed speed ->
-                        gpu.Speed <- speed
-                    | PropertyValue.Palette palette ->
-                        gpu.Palette <- palette
-                | Read property ->
-                    match property with
-                    | Speed reply ->
-                        reply.Reply gpu.Speed
-                    | Palette reply ->
-                        reply.Reply gpu.Palette
-                    | FPS reply ->
-                        reply.Reply gpu.FPS
+                | SetConfig newConfig ->
+                    do config := newConfig
+                | GetConfig reply ->
+                    do reply.Reply !config
                 | _ ->
                     ()
 
@@ -158,10 +142,10 @@ let create (rom: ROM) host =
                     ()
                 | Pause reply ->
                     reply.Reply ()
-                    do host.SoundReceiver.Stop ()
+                    do (!config).AudioDevice.Stop ()
                     return! handleMessage Paused
                 | Start ->
-                    do host.SoundReceiver.Start ()
+                    do (!config).AudioDevice.Start ()
                     mailbox.Post Run
                     return! handleMessage Running
                 | _ ->
@@ -198,12 +182,6 @@ let kill = post Kill
 
 let postInput key state = post <| Input(key,state)
 
-let fps = postAndReply <| (Read << FPS)
+let getConfig = GetConfig |> postAndReply 
 
-let speed = postAndReply <| (Read << Speed)
-
-let setSpeed  = post << (Write << PropertyValue.Speed)
-
-let palette = postAndReply <| (Read << Palette)
-
-let setPalette = post << (Write << PropertyValue.Palette)
+let setConfig = SetConfig >> post

@@ -22,7 +22,7 @@ type AudioDevice () =
 
     member this.Pause () = do device.Pause ()
 
-    interface Host.SoundReceiver with
+    interface Configuration.AudioDevice with
         member this.PlaySamples samples count = do provider.AddSamples(samples,0,count)
 
         member this.Buffered = provider.BufferedBytes

@@ -709,7 +709,7 @@ let sizeOf instruction =
     | RET_F _
     | RET_NF _
     | RST _
-        -> 1<byte>
+        -> 1<b>
     | BIT_AR16 _
     | BIT_R8 _
     | LD_R8_D8 _ 
@@ -750,7 +750,7 @@ let sizeOf instruction =
     | SRA_AR16 _
     | SRL_R8 _
     | SRL_AR16 _
-         -> 2<byte>
+         -> 2<b>
     | LD_R8_A16 _
     | JP_A16 _
     | JP_F_A16 _
@@ -761,7 +761,7 @@ let sizeOf instruction =
     | CALL_A16 _
     | CALL_F_A16 _
     | CALL_NF_A16 _
-        -> 3<byte>
+        -> 3<b>
     
 // How many cycles does it take to execute this instruction?
 let cycleCount instruction long =

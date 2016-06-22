@@ -48,7 +48,7 @@ module Mixer =
             do System.Array.Copy(items,0,buffer,used,count)
             do used <- used + count
 
-        member this.Used = used
+        member this.Used with get () = used and set value = used <- min size value
 
         member this.Size = buffer.Length
 
@@ -151,9 +151,11 @@ module Mixer =
         // When increasing sample rate, samples are averaged into new samples
         // If factor is < 1.0 samples are duplicated to provide new samples.
         // May return same buffer as provided (but never changes source array)
-        let resample factor count (samples: AudioSample[]) =
+        let resample factor (buffer: Buffer) =
+            
+            let samples = buffer.Data
 
-            let channelLength = count / 2
+            let channelLength = buffer.Used / 2
 
             let newChannelLength = (channelLength |> float) / factor |> int
 
@@ -191,14 +193,12 @@ module Mixer =
 
                     do interpolate (n+1) resampled
             
-            if newChannelLength <> channelLength then
-                let resampled: AudioSample [] = Array.zeroCreate (newChannelLength*2)
+            let resampledBuffer = BufferPool.checkout (newChannelLength*2)
 
-                do interpolate 0 resampled
+            do interpolate 0 resampledBuffer.Data
+            do resampledBuffer.Used <- resampledBuffer.Size
 
-                resampled
-            else
-                samples
+            resampledBuffer
 
         let processor = MailboxProcessor.Start (fun mb ->
 
@@ -213,12 +213,13 @@ module Mixer =
                         Log.logf "Audio playback: device buffer = %f ms"
                             ((float (!config).AudioDevice.Buffered) / (float Constants.AudioConfig.SampleRate) |> (*) 500.0)
 
-                    let (Speed speed) = (!config).Speed
-
-                    let resampled = resample speed buffer.Used buffer.Data 
-
-                    do (!config).AudioDevice.PlaySamples resampled resampled.Length
-
+                    if (!config).Speed.Normal then
+                        do (!config).AudioDevice.PlaySamples buffer.Data buffer.Used 
+                    else
+                        let resampled = resample (!config).Speed.Multiplier buffer 
+                        do (!config).AudioDevice.PlaySamples resampled.Data resampled.Used
+                        BufferPool.checkin resampled
+                    
                     do BufferPool.checkin buffer
                     
                 return! background ()

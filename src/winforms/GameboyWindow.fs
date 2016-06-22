@@ -558,7 +558,7 @@ type GameboyWindow () as this =
             speedMenu.Enabled <- false
             soundMenu.Enabled <- false
 
-    member this.HelpAndAbout _ = MessageBox.Show(Resource.about) |> ignore
+    member this.HelpAndAbout _ = MessageBox.Show(Resource.about,sprintf "%s %s" Resource.title Resource.version) |> ignore
 
     member this.Idle micros =
         // Simply spinlock if time is < 500 microseconds to get close to perfect fps

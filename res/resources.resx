@@ -127,4 +127,7 @@
   <data name="title" xml:space="preserve">
     <value>FunGBC</value>
   </data>
+  <data name="version" xml:space="preserve">
+    <value>0.1</value>
+  </data>
 </root>

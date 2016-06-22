@@ -15,3 +15,5 @@ let title = stringResource "title"
 let about = stringResource "about"
 
 let icon = resources.GetObject("icon") :?> Icon
+
+let version = stringResource "version"

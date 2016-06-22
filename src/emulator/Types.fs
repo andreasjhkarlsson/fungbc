@@ -7,4 +7,4 @@ type AudioSample = byte
 
 type Color = int
 
-type Speed = |Unlimited |Limit of int<Hz>
+type Speed = Speed of float

@@ -147,6 +147,59 @@ module Mixer =
             do (!config).AudioDevice.PlaySamples buffer.Data count
             do buffer.TrimFront count
 
+        // Resample n stereo samples into n * (1.0/factor) samples
+        // When increasing sample rate, samples are averaged into new samples
+        // If factor is < 1.0 samples are duplicated to provide new samples.
+        // May return same buffer as provided (but never changes source array)
+        let resample factor count (samples: AudioSample[]) =
+
+            let channelLength = count / 2
+
+            let newChannelLength = (channelLength |> float) / factor |> int
+
+            // Calculate the last sample in source channel data that belongs to resample n
+            let sourceSampleIndex n = (float n) * factor |> int
+
+            // Stretch or compress samples by averaging or duplicating source samples.
+            let rec interpolate n (resampled: AudioSample[]) =
+
+                if n < newChannelLength then
+                    
+                    // Calculate which source samples should be used to
+                    // base the new resampled sample.
+                    // For factor < 1.0 this is always 1 sample. 
+                    let sampleRangeIndexes =
+
+                        let head = sourceSampleIndex n
+                        let tail = sourceSampleIndex (n+1)
+                        if n + 1 < newChannelLength then
+                            [head..(max (tail - 1) head)]
+                        else
+                            [head..(min (channelLength-1) tail)]
+
+                    // Map the calculated sample range into channel 0 or 1
+                    let mapChannel channel =
+                        resampled.[n*2+channel] <-
+                            sampleRangeIndexes
+                            |> List.averageBy (fun index ->
+                                float samples.[index*2+channel]
+                            )
+                            |> byte
+
+                    do mapChannel 0
+                    do mapChannel 1
+
+                    do interpolate (n+1) resampled
+            
+            if newChannelLength <> channelLength then
+                let resampled: AudioSample [] = Array.zeroCreate (newChannelLength*2)
+
+                do interpolate 0 resampled
+
+                resampled
+            else
+                samples
+
         let processor = MailboxProcessor.Start (fun mb ->
 
             let rec background () = async {
@@ -155,11 +208,16 @@ module Mixer =
 
                 match msg with
                 | Process buffer ->
+
                     do
                         Log.logf "Audio playback: device buffer = %f ms"
                             ((float (!config).AudioDevice.Buffered) / (float Constants.AudioConfig.SampleRate) |> (*) 500.0)
 
-                    do (!config).AudioDevice.PlaySamples buffer.Data buffer.Used
+                    let (Speed speed) = (!config).Speed
+
+                    let resampled = resample speed buffer.Used buffer.Data 
+
+                    do (!config).AudioDevice.PlaySamples resampled resampled.Length
 
                     do BufferPool.checkin buffer
                     
@@ -172,7 +230,7 @@ module Mixer =
         { Processor = processor; AudioBuffer = audioBuffer; Config = config}
 
 [<AbstractClass>]
-type SquareChannel (soundClock: Clock) as this =
+type SquareChannel (soundClock: Clock,config: Configuration ref) as this =
     inherit Channel ()
 
     let mutable leftInDuty = 0
@@ -248,8 +306,12 @@ type SquareChannel (soundClock: Clock) as this =
     member this.PlayMode = if this.NRx4.GetBit 6 = SET then Counter else Continuous
 
     member this.Frequency =
+        let (Speed speed) = (!config).Speed
         let regValue = ((int this.NRx4.Value &&& 0b111) <<< 8) ||| (int this.NRx3.Value)
-        4194304<Hz> / (32 * (2048 - regValue))
+        let f = 4194304<Hz> / (32 * (2048 - regValue))
+        if (!config).KeepAudioPitch then
+            (float f) / speed |> int |> (*) 1<Hz>
+        else f
 
 
     override this.Amplitude = currentAmp
@@ -299,8 +361,8 @@ type SquareChannel (soundClock: Clock) as this =
             currentAmp <- 0.0
 
 
-type Square1 (soundClock: Clock, nr51: NR51) =
-    inherit SquareChannel(soundClock)
+type Square1 (soundClock: Clock, nr51: NR51, config) =
+    inherit SquareChannel(soundClock,config)
 
     member val NR10 = ValueBackedIORegister(0uy)
 
@@ -316,8 +378,8 @@ type Square1 (soundClock: Clock, nr51: NR51) =
     
     override this.RightVolume = if nr51.Square1Right then 1.0 else 0.0
 
-type Square2 (soundClock: Clock, nr51: NR51) =
-    inherit SquareChannel(soundClock)
+type Square2 (soundClock: Clock, nr51: NR51, config) =
+    inherit SquareChannel(soundClock,config)
 
     member this.NR21 = this.NRx1
 
@@ -343,9 +405,9 @@ type GBS (systemClock: Clock, config: Configuration ref) as this =
 
     let nr51 = NR51(0uy)
 
-    let square1 = Square1(soundClock, nr51)
+    let square1 = Square1(soundClock, nr51, config)
 
-    let square2 = Square2(soundClock, nr51)
+    let square2 = Square2(soundClock, nr51, config)
 
     let channels: Channel list = [square1; square2]
 

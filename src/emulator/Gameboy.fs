@@ -87,7 +87,7 @@ let create (rom: ROM) config =
                     // Updates gpu state (may draw and raise interrupt)
                     do gpu.Update ()
                     // Update sound
-                    do gbs.Update ()
+                    if (!config).EnableAudio then do gbs.Update ()
                     // Increment timers (may raise interrupt)
                     do timers.Update ()
 

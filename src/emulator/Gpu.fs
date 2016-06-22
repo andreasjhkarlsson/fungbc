@@ -349,18 +349,16 @@ type GPU (sound: Sound.GBS,systemClock, interrupts: InterruptManager,config: Con
                         if interrupts.Enable then
                             interrupts.Current.Set <- Interrupts.VBlank
 
-                        do sound.Mixer |> Mixer.flush
+                        if (!config).EnableAudio then sound.Mixer |> Mixer.flush
 
                         do drawScreen ()
 
                         match (!config).Speed with
-                        | Unlimited ->
-                            do sound.Mixer |> Mixer.sync
-                        | Limit frequency ->
+                        | Speed factor ->
                             
                             let rec limit () =
 
-                                let ticksLeft = ((float Stopwatch.Frequency) / (float frequency) - (float stopWatch.ElapsedTicks))
+                                let ticksLeft = ((float Stopwatch.Frequency) / (factor * 60.0) - (float stopWatch.ElapsedTicks))
 
                                 if ticksLeft >= 0.0 then
                                     do
@@ -371,7 +369,7 @@ type GPU (sound: Sound.GBS,systemClock, interrupts: InterruptManager,config: Con
 
                                     limit ()
 
-                            do sound.Mixer |> Mixer.sync
+                            if (!config).EnableAudio then do sound.Mixer |> Mixer.sync
                             do limit ()
 
                         stopWatch.Restart()

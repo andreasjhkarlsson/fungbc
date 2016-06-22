@@ -121,15 +121,11 @@ type GameboyScreen () as this =
 
         member this.Flush () = do flip ()
 
-type ScaleToolStripMenuItem(scale) =
-    inherit ToolStripMenuItem(sprintf "%dx" scale)
 
-    member this.Scale = scale
-
-type PaletteToolStripMenuItem(name: string,palette) =
+type DataToolStripMenuItem<'a>(name: string,data: 'a) =
     inherit ToolStripMenuItem(name)
 
-    member this.Palette = palette
+    member this.Data = data
 
 type GameboyWindow () as this =
 
@@ -153,7 +149,9 @@ type GameboyWindow () as this =
 
     let scaleItems =
         [1; 2; 3; 4; 6; 8]
-        |> List.map (fun scale -> new ScaleToolStripMenuItem(scale))
+        |> List.map (fun scale ->
+            new DataToolStripMenuItem<int>(sprintf "%dx" scale,scale)
+        )
 
     let paletteMenu = new ToolStripMenuItem("Palette...")
 
@@ -165,7 +163,30 @@ type GameboyWindow () as this =
          ("Horror Red", Palette.Predefined.horrorRed)
          ("Summer Green", Palette.Predefined.summerGreen)
          ("Psychedelic", Palette.Predefined.psychedelic)]
-        |> List.map (fun (name, palette) -> new PaletteToolStripMenuItem(name,palette))
+        |> List.map (fun (name, palette) ->
+            new DataToolStripMenuItem<Palette.Palette>(name,palette)
+        )
+
+    let speedMenu = new ToolStripMenuItem("Speed...")
+
+    let speedItems =
+        [
+            "50 %", Speed 0.5
+            "75 %", Speed 0.75
+            "100 %", Speed 1.0
+            "125 %", Speed 1.25
+            "150 %", Speed 1.5
+            "200 %", Speed 2.0
+            "300 %", Speed 3.0
+        ] |> List.map (fun (label,speed) ->
+            new DataToolStripMenuItem<Speed>(label,speed)
+        )
+
+    let soundMenu = new ToolStripMenuItem("Sound...")
+
+    let enableSoundMenuItem = new ToolStripMenuItem("Enable")
+
+    let keepPitchMenuItem = new ToolStripMenuItem("Keep pitch")
 
     let screenCapMenuItem = new ToolStripMenuItem("Save screen capture...") 
 
@@ -178,8 +199,6 @@ type GameboyWindow () as this =
     let stopMenuItem = new ToolStripMenuItem("Stop")
 
     let loadRomItem = new ToolStripMenuItem("Load ROM")
-
-    let limitFPSItem = new ToolStripMenuItem("Limit FPS")
 
     let helpAndAboutMenuItem = new ToolStripMenuItem("About")
 
@@ -211,7 +230,7 @@ type GameboyWindow () as this =
 
         this.MaximizeBox <- false
        
-        this.Scale 2
+        this.Scale <- 2
 
         // Setup context menu
         do 
@@ -235,12 +254,32 @@ type GameboyWindow () as this =
 
                 contextMenu.Items.Add(executionMenu) |> ignore
 
+            // Setup sound menu
+            do
+                soundMenu.DropDownItems.Add enableSoundMenuItem |> ignore
+                enableSoundMenuItem.Click.Add (fun _ -> this.ToggleAudio ())
+
+                soundMenu.DropDownItems.Add keepPitchMenuItem |> ignore
+                keepPitchMenuItem.Click.Add (fun _ -> this.ToggleKeepPitch ())
+
+                contextMenu.Items.Add soundMenu |> ignore
+
+            // Setup speed menu
+            do
+                speedItems
+                |> List.iter (fun item ->
+                    speedMenu.DropDownItems.Add item |> ignore
+                    item.Click.Add (fun _ -> this.Speed <- item.Data)
+                )
+
+                contextMenu.Items.Add speedMenu |> ignore
+
             // Setup scale menu
             do
                 scaleItems
                 |> List.iter (fun item ->
                     scaleMenu.DropDownItems.Add item |> ignore
-                    item.Click.Add (fun _ -> this.Scale item.Scale)
+                    item.Click.Add (fun _ -> this.Scale <- item.Data)
                 )
                 contextMenu.Items.Add scaleMenu |> ignore
 
@@ -249,13 +288,9 @@ type GameboyWindow () as this =
                 paletteItems
                 |> List.iter (fun item ->
                     paletteMenu.DropDownItems.Add item |> ignore
-                    item.Click.Add (fun _ -> this.Palette item.Palette)
+                    item.Click.Add (fun _ -> this.Palette <- item.Data)
                 )
                 contextMenu.Items.Add paletteMenu |> ignore
-
-            limitFPSItem.Checked <- true
-            limitFPSItem.Click.Add this.ToggleFPSLimit 
-            contextMenu.Items.Add(limitFPSItem) |> ignore
         
             screenCapMenuItem.Click.Add this.ScreenCap
             contextMenu.Items.Add(screenCapMenuItem) |> ignore
@@ -287,37 +322,56 @@ type GameboyWindow () as this =
 
     member this.Reset _ = gameboy |> Option.iter Gameboy.reset
 
-    member this.ToggleFPSLimit args =
+    member this.Scale
+        with set scale =
+            this.ClientSize <- Size(RESOLUTION.Width * scale,RESOLUTION.Height * scale + statusStrip.Height)
+            scaleItems |> List.iter (fun item -> item.Checked <- item.Data = scale)
+
+    member this.Palette
+        with set palette =
+            match gameboy with
+            | Some gameboy ->
+                gameboy |> Gameboy.setConfig {
+                    Gameboy.getConfig gameboy with
+                        Palette = palette
+                }
+            | None ->
+                ()          
+                
+    member this.Speed
+        with set speed =
+            match gameboy with
+            | Some gameboy ->
+                gameboy |> Gameboy.setConfig {
+                    Gameboy.getConfig gameboy with
+                        Speed = speed
+                }  
+            | None ->
+                ()
+    
+    member this.ToggleAudio () =
         match gameboy with
         | Some gameboy ->
-            let currentSpeed = (Gameboy.getConfig gameboy).Speed
-            let newSpeed =
-                match currentSpeed with
-                | Unlimited ->
-                    Limit 60<Hz>
-                | Limit _ ->
-                    Unlimited 
+            let config = gameboy |> Gameboy.getConfig
             gameboy |> Gameboy.setConfig {
-                Gameboy.getConfig gameboy
-                    with Speed = newSpeed
-            }
-        |_ ->
-            ()
-
-    member this.Scale scale =
-        this.ClientSize <- Size(RESOLUTION.Width * scale,RESOLUTION.Height * scale + statusStrip.Height)
-        scaleItems |> List.iter (fun item -> item.Checked <- item.Scale = scale)
-
-    member this.Palette palette =
-        match gameboy with
-        | Some gameboy ->
-            gameboy |> Gameboy.setConfig {
-                Gameboy.getConfig gameboy with
-                    Palette = palette
-            }
+                config with
+                    EnableAudio = not config.EnableAudio
+            }  
         | None ->
             ()
+
     
+    member this.ToggleKeepPitch () =
+        match gameboy with
+        | Some gameboy ->
+            let config = gameboy |> Gameboy.getConfig
+            gameboy |> Gameboy.setConfig {
+                config with
+                    KeepAudioPitch = not config.KeepAudioPitch
+            }  
+        | None ->
+            ()
+
     member this.ScreenCap args =
         let screenCap = screen.Capture ()
         use saveDialog = new SaveFileDialog()
@@ -396,8 +450,10 @@ type GameboyWindow () as this =
             AudioDevice = audioDevice
             ErrorFn = fun e -> runInUIContext (fun () -> this.ShowError e)
             Idle = this.Idle
-            Speed = Types.Limit 60<Hz>
+            Speed = Speed 1.0
             Palette = Palette.Predefined.grayscale
+            KeepAudioPitch = true
+            EnableAudio = true
         }
 
 
@@ -466,14 +522,16 @@ type GameboyWindow () as this =
         | None ->
             ()
 
+
+
     member this.UpdateContextMenu _ =
         match gameboy with
         | Some gameboy ->
             executionMenu.Enabled <- true
             screenCapMenuItem.Enabled <- true
             paletteMenu.Enabled <- true
-            limitFPSItem.Enabled <- true
-            limitFPSItem.Checked <- not ((Gameboy.getConfig gameboy).Speed = Types.Unlimited)
+            speedMenu.Enabled <- true
+            soundMenu.Enabled <- true
             let executionState = Gameboy.state gameboy
             match executionState with
             | Running ->
@@ -483,15 +541,22 @@ type GameboyWindow () as this =
                 resumeMenuItem.Enabled <- true
                 pauseMenuItem.Enabled <- false
 
-            let palette = (Gameboy.getConfig gameboy).Palette
+            let config = gameboy |> Gameboy.getConfig
 
-            paletteItems |> List.iter (fun item -> item.Checked <- item.Palette = palette)
+            paletteItems |> List.iter (fun item -> item.Checked <- item.Data = config.Palette)
+
+            speedItems |> List.iter (fun item -> item.Checked <- item.Data = config.Speed)
+
+            enableSoundMenuItem.Checked <- config.EnableAudio
+
+            keepPitchMenuItem.Checked <- config.KeepAudioPitch
 
         | None ->
             executionMenu.Enabled <- false
             screenCapMenuItem.Enabled <- false
             paletteMenu.Enabled <- false
-            limitFPSItem.Enabled <- false
+            speedMenu.Enabled <- false
+            soundMenu.Enabled <- false
 
     member this.HelpAndAbout _ = MessageBox.Show(Resource.about) |> ignore
 

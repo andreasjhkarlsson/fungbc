@@ -22,11 +22,18 @@ type AudioDevice () =
 
     member this.Pause () = do device.Pause ()
 
+    member this.Stop () =
+        do device.Stop ()
+
+    member this.IsPlaying () = device.PlaybackState = PlaybackState.Playing
+
     interface Configuration.AudioDevice with
         member this.PlaySamples samples count = do provider.AddSamples(samples,0,count)
 
         member this.Buffered = provider.BufferedBytes
 
-        member this.Start () = this.Start ()
-
-        member this.Stop () = this.Pause ()
+        member this.Playing
+            with get () =
+                this.IsPlaying ()
+            and set state =
+                if state then this.Start () else this.Stop ()

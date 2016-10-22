@@ -142,10 +142,10 @@ let create (rom: ROM) config =
                     ()
                 | Pause reply ->
                     reply.Reply ()
-                    do (!config).AudioDevice.Stop ()
+                    do (!config).AudioDevice.Playing <- false
                     return! handleMessage Paused
                 | Start ->
-                    do (!config).AudioDevice.Start ()
+                    do (!config).AudioDevice.Playing <- true
                     mailbox.Post Run
                     return! handleMessage Running
                 | _ ->

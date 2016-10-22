@@ -13,8 +13,7 @@ type Renderer =
 type AudioDevice =
     abstract member PlaySamples: AudioSample [] -> int -> unit
     abstract member Buffered: int
-    abstract member Start: unit -> unit
-    abstract member Stop: unit -> unit
+    abstract Playing : bool with get, set
 
 [<CompilationRepresentation (CompilationRepresentationFlags.ModuleSuffix)>]
 type Configuration = {

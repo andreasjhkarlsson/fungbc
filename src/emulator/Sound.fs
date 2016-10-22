@@ -207,7 +207,7 @@ module Mixer =
                 let! msg = mb.Receive ()
 
                 match msg with
-                | Process buffer ->
+                | Process buffer when (!config).AudioDevice.Playing ->
 
                     do
                         Log.logf "Audio playback: device buffer = %f ms"
@@ -221,7 +221,8 @@ module Mixer =
                         BufferPool.checkin resampled
                     
                     do BufferPool.checkin buffer
-                    
+                | Process buffer ->
+                    do BufferPool.checkin buffer
                 return! background ()
             }
 
@@ -455,6 +456,9 @@ type GBS (systemClock: Clock, config: Configuration ref) as this =
 
             if this.MasterEnable then
 
+                if not (!config).AudioDevice.Playing then do
+                    config.Value.AudioDevice.Playing <- true
+
                 channels |> List.iter (fun channel -> if channel.Enable then do channel.Update ())
 
                 if this.Square2.Enable then do this.Square2.Update ()
@@ -465,6 +469,8 @@ type GBS (systemClock: Clock, config: Configuration ref) as this =
                     ( this.LeftSpeakerVolume,
                       this.RightSpeakerVolume)
             else
+                if (!config).AudioDevice.Playing then do
+                    config.Value.AudioDevice.Playing <- false
                 do mixer |> Mixer.mix [] (0.0,0.0)
         )
 

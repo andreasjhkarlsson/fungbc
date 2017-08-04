@@ -48,6 +48,7 @@
     <Compile Include="Types.fs" />
     <Compile Include="Log.fs" />
     <Compile Include="Constants.fs" />
+    <Compile Include="State.fs" />
     <Compile Include="BitLogic.fs" />
     <Compile Include="MemoryCell.fs" />
     <Compile Include="Rom.fs" />

@@ -50,20 +50,21 @@ type Keypad (interrupts: InterruptManager) =
 
     member this.Released key = this.[key] = Released
 
-    override this.MemoryValue
-        with get () =
-            let column (p0, p1, p2, p3) =
-                let bit = function
-                          |B0 -> setIfFalse <| this.Pressed p0
-                          |B1 -> setIfFalse <| this.Pressed p1
-                          |B2 -> setIfFalse <| this.Pressed p2
-                          |B3 -> setIfFalse <| this.Pressed p3
-                          |_ -> CLEAR
-                mapByte bit
+    interface IMemoryCell with
+        member x.Value
+            with get () =
+                let column (p0, p1, p2, p3) =
+                    let bit = function
+                              |B0 -> setIfFalse <| x.Pressed p0
+                              |B1 -> setIfFalse <| x.Pressed p1
+                              |B2 -> setIfFalse <| x.Pressed p2
+                              |B3 -> setIfFalse <| x.Pressed p3
+                              |_ -> CLEAR
+                    mapByte bit
 
-            match base.MemoryValue &&& 0xF0uy with
-            | BitSet 4 value ->
-                value ||| (column pins4)
-            | BitSet 5 value ->
-                value ||| (column pins5)
-            | _ as value -> value
+                match base.Value &&& 0xF0uy with
+                | BitSet 4 value ->
+                    value ||| (column pins4)
+                | BitSet 5 value ->
+                    value ||| (column pins5)
+                | _ as value -> value

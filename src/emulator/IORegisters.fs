@@ -2,24 +2,36 @@
 
 open MemoryCell
 open BitLogic
+open State
 
 // IORegister = Memory register
 [<AbstractClass>]
-type IORegister () as this =
-    abstract MemoryValue: uint8 with get, set
-    member val MemoryCell = VirtualCell((fun () -> this.MemoryValue), (fun newValue -> this.MemoryValue <- newValue))
+type IORegister () =
+    abstract Value: uint8 with get, set
+
+    // Convenience method so clients doesn't have to cast
+    member x.MemoryCell = x :> IMemoryCell
+
+    interface IMemoryCell with
+        member x.Value
+            with get () = x.Value
+            and set newValue = x.Value <- newValue
+
+    interface IEmulationState with
+        member x.Persist () = box x.Value
+        member x.Load obj = x.Value <- unbox obj
 
 // A memory register that is fundamentally a regular byte value
-type ValueBackedIORegister(init) =
+type ValueBackedIORegister(init: uint8) =
     inherit IORegister ()
+
+    let mutable value = init
 
     // We seperate the concept of register value and memory value
     // as writes for example may be disabled from memory, but enabled overall for the register.
-    member val Value = init with get, set
-
-    override this.MemoryValue
-        with get () = this.Value
-        and set newValue = this.Value <- newValue 
+    override x.Value 
+        with get () = value
+        and set newValue = value <- newValue
 
     member this.Update fn = this.Value <- fn this.Value
 

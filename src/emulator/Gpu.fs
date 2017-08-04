@@ -19,7 +19,7 @@ open Types
 type OBJBGPriority = |Above |Behind
 type SpritePalette = |Palette0 |Palette1
 
-type SpriteAttribute (c0: MemoryCell,c1: MemoryCell,c2: MemoryCell,c3: MemoryCell) =
+type SpriteAttribute (c0: IMemoryCell,c1: IMemoryCell,c2: IMemoryCell,c3: IMemoryCell) =
     member this.Y = c0.Value
     member this.X = c1.Value
 
@@ -80,7 +80,7 @@ type LCDStatus (init) =
                         |1uy -> VBlank
                         |2uy -> SearchingOAMRAM
                         |3uy -> LCDDriverDataTransfer
-                        |_ -> raise <| System.Exception("Cannot happen (uint8&0x3 <= 3)")
+                        |_ -> failwith "Cannot happen (uint8&0x3 <= 3)"
         and set value = this.Value <- (this.Value &&& (~~~0x3uy)) |||
                         (match value with
                         |HBlank -> 0uy
@@ -91,8 +91,9 @@ type LCDStatus (init) =
 type LY(init) =
     inherit ValueBackedIORegister(init)
 
-    // Writing from memory resets the register
-    override this.MemoryValue with set value = base.MemoryValue <- 0x0uy
+    interface IMemoryCell with
+        member x.Value
+            with set _ = base.Value <- 0x0uy // Writing from memory resets the register
 
 
 type PaletteMapRegister(init) =

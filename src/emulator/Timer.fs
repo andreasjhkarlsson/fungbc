@@ -5,6 +5,7 @@ open Clock
 open BitLogic
 open Units
 open Interrupts
+open MemoryCell
 
 // Divider register. Simply increments 16384 times per second
 type DIVRegister(clock: Clock) =
@@ -14,7 +15,7 @@ type DIVRegister(clock: Clock) =
 
     let mutable clock = startClock ()
 
-    override this.MemoryValue
+    override x.Value
         with get () = clock.Ticks |> uint8 // Converting to uint8 == % 256
         and set _ = clock <- startClock () // Writing any vlaue clears register (i.e. restart clock)
 
@@ -42,45 +43,46 @@ type TIMARegister (systemClock: Clock, startFrequency: int<Hz>) =
             | false -> clock <- unfreeze clock systemClock
             paused <- state
 
-    override this.MemoryValue
+    member this.Overflowed () = clock.Ticks + uint64 baseValue > 0xFFUL
+
+    override x.Value
         with get () =
             clock.Ticks + uint64 baseValue |> uint8
         and set value =
             baseValue <- value
-            this.ResetClock ()
-
-    member this.Overflowed () = clock.Ticks + uint64 baseValue > 0xFFUL
+            x.ResetClock ()
 
 
 // Timer control register. Controls the TIMA register.
 type TACRegister (tima: TIMARegister,init) =
     inherit ValueBackedIORegister(init)
 
-    override this.MemoryValue
-        with set newValue =
-            
-            let oldValue = this.MemoryValue
+    interface IMemoryCell with
+        member x.Value
+            with set newValue =
 
-            match (oldValue, newValue) with
-            // Timer stop bit changed!
-            | BitChanged 2 newState ->
-                match newState with
-                | SET -> tima.Paused <- false
-                | CLEAR -> tima.Paused <- true
-            | _ -> ()
+                let oldValue = x.Value
 
-            match (oldValue, newValue) with
-            // Frequency selection changed!
-            | BitsChanged 0x3uy value ->
-                match value with
-                | 0x0uy -> tima.Frequency <- 4096<Hz>
-                | 0x1uy -> tima.Frequency <- 262144<Hz>
-                | 0x2uy -> tima.Frequency <- 65536<Hz>
-                | 0x3uy -> tima.Frequency <- 16384<Hz>
-                | _ -> () // Will never happen (since value is newValue &&& 0x3) 
-            | _ -> () 
+                match (oldValue, newValue) with
+                // Timer stop bit changed!
+                | BitChanged 2 newState ->
+                    match newState with
+                    | SET -> tima.Paused <- false
+                    | CLEAR -> tima.Paused <- true
+                | _ -> ()
 
-            base.MemoryValue <- newValue
+                match (oldValue, newValue) with
+                // Frequency selection changed!
+                | BitsChanged 0x3uy value ->
+                    match value with
+                    | 0x0uy -> tima.Frequency <- 4096<Hz>
+                    | 0x1uy -> tima.Frequency <- 262144<Hz>
+                    | 0x2uy -> tima.Frequency <- 65536<Hz>
+                    | 0x3uy -> tima.Frequency <- 16384<Hz>
+                    | _ -> () // Will never happen (since value is newValue &&& 0x3) 
+                | _ -> () 
+
+                base.Value <- newValue
 
 // Timer modulo register. Is loaded into TIMA when TIMA overflows.
 type TMARegister (init) = inherit ValueBackedIORegister(init)
@@ -97,6 +99,6 @@ type Timers (systemClock, interrupts: InterruptManager) =
     member this.TAC = tac
     
     member this.Update () =
-        if tima.Overflowed () then
-            tima.MemoryValue <- tma.Value
+        if tima.Overflowed () then do
+            tima.MemoryCell.Value <- tma.Value
             interrupts.Current.Set <- TimerOverflow

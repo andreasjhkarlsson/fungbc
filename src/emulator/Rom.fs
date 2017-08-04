@@ -12,8 +12,8 @@ type SaveFile =
 
 [<AbstractClass>]
 type ROM () =
-    abstract ROMBlock: array<MemoryCell>
-    abstract RAMBlock: array<MemoryCell> option
+    abstract ROMBlock: array<IMemoryCell>
+    abstract RAMBlock: array<IMemoryCell> option
 
 type GBCFlag = |GB |GBC |GBC_ONLY
 
@@ -177,9 +177,12 @@ type CartROM (header,data,saveFile: SaveFile) =
     override this.RAMBlock =
         if header.CartridgeType.Ram.IsSome then
             let switchableCell bank address =
-                let get () = ramBanks.[(bank ())].[address]
-                let set value = ramBanks.[(bank ())].[address] <- value
-                VirtualCell(get,set) :> MemoryCell
+                {
+                    new MemoryCell() with
+                        member x.Value
+                            with get () = ramBanks.[(bank ())].[address]
+                            and set value = ramBanks.[(bank ())].[address] <- value
+                } :> IMemoryCell
 
             initMemoryBlock (8 * kB) (fun address ->
                 switchableCell this.RAMBank address
@@ -190,13 +193,16 @@ type CartROM (header,data,saveFile: SaveFile) =
     override this.ROMBlock =
 
         let switchableCell bank baseAddress offset =
-            let get () =
-                try
-                    romBanks.[(bank ())].[offset]
-                with error ->
-                    failwith (sprintf "error reading address %04X from rom bank %d" (baseAddress + offset) (bank()))
-            let set value = this.ROMWrite (baseAddress + offset |> uint16) value
-            VirtualCell(get,set) :> MemoryCell
+                {
+                    new MemoryCell() with
+                        member x.Value
+                            with get () =
+                                try
+                                    romBanks.[(bank ())].[offset]
+                                with error ->
+                                    failwith (sprintf "error reading address %04X from rom bank %d" (baseAddress + offset) (bank()))
+                            and set value = this.ROMWrite (baseAddress + offset |> uint16) value
+                } :> IMemoryCell
 
         initMemoryBlock (32 * kB) (fun address ->
             match address with

@@ -8,6 +8,7 @@ open BitLogic
 open Clock
 open Types
 open Units
+open MemoryCell
 open Configuration
 open System.Collections.Generic
 
@@ -266,27 +267,32 @@ type SquareChannel (soundClock: Clock,config: Configuration ref) as this =
 
     member val NRx1 = {
         new ValueBackedIORegister (0uy) with
-            override x.MemoryValue
-                with get () = x.Value &&& 0b11000000uy
+            override this.ToString () = base.ToString () // Dummy override (object expression is must have at least one)
+        interface IMemoryCell with
+            member x.Value
+                with get () = (x :?> ValueBackedIORegister).Value &&& 0b11000000uy
                 and set value =
-                     x.Value <- value
-                     length <- 64 - (x.GetBits 5 0 |> int)
+                     (x :?> ValueBackedIORegister).Value <- value
+                     length <- 64 - ((x :?> ValueBackedIORegister).GetBits 5 0 |> int)
     }
 
     member val NRx2 = ValueBackedIORegister(0uy)
 
     member val NRx3 = {
         new ValueBackedIORegister(0uy) with
-            override x.MemoryValue
-                with get () = 0uy
+            override this.ToString () = base.ToString () // Dummy override (object expression is must have at least one)
+        interface IMemoryCell with
+            member x.Value with get () = 0uy
     }
 
     member val NRx4 = {
         new ValueBackedIORegister(0uy) with
-            override x.MemoryValue
-                with get () = x.Value &&& 0b01000000uy
+            override this.ToString () = base.ToString () // Dummy override (object expression is must have at least one)
+        interface IMemoryCell with
+            member x.Value
+                with get () = (x :?> ValueBackedIORegister).Value &&& 0b01000000uy
                 and set value =
-                    x.Value <- value
+                    (x :?> ValueBackedIORegister).Value <- value
                     if value |> isBitSet 7 then do this.Start ()
     }
 
@@ -425,7 +431,9 @@ type GBS (systemClock: Clock, config: Configuration ref) as this =
     member val NR51 = nr51
     member val NR52 = {
         new ValueBackedIORegister(0uy) with
-            override x.MemoryValue
+            override x.ToString () = base.ToString () // Dummy override (object expression is must have at least one)
+         interface IMemoryCell with
+            member x.Value
                 with get () =
                     BitLogic.mapByte (
                         function

@@ -1,7 +1,7 @@
 ﻿module Input
 
 open BitLogic
-open MemoryCell
+open Memory
 open IORegisters
 open Interrupts
 

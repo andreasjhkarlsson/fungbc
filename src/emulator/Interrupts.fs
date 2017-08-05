@@ -1,7 +1,7 @@
 ﻿module Interrupts
 
 open BitLogic
-open MemoryCell
+open Memory
 open IORegisters
 
 type Interrupt =

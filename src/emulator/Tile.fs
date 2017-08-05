@@ -1,10 +1,11 @@
 ﻿module Tile
 
-open MemoryCell
+open System.Collections.Generic
+open Memory
 open BitLogic
 
 // Would be GREAT if you could somehow enforce the length of the array to be 16
-type TileData = |TileData of MemoryBlock
+type TileData = | TileData of uint8 IList
 
 let inline decode8x8 (TileData data) x y =
     (*
@@ -19,8 +20,8 @@ let inline decode8x8 (TileData data) x y =
         for a total of 16 bytes
     *)
 
-    let b0 = data.[y * 2].Value
-    let b1 = data.[y * 2 + 1].Value
+    let b0 = data.[y * 2]
+    let b1 = data.[y * 2 + 1]
 
     (bitStateOf (7 - x) b0 |> bitStateToValue) |||
     (bitStateOf (7 - x) b1 |> bitStateToValue <<< 1) 

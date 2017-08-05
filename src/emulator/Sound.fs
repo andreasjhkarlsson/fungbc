@@ -8,7 +8,7 @@ open BitLogic
 open Clock
 open Types
 open Units
-open MemoryCell
+open Memory
 open Configuration
 open System.Collections.Generic
 

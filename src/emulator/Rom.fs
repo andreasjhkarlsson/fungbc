@@ -1,19 +1,22 @@
 ﻿module Rom
 
 open System.IO
-open MemoryCell
 open BitLogic
 open Units
 open Misc
+open Memory
 
 type SaveFile =
     abstract Load: unit -> uint8[] option
     abstract Save: uint8[] -> unit
 
+type ExternalRAM = MemoryBlock
+
 [<AbstractClass>]
 type ROM () =
-    abstract ROMBlock: array<IMemoryCell>
-    abstract RAMBlock: array<IMemoryCell> option
+
+    abstract ROMBlock: MemoryBlock
+    abstract RAMBlock: ExternalRAM option
 
 type GBCFlag = |GB |GBC |GBC_ONLY
 
@@ -176,42 +179,29 @@ type CartROM (header,data,saveFile: SaveFile) =
 
     override this.RAMBlock =
         if header.CartridgeType.Ram.IsSome then
-            let switchableCell bank address =
-                {
-                    new MemoryCell() with
-                        member x.Value
-                            with get () = ramBanks.[(bank ())].[address]
-                            and set value = ramBanks.[(bank ())].[address] <- value
-                } :> IMemoryCell
-
-            initMemoryBlock (8 * kB) (fun address ->
-                switchableCell this.RAMBank address
-            ) |> Some
+            Some {
+                new MemoryBlock () with
+                    member x.Read address =
+                        ramBanks.[this.RAMBank ()].[int address]
+                    member x.Write address value =
+                        do ramBanks.[this.RAMBank ()].[int address] <- value
+            }
         else
             None
 
     override this.ROMBlock =
+        {
+            new MemoryBlock () with
 
-        let switchableCell bank baseAddress offset =
-                {
-                    new MemoryCell() with
-                        member x.Value
-                            with get () =
-                                try
-                                    romBanks.[(bank ())].[offset]
-                                with error ->
-                                    failwith (sprintf "error reading address %04X from rom bank %d" (baseAddress + offset) (bank()))
-                            and set value = this.ROMWrite (baseAddress + offset |> uint16) value
-                } :> IMemoryCell
-
-        initMemoryBlock (32 * kB) (fun address ->
-            match address with
-            | Range 0x0000 0x3FFF offset ->
-                switchableCell this.LowROMBank 0x0000 offset
-            | Range 0x4000 0x7FFF offset ->
-                switchableCell this.HighROMBank 0x4000 offset
-            | _ -> failwith "Unmapped"
-        )
+                member x.Read address =
+                    let bank = if (int address) < 0x4000 then this.LowROMBank () else this.HighROMBank ()
+                    try
+                        romBanks.[bank].[int address % 0x4000]
+                    with error ->
+                        failwith (sprintf "error reading address %04X from rom bank %d" address bank)
+                member x.Write address value =
+                    do this.ROMWrite address value
+        }
 
 type StaticCartROM(header,data,savefile) =
     inherit CartROM(header,data,savefile)

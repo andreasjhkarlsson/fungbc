@@ -1,8 +1,7 @@
 ﻿module IORegisters
 
-open MemoryCell
+open Memory
 open BitLogic
-open State
 
 // IORegister = Memory register
 [<AbstractClass>]
@@ -17,9 +16,6 @@ type IORegister () =
             with get () = x.Value
             and set newValue = x.Value <- newValue
 
-    interface IEmulationState with
-        member x.Persist () = box x.Value
-        member x.Load obj = x.Value <- unbox obj
 
 // A memory register that is fundamentally a regular byte value
 type ValueBackedIORegister(init: uint8) =

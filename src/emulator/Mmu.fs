@@ -1,7 +1,7 @@
 ﻿module Mmu
 
 open Constants
-open MemoryCell
+open Memory
 open Rom
 open Ram
 open IORegisters
@@ -9,97 +9,103 @@ open Gpu
 open Timer
 open Interrupts
 open Input
+open Misc
 
-type MemoryAddress = uint16
+
+type Mapping =
+    | MemoryBlock of MemoryBlock * uint16
+    | MemoryCell of IMemoryCell
+    | Unmapped
+
 
 // Maps the address space of the GBC into different parts (rom, ram, ioregisters, etc.)
 type MMU (gpu: GPU, rom: ROM, ram: GBCRam,gbs: Sound.GBS,keypad: Keypad, interrupts: InterruptManager, timers: Timers) as this =
     
-    // Initially make all memory blank.
-    let memory = blankMemoryBlock ADDRESS_SPACE_SIZE
 
-    // Set cell at address
-    let mapAddress (address: MemoryAddress) cell = Array.set memory (int address) cell
-
-    // Set cells inside range
-    let mapBlock (start: MemoryAddress) (stop: MemoryAddress) block =
-        {start..stop} |> Seq.iter (fun address -> 
-            let cell = Array.get block (address - start |> int)
-            mapAddress address cell
-        )        
     
     let copyMemory fromAddress toAddress size =
         {0us..(size - 1us)} |> Seq.iter (fun offset ->
             this.Read8 (fromAddress + offset) |> this.Write8 (toAddress + offset) 
         )
 
-    let oamDMACell =
-        let onWrite source =
-            copyMemory ((uint16 source) * 0x100us) 0xFE00us 160us
-            source
-        readWriteCell 0uy |> hookWrite onWrite
+    let oamDMARegister =
+        {
+            new ValueBackedIORegister(0uy) with
+                override x.Value
+                    with set source =
+                        do copyMemory ((uint16 source) * 0x100us) 0xFE00us 160us
+                        base.Value <- source
+        } :> IORegister
 
-    // Map memory!!!
-    do
-        // Map ROM
-        mapBlock 0x0000us 0x07FFFus rom.ROMBlock
 
-        // Map VRAM
-        mapBlock 0x8000us 0x9FFFus gpu.VRAM.MemoryBlock
-
-        // Map external RAM (if any)
-        match rom.RAMBlock with
-        | Some ram -> mapBlock 0xA000us 0xBFFFus ram
-        | _ -> ()
-
-        // Map RAM
-        mapBlock 0xC000us 0xDFFFus ram.Working
-        mapBlock 0xE000us 0xFDFFus ram.Working 
-
-        // Map OAM
-        mapBlock 0xFE00us 0xFE9Fus gpu.VRAM.OAM
-
-        // Map default stack
-        mapBlock 0xFF80us 0xFFFEus ram.Stack
-
-        // Map I/O Registers
-        mapAddress 0xFF00us keypad.MemoryCell
-        mapAddress 0xFF04us timers.DIV.MemoryCell
-        mapAddress 0xFF05us timers.TIMA.MemoryCell
-        mapAddress 0xFF06us timers.TMA.MemoryCell
-        mapAddress 0xFF07us timers.TAC.MemoryCell
-        mapAddress 0xFF0Fus interrupts.Current.MemoryCell
-        mapAddress 0xFF10us gbs.Square1.NR10.MemoryCell
-        mapAddress 0xFF11us gbs.Square1.NR11.MemoryCell
-        mapAddress 0xFF12us gbs.Square1.NR12.MemoryCell
-        mapAddress 0xFF13us gbs.Square1.NR13.MemoryCell
-        mapAddress 0xFF14us gbs.Square1.NR14.MemoryCell
-        mapAddress 0xFF16us gbs.Square2.NR21.MemoryCell
-        mapAddress 0xFF17us gbs.Square2.NR22.MemoryCell
-        mapAddress 0xFF18us gbs.Square2.NR23.MemoryCell
-        mapAddress 0xFF19us gbs.Square2.NR24.MemoryCell
-        mapAddress 0xFF24us gbs.NR50.MemoryCell
-        mapAddress 0xFF25us gbs.NR51.MemoryCell
-        mapAddress 0xFF26us gbs.NR52.MemoryCell
-        mapAddress 0xFF40us gpu.Registers.LCDC.MemoryCell
-        mapAddress 0xFF41us gpu.Registers.LCDS.MemoryCell
-        mapAddress 0xFF42us gpu.Registers.SCY.MemoryCell
-        mapAddress 0xFF43us gpu.Registers.SCX.MemoryCell
-        mapAddress 0xFF44us gpu.Registers.LY.MemoryCell
-        mapAddress 0xFF45us gpu.Registers.LYC.MemoryCell
-        mapAddress 0xFF46us oamDMACell
-        mapAddress 0xFF47us gpu.Registers.BGP.MemoryCell
-        mapAddress 0xFF48us gpu.Registers.OBP0.MemoryCell
-        mapAddress 0xFF49us gpu.Registers.OBP1.MemoryCell
-        mapAddress 0xFF4Aus gpu.Registers.WY.MemoryCell
-        mapAddress 0xFF4Bus gpu.Registers.WX.MemoryCell
-        mapAddress 0xFFFFus interrupts.InterruptEnable.MemoryCell
+    let map =
+        {0us..((uint16 ADDRESS_SPACE_SIZE)-1us)}
+        |> Seq.map (
+            function
+            | Range 0x0000us 0x7FFFus _ -> MemoryBlock (rom.ROMBlock, 0x0000us)
+            | Range 0x8000us 0x9FFFus _ -> MemoryBlock (gpu.VRAM.Memory, 0x8000us)
+            | Range 0xA000us 0xBFFFus _ ->
+                match rom.RAMBlock with
+                | Some ram -> MemoryBlock (ram, 0xA000us)
+                | None -> Unmapped
+            | Range 0xC000us 0xDFFFus _ -> MemoryBlock (ram.Working, 0xC000us) 
+            | Range 0xE000us 0xFDFFus _ -> MemoryBlock (ram.Working, 0xE000us)
+            | Range 0xFE00us 0xFE9Fus _ -> MemoryBlock (gpu.VRAM.OAM, 0xFE00us) 
+            | 0xFF00us -> MemoryCell keypad
+            | 0xFF04us -> MemoryCell timers.DIV
+            | 0xFF05us -> MemoryCell timers.TIMA
+            | 0xFF06us -> MemoryCell timers.TMA
+            | 0xFF07us -> MemoryCell timers.TAC
+            | 0xFF0Fus -> MemoryCell interrupts.Current
+            | 0xFF10us -> MemoryCell gbs.Square1.NR10
+            | 0xFF11us -> MemoryCell gbs.Square1.NR11
+            | 0xFF12us -> MemoryCell gbs.Square1.NR12
+            | 0xFF13us -> MemoryCell gbs.Square1.NR13
+            | 0xFF14us -> MemoryCell gbs.Square1.NR14
+            | 0xFF16us -> MemoryCell gbs.Square2.NR21
+            | 0xFF17us -> MemoryCell gbs.Square2.NR22
+            | 0xFF18us -> MemoryCell gbs.Square2.NR23
+            | 0xFF19us -> MemoryCell gbs.Square2.NR24
+            | 0xFF24us -> MemoryCell gbs.NR50
+            | 0xFF25us -> MemoryCell gbs.NR51
+            | 0xFF26us -> MemoryCell gbs.NR52
+            | 0xFF40us -> MemoryCell gpu.Registers.LCDC
+            | 0xFF41us -> MemoryCell gpu.Registers.LCDS
+            | 0xFF42us -> MemoryCell gpu.Registers.SCY
+            | 0xFF43us -> MemoryCell gpu.Registers.SCX
+            | 0xFF44us -> MemoryCell gpu.Registers.LY
+            | 0xFF45us -> MemoryCell gpu.Registers.LYC
+            | 0xFF46us -> MemoryCell oamDMARegister
+            | 0xFF47us -> MemoryCell gpu.Registers.BGP
+            | 0xFF48us -> MemoryCell gpu.Registers.OBP0
+            | 0xFF49us -> MemoryCell gpu.Registers.OBP1
+            | 0xFF4Aus -> MemoryCell gpu.Registers.WY
+            | 0xFF4Bus -> MemoryCell gpu.Registers.WX
+            | Range 0xFF80us 0xFFFEus _ -> MemoryBlock (ram.Stack, 0xFF80us) 
+            | 0xFFFFus -> MemoryCell interrupts.InterruptEnable
+            | _ -> Unmapped
+        )
+        |> Seq.toArray
 
     // Read mapped byte
-    member this.Read8 (address: MemoryAddress) = (Array.get memory (int address)).Value
+    member this.Read8 (address: MemoryAddress) =
+        match map.[int address] with
+        | MemoryBlock (block, ``base``) ->
+            block.Read (address - ``base``)
+        | MemoryCell cell ->
+            cell.Value
+        | Unmapped ->
+            0uy
     
     // Write mapped byte     
-    member this.Write8 address value = (Array.get memory (int address)).Value <- value
+    member this.Write8 address value =
+        match map.[int address] with
+        | MemoryBlock (block, ``base``) ->
+            do block.Write (address - ``base``) value
+        | MemoryCell cell ->
+            do cell.Value <- value
+        | Unmapped ->
+            ()
 
     // Read and write mapped byte after passing through a supplied map function.
     member this.Update8 address fn = this.Read8 address |> fn |> this.Write8 address

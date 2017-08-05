@@ -1,11 +1,12 @@
 ﻿module Gpu
 
+open System
 open System.Runtime.InteropServices
 open System.Diagnostics
 open System.Threading
 open IORegisters
 open Tile
-open MemoryCell
+open Memory
 open Clock
 open Units
 open Constants
@@ -19,21 +20,28 @@ open Types
 type OBJBGPriority = |Above |Behind
 type SpritePalette = |Palette0 |Palette1
 
-type SpriteAttribute (c0: IMemoryCell,c1: IMemoryCell,c2: IMemoryCell,c3: IMemoryCell) =
-    member this.Y = c0.Value
-    member this.X = c1.Value
+type SpriteAttribute (oam: uint8 array, index) =
+
+
+    member private this.c0 = oam.[4*index]
+    member private this.c1 = oam.[4*index+1]
+    member private this.c2 = oam.[4*index+2]
+    member private this.c3 = oam.[4*index+3]
+
+    member this.Y = this.c0
+    member this.X = this.c1
 
     // Normalize coordinates (not sure why 1 & 9 instead of 0 & 8)
-    member this.TX = (int c1.Value) - 1
-    member this.TY = (int c0.Value) - 9
+    member this.TX = (int this.c1) - 1
+    member this.TY = (int this.c0) - 9
 
-    member this.Tile = c2.Value
+    member this.Tile = this.c2
 
     // Flags
-    member this.Priority = match c3.Value |> bitStateOf 7 with |CLEAR -> Above |SET -> Behind
-    member this.YFlip = c3.Value |> isBitSet 6 |> not
-    member this.XFlip = c3.Value |> isBitSet 5 |> not
-    member this.Palette = match c3.Value |> bitStateOf 4 with |CLEAR -> Palette0 |SET -> Palette1
+    member this.Priority = match this.c3 |> bitStateOf 7 with |CLEAR -> Above |SET -> Behind
+    member this.YFlip = this.c3 |> isBitSet 6 |> not
+    member this.XFlip = this.c3 |> isBitSet 5 |> not
+    member this.Palette = match this.c3 |> bitStateOf 4 with |CLEAR -> Palette0 |SET -> Palette1
 
 type TileMapSelect = |Map1 |Map0
 
@@ -93,7 +101,7 @@ type LY(init) =
 
     interface IMemoryCell with
         member x.Value
-            with set _ = base.Value <- 0x0uy // Writing from memory resets the register
+            with set _ = x.Value <- 0x0uy // Writing from memory resets the register
 
 
 type PaletteMapRegister(init) =
@@ -103,37 +111,36 @@ type PaletteMapRegister(init) =
 
     member this.Color (palette: Palette) index = palette.[(int this.Value >>> (index * 2)) &&& 0x3]
 
-type TileDataBlock(memory: MemoryBlock,offset,count,mode) =
+type TileDataBlock(memory: uint8 array,offset,mode) =
+
     let data =
-        let createTile index = Array.sub memory (offset + index * 16) 16 |> TileData
+        let createTile index =
+            let segment = ArraySegment<uint8>(memory, offset + index * 16, 16)
+            TileData segment
+
         Array.init 256 createTile 
        
     member this.Item index = data.[if mode = Signed then int (int8 index) + 128 else index]
 
 
-type TileMap(memory: MemoryBlock,offset,count) =
-    let data = Array.sub memory offset count
-
-    member this.Item (x,y) = (Array.get data (x + y * 32)).Value
+type TileMap(memory: uint8 array,offset) =
+    member this.Item (x,y) = memory.[offset + x + y * 32]
 
 type VRAM () =
-    let memory = 8*kB |> readWriteMemoryBlock
+    let memory = ReadWriteMemoryBlock(8*kB)
 
-    let oam = 160<b> |> readWriteMemoryBlock
+    let oam = ReadWriteMemoryBlock(160<b>)
 
     let objectAttributeTable = [|0..39|] |> Array.map (fun index ->
-            SpriteAttribute(oam.[4*index],
-                            oam.[4*index+1],
-                            oam.[4*index+2],
-                            oam.[4*index+3])
+            SpriteAttribute(oam.Array, index)
         )
 
-    let tiles1 = TileDataBlock(memory,0,256,Unsigned)
+    let tiles1 = TileDataBlock(memory.Array,0,Unsigned)
 
-    let tiles0 = TileDataBlock(memory,2048,256,Signed)
+    let tiles0 = TileDataBlock(memory.Array,2048,Signed)
 
-    let tileMap0 = TileMap(memory,0x1800,1024)
-    let tileMap1 = TileMap(memory,0x1C00,1024)
+    let tileMap0 = TileMap(memory.Array,0x1800)
+    let tileMap1 = TileMap(memory.Array,0x1C00)
 
     member this.Tiles1 = tiles1
 
@@ -147,7 +154,7 @@ type VRAM () =
 
     member this.ObjectAttributes = objectAttributeTable
 
-    member this.MemoryBlock = memory
+    member this.Memory = memory
 
     member this.OAM = oam
         

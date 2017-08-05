@@ -4,6 +4,7 @@ open Register
 open Mmu
 open Misc
 open Units
+open Memory
 
 // "Syntax" for instruction name:
 // NAME_OPERAND1TYPE_OPERAND2TYPE

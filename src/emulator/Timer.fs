@@ -5,7 +5,7 @@ open Clock
 open BitLogic
 open Units
 open Interrupts
-open MemoryCell
+open Memory
 
 // Divider register. Simply increments 16384 times per second
 type DIVRegister(clock: Clock) =

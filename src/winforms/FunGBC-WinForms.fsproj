@@ -9,10 +9,11 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>FunGBC_Winforms</RootNamespace>
     <AssemblyName>FunGBC_Winforms</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
+    <TargetFSharpCoreVersion>4.4.3.0</TargetFSharpCoreVersion>
     <Name>FunGBC-Winforms</Name>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -64,6 +65,9 @@
     <Compile Include="Debugger.fs" />
     <Compile Include="GameboyWindow.fs" />
     <Compile Include="Program.fs" />
+    <Content Include="App.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
@@ -80,9 +84,11 @@
     <Reference Include="System.Drawing" />
     <Reference Include="System.Numerics" />
     <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\emulator\FunGBC.fsproj">
       <Name>FunGBC</Name>
-      <Project>{e892f6b4-a6c7-4810-a5a2-5635fad00d3f}</Project>
+      <Project>{b38fd6e3-991e-474c-b07f-9366960bc6cc}</Project>
       <Private>True</Private>
     </ProjectReference>
   </ItemGroup>

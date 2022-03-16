@@ -210,9 +210,9 @@ module Mixer =
                 match msg with
                 | Process buffer when (!config).AudioDevice.Playing ->
 
-                    do
-                        Log.logf "Audio playback: device buffer = %f ms"
-                            ((float (!config).AudioDevice.Buffered) / (float Constants.AudioConfig.SampleRate) |> (*) 500.0)
+                   // do
+                    //    Log.logf "Audio playback: device buffer = %f ms"
+                    //        ((float (!config).AudioDevice.Buffered) / (float Constants.AudioConfig.SampleRate) |> (*) 500.0)
 
                     if (!config).Speed.Normal then
                         do (!config).AudioDevice.PlaySamples buffer.Data buffer.Used 

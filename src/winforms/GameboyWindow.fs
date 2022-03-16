@@ -11,7 +11,6 @@ open Gameboy
 open Rom
 open Debugger
 open Gpu
-open Resource
 open Units
 open AudioDevice
 open Configuration
@@ -29,6 +28,10 @@ module HighPrecisionSleep =
     // the thread so its only use is to reduce cpu power usage, which is fair enough.
     [<DllImport(@"ntdll.dll", EntryPoint="ZwDelayExecution")>]
     extern nativeint ZwDelayExecution(unativeint unused,int64* time)
+
+    
+    [<DllImport(@"winmm.dll", EntryPoint="timeBeginPeriod")>]
+    extern nativeint timeBeginPeriod(unativeint uPeriod)
 
     let Sleep micros =
         match OS.this with
@@ -221,6 +224,8 @@ type GameboyWindow () as this =
     let runInUIContext fn = this.BeginInvoke(new System.Action(fn)) |> ignore
 
     do
+
+        HighPrecisionSleep.timeBeginPeriod (unativeint 1) |> ignore
 
         this.Text <- Resource.title
 

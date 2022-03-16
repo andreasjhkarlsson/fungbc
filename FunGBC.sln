@@ -1,13 +1,14 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.27428.2037
+# Visual Studio Version 17
+VisualStudioVersion = 17.1.32228.430
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunGBC-iOS", "src\ios\FunGBC-iOS.fsproj", "{7D43ECCF-08FC-4D8F-AD28-E8C913F46346}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "FunGBC", "src\emulator\FunGBC.fsproj", "{B38FD6E3-991E-474C-B07F-9366960BC6CC}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunGBC-Winforms", "src\winforms\FunGBC-Winforms.fsproj", "{42C63399-D57C-4E63-B460-266447021CF5}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunGBC", "src\emulator\FunGBC.fsproj", "{B38FD6E3-991E-474C-B07F-9366960BC6CC}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Winforms", "src\winforms\Winforms.fsproj", "{DF787DFB-740A-46A9-A55C-158DD5228389}"
+	ProjectSection(ProjectDependencies) = postProject
+		{B38FD6E3-991E-474C-B07F-9366960BC6CC} = {B38FD6E3-991E-474C-B07F-9366960BC6CC}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -93,6 +94,30 @@ Global
 		{B38FD6E3-991E-474C-B07F-9366960BC6CC}.Release|iPhone.Build.0 = Release|Any CPU
 		{B38FD6E3-991E-474C-B07F-9366960BC6CC}.Release|iPhoneSimulator.ActiveCfg = Release|Any CPU
 		{B38FD6E3-991E-474C-B07F-9366960BC6CC}.Release|iPhoneSimulator.Build.0 = Release|Any CPU
+		{DF787DFB-740A-46A9-A55C-158DD5228389}.Ad-Hoc|Any CPU.ActiveCfg = Debug|Any CPU
+		{DF787DFB-740A-46A9-A55C-158DD5228389}.Ad-Hoc|Any CPU.Build.0 = Debug|Any CPU
+		{DF787DFB-740A-46A9-A55C-158DD5228389}.Ad-Hoc|iPhone.ActiveCfg = Debug|Any CPU
+		{DF787DFB-740A-46A9-A55C-158DD5228389}.Ad-Hoc|iPhone.Build.0 = Debug|Any CPU
+		{DF787DFB-740A-46A9-A55C-158DD5228389}.Ad-Hoc|iPhoneSimulator.ActiveCfg = Debug|Any CPU
+		{DF787DFB-740A-46A9-A55C-158DD5228389}.Ad-Hoc|iPhoneSimulator.Build.0 = Debug|Any CPU
+		{DF787DFB-740A-46A9-A55C-158DD5228389}.AppStore|Any CPU.ActiveCfg = Debug|Any CPU
+		{DF787DFB-740A-46A9-A55C-158DD5228389}.AppStore|Any CPU.Build.0 = Debug|Any CPU
+		{DF787DFB-740A-46A9-A55C-158DD5228389}.AppStore|iPhone.ActiveCfg = Debug|Any CPU
+		{DF787DFB-740A-46A9-A55C-158DD5228389}.AppStore|iPhone.Build.0 = Debug|Any CPU
+		{DF787DFB-740A-46A9-A55C-158DD5228389}.AppStore|iPhoneSimulator.ActiveCfg = Debug|Any CPU
+		{DF787DFB-740A-46A9-A55C-158DD5228389}.AppStore|iPhoneSimulator.Build.0 = Debug|Any CPU
+		{DF787DFB-740A-46A9-A55C-158DD5228389}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DF787DFB-740A-46A9-A55C-158DD5228389}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DF787DFB-740A-46A9-A55C-158DD5228389}.Debug|iPhone.ActiveCfg = Debug|Any CPU
+		{DF787DFB-740A-46A9-A55C-158DD5228389}.Debug|iPhone.Build.0 = Debug|Any CPU
+		{DF787DFB-740A-46A9-A55C-158DD5228389}.Debug|iPhoneSimulator.ActiveCfg = Debug|Any CPU
+		{DF787DFB-740A-46A9-A55C-158DD5228389}.Debug|iPhoneSimulator.Build.0 = Debug|Any CPU
+		{DF787DFB-740A-46A9-A55C-158DD5228389}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DF787DFB-740A-46A9-A55C-158DD5228389}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DF787DFB-740A-46A9-A55C-158DD5228389}.Release|iPhone.ActiveCfg = Release|Any CPU
+		{DF787DFB-740A-46A9-A55C-158DD5228389}.Release|iPhone.Build.0 = Release|Any CPU
+		{DF787DFB-740A-46A9-A55C-158DD5228389}.Release|iPhoneSimulator.ActiveCfg = Release|Any CPU
+		{DF787DFB-740A-46A9-A55C-158DD5228389}.Release|iPhoneSimulator.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

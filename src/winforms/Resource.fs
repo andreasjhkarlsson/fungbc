@@ -6,7 +6,7 @@ open System.Resources
 
 let executingAssembly = Assembly.GetExecutingAssembly()
 
-let resources = new ResourceManager("Resources", executingAssembly)
+let resources = new ResourceManager("Winforms.res", executingAssembly)
 
 let stringResource = resources.GetString
 

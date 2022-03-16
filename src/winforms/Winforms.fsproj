@@ -1,0 +1,46 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0-windows</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Remove="Resources\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Remove="resources.resx" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="icon.ico" />
+    <Compile Include="Resource.fs" />
+    <Compile Include="OS.fs" />
+    <Compile Include="AudioDevice.fs" />
+    <Compile Include="Debugger.fs" />
+    <Compile Include="GameboyWindow.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup />
+
+  <ItemGroup>
+    <PackageReference Include="NAudio" Version="2.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\emulator\FunGBC.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="resources.resx" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="res.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+    </EmbeddedResource>
+  </ItemGroup>
+
+</Project>
